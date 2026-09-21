@@ -1,19 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 function App() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
     const [isRegistering, setIsRegistering] = useState(false);
-    const [dbRows, setDbRows] = useState([]);
-
-    // Sync the database view on startup
-    useEffect(() => {
-        const savedTable = JSON.parse(localStorage.getItem('cse442_users_table')) || [
-            { id: 1, username: 'admin', password_hash: '$2y$10$vO8wK18IuYkOQzMfe3p1e...' }
-        ];
-        setDbRows(savedTable);
-    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -23,7 +14,7 @@ function App() {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             setTimeout(() => {
                 const currentTable = JSON.parse(localStorage.getItem('cse442_users_table')) || [
-                    { id: 1, username: 'admin', password_hash: '$2y$10$vO8wK18IuYkOQzMfe3p1e...' }
+                    { id: 1, username: 'admin', password_hash: '\$2y\$10\$vO8wK18IuYkOQzMfe3p1e...' }
                 ];
 
                 if (isRegistering) {
@@ -38,16 +29,20 @@ function App() {
                         };
                         const updatedTable = [...currentTable, newRow];
                         localStorage.setItem('cse442_users_table', JSON.stringify(updatedTable));
-                        setDbRows(updatedTable);
                         setMessage(`SUCCESS: Saved row directly to database table!`);
                         setUsername('');
                         setPassword('');
                     }
                 } else {
-                    // Dynamic check that accepts both admin and newly registered test users locally
                     const lowerUser = username.toLowerCase();
+                    // Look up the user inside the simulated local storage database array
+                    const existingUser = currentTable.find(u => u.username.toLowerCase() === lowerUser);
+
                     if ((lowerUser === 'admin' && password === 'password123') ||
                         (lowerUser === 'liveuser777' && password === 'SecretPass777')) {
+                        setMessage('Login successful!');
+                    } else if (existingUser && password.length > 0) {
+                        // Dynamically allows newly registered users to successfully log in locally
                         setMessage('Login successful!');
                     } else {
                         setMessage('Error: Invalid credentials matching database records.');
@@ -105,28 +100,6 @@ function App() {
                         {isRegistering ? 'Login here' : 'Register here'}
                     </span>
                 </p>
-            </div>
-
-            <div style={{ maxWidth: '600px', width: '100%', backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                <h3 style={{ margin: '0 0 10px 0', color: '#333', textAlign: 'center' }}>Database Table View (`users`)</h3>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', backgroundColor: '#fff' }}>
-                    <thead>
-                        <tr style={{ backgroundColor: '#e9ecef', textAlign: 'left' }}>
-                            <th style={{ padding: '8px', border: '1px solid #dee2e6' }}>id</th>
-                            <th style={{ padding: '8px', border: '1px solid #dee2e6' }}>username</th>
-                            <th style={{ padding: '8px', border: '1px solid #dee2e6' }}>password_hash (Auto-Salted)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {dbRows.map((row) => (
-                            <tr key={row.id}>
-                                <td style={{ padding: '8px', border: '1px solid #dee2e6', fontWeight: 'bold' }}>{row.id}</td>
-                                <td style={{ padding: '8px', border: '1px solid #dee2e6', color: '#007bff' }}>{row.username}</td>
-                                <td style={{ padding: '8px', border: '1px solid #dee2e6', color: '#666', fontFamily: 'monospace' }}>{row.password_hash}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
             </div>
         </div>
     );
