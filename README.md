@@ -1,1 +1,1 @@
-"This branch will hold the Block feature." 
+This branch will hold the Favorites tab feature.
