@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+// Shared by the image API and the future create-listing endpoint.
 const LISTING_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const LISTING_IMAGE_STORAGE_DIRECTORY = __DIR__ . '/../uploads';
 

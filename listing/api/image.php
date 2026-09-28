@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // Serves only files created by the listing image storage helper.
-require_once __DIR__ . '/image_storage.php';
+require_once __DIR__ . '/../lib/image_storage.php';
 
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
