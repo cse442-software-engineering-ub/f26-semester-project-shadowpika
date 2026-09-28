@@ -1,0 +1,109 @@
+/* Product search page (Figma: CSE-442-TR-Free, node 3-1189).
+   Sizes are taken from the 1440px-wide Figma frame. */
+
+.ps-page {
+  --ps-navy: #1f2d44;
+  --ps-cream: #f8f1e7;
+  --ps-gold: #c9a15e;
+  --ps-muted: #8a94a6;
+  --ps-canvas: #f4f4f4;
+  --ps-white: #ffffff;
+
+  min-height: 100vh;
+  background: var(--ps-canvas);
+  font-family: 'DM Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--ps-navy);
+  -webkit-font-smoothing: antialiased;
+}
+
+.ps-page *,
+.ps-page *::before,
+.ps-page *::after {
+  box-sizing: border-box;
+}
+
+.ps-page button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.ps-frame {
+  width: 100%;
+  max-width: 1440px;
+  min-height: 1025px;
+  margin: 0 auto;
+  /* Top padding keeps the content where it sits under the header in the design. */
+  padding: 95px 16px 48px;
+  background: var(--ps-cream);
+}
+
+/* Heading */
+.ps-title {
+  margin: 0;
+  font-family: 'League Spartan', 'DM Sans', sans-serif;
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--ps-navy);
+}
+
+.ps-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ps-muted);
+}
+
+/* Search bar */
+.ps-search {
+  display: flex;
+  align-items: center;
+  width: 356px;
+  max-width: 100%;
+  height: 52px;
+  margin-top: 12px;
+  padding: 2px 16px 2px 2px;
+  background: var(--ps-white);
+  border-radius: 12px 26px 26px 12px;
+}
+
+.ps-page .ps-filter-btn {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--ps-gold);
+  color: var(--ps-navy);
+  border-radius: 10px 0 0 10px;
+}
+
+.ps-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 8px 0 4px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ps-navy);
+}
+
+.ps-search-input::placeholder {
+  color: var(--ps-navy);
+  opacity: 1;
+}
+
+.ps-page .ps-search-btn {
+  flex: none;
+  display: flex;
+  color: var(--ps-navy);
+}
