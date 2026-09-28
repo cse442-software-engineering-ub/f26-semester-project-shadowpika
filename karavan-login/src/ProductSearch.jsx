@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import NavBar from './NavBar.jsx';
 import './ProductSearch.css';
 import { searchLocalListings } from './localListings.js';
 
@@ -150,6 +151,7 @@ function ProductSearch() {
 
     return (
         <div className="ps-page">
+            <NavBar />
             <main className="ps-frame">
                 <h1 className="ps-title">Find what you need</h1>
                 <p className="ps-subtitle">Buy, sell, and support classmates directly on campus.</p>

@@ -31,13 +31,20 @@
   cursor: pointer;
 }
 
+/* Nav bar sits in the same centered cream frame as the page content */
+.ps-page > .nav {
+  max-width: 1440px;
+  margin: 0 auto;
+  background: var(--ps-cream);
+}
+
 .ps-frame {
   width: 100%;
   max-width: 1440px;
   min-height: 1025px;
   margin: 0 auto;
-  /* Top padding keeps the content where it sits under the header in the design. */
-  padding: 95px 16px 48px;
+  /* Top padding keeps the content where it sits under the nav bar in the design. */
+  padding: 23px 16px 48px;
   background: var(--ps-cream);
 }
 
