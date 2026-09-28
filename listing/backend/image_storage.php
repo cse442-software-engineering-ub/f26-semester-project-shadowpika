@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 const LISTING_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
-const LISTING_IMAGE_STORAGE_DIRECTORY = __DIR__ . '/../../uploads/listings';
+const LISTING_IMAGE_STORAGE_DIRECTORY = __DIR__ . '/../uploads';
 
 const LISTING_IMAGE_ALLOWED_MIME_TYPES = [
     'image/jpeg' => 'jpg',

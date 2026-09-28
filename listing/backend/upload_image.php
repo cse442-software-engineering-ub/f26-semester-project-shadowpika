@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+// Listing-specific upload endpoint kept separate from the shared project API.
 require_once __DIR__ . '/image_storage.php';
 
 header('Access-Control-Allow-Origin: *');
