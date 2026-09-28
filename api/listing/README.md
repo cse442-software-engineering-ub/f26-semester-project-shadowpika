@@ -25,4 +25,3 @@ filesystem paths.
 The PHP process must have permission to create and write to
 `uploads/listings/`. Uploaded files are ignored by Git; only the directory's
 `.gitignore` is committed.
-

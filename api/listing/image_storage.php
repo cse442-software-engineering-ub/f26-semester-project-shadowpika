@@ -156,4 +156,3 @@ function listing_image_path(string $filename): ?string
 
     return LISTING_IMAGE_STORAGE_DIRECTORY . DIRECTORY_SEPARATOR . $filename;
 }
-

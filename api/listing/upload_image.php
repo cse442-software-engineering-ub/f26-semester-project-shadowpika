@@ -67,4 +67,3 @@ try {
         'error' => 'The server could not store the listing image.',
     ]);
 }
-
