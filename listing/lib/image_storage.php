@@ -157,3 +157,21 @@ function listing_image_path(string $filename): ?string
 
     return LISTING_IMAGE_STORAGE_DIRECTORY . DIRECTORY_SEPARATOR . $filename;
 }
+
+/**
+ * Removes a stored image when a later listing operation must be rolled back.
+ * Missing files count as successfully removed so cleanup can be retried safely.
+ */
+function delete_listing_image(string $filename): bool
+{
+    $imagePath = listing_image_path($filename);
+    if ($imagePath === null) {
+        return false;
+    }
+
+    if (!is_file($imagePath)) {
+        return true;
+    }
+
+    return unlink($imagePath);
+}
