@@ -49,7 +49,7 @@ if (empty($name)) {
 $db_host = 'localhost';
 $db_name = 'cse442_2026_fall_team_j_db';
 $db_user = 'ndberg';
-$db_pass = 'YOUR_PASSWORD';
+$db_pass = '50250298';
 
 $conn = new mysqli(
     $db_host,
