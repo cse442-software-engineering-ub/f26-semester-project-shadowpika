@@ -6,7 +6,6 @@ Options -Indexes
     # Internal code, tests, and secrets are never served.
     RewriteRule ^(includes|sql|tests|vendor|dev|karavan_uploads)(/|$) - [F,L]
     RewriteRule ^(config\.local\.php|config\.local\.example\.php|composer\.(json|lock)|phpunit\.xml)$ - [F,L]
-    RewriteRule (^|/)\.user\.ini$ - [F,L]
 
     # Client-side routes of the React app.
     RewriteRule ^(admin-register|moderator)/?$ index.html [L]

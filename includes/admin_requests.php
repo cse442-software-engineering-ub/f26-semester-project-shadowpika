@@ -2,7 +2,8 @@
 // Business logic for community-partner admin requests. Every function returns
 // [httpStatus, responseBody] so the endpoints stay thin and PHPUnit can call these directly.
 
-const KARAVAN_MAX_PROOF_BYTES = 10 * 1024 * 1024;
+// Aptitude's PHP caps uploads at 2MB (upload_max_filesize) and ignores .user.ini/.htaccess overrides.
+const KARAVAN_MAX_PROOF_BYTES = 2 * 1024 * 1024;
 
 const KARAVAN_ALLOWED_PROOF_TYPES = [
     'pdf'  => ['application/pdf'],
@@ -18,13 +19,16 @@ function karavan_validate_proof_file(?array $file): ?string
         return 'Proof of ownership is required.';
     }
     if ($file['error'] === UPLOAD_ERR_INI_SIZE || $file['error'] === UPLOAD_ERR_FORM_SIZE) {
-        return 'File is too large. Maximum size is 10MB.';
+        return 'File is too large. Maximum size is 2MB.';
     }
     if ($file['error'] !== UPLOAD_ERR_OK) {
         return 'File upload failed. Please try again.';
     }
     if (empty($file['tmp_name']) || !is_file($file['tmp_name'])) {
         return 'Proof of ownership is required.';
+    }
+    if (filesize($file['tmp_name']) === 0) {
+        return 'The file is empty. Please choose a different file.';
     }
 
     $extension = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
@@ -35,7 +39,7 @@ function karavan_validate_proof_file(?array $file): ?string
     }
 
     if (filesize($file['tmp_name']) > KARAVAN_MAX_PROOF_BYTES) {
-        return 'File is too large. Maximum size is 10MB.';
+        return 'File is too large. Maximum size is 2MB.';
     }
 
     return null;
@@ -86,6 +90,11 @@ function karavan_admin_register(PDO $pdo, array $post, array $files, string $upl
 
     if (!is_dir($uploadDir) && !mkdir($uploadDir, 0750, true) && !is_dir($uploadDir)) {
         return [500, ['success' => false, 'error' => 'Could not save the uploaded file.']];
+    }
+    // Aptitude ignores .htaccess, so a blank index file is what stops Apache listing the folder.
+    $indexFile = rtrim($uploadDir, '/') . '/index.html';
+    if (!is_file($indexFile)) {
+        @file_put_contents($indexFile, '');
     }
 
     $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
