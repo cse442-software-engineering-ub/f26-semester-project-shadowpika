@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../lib/database.php';
 require_once __DIR__ . '/../lib/listing_validation.php';
 require_once __DIR__ . '/../lib/listing_repository.php';
+require_once __DIR__ . '/../lib/image_storage.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
@@ -47,6 +48,12 @@ if ($method !== 'POST') {
 }
 
 $validation = validate_create_listing(read_create_listing_input());
+if (empty($validation['errors'])) {
+    $imageFilename = listing_image_filename_from_url($validation['data']['image_url']);
+    if ($imageFilename === null || !listing_image_exists($imageFilename)) {
+        $validation['errors']['image_url'] = 'The uploaded item photo could not be found. Upload it again.';
+    }
+}
 if (!empty($validation['errors'])) {
     listing_json_response(422, [
         'success' => false,
@@ -64,7 +71,9 @@ $ownerId = isset($_SESSION['user_id']) && (int) $_SESSION['user_id'] > 0
 
 try {
     $connection = listing_database();
+    $connection->begin_transaction();
     $createdListing = create_listing($connection, $validation['data'], $ownerId);
+    $connection->commit();
     $connection->close();
 
     listing_json_response(201, [
@@ -73,6 +82,10 @@ try {
         'listing' => $createdListing,
     ]);
 } catch (Throwable $exception) {
+    if (isset($connection) && $connection instanceof mysqli) {
+        $connection->rollback();
+        $connection->close();
+    }
     listing_json_response(500, [
         'success' => false,
         'error' => 'The listing could not be created. Please try again.',
