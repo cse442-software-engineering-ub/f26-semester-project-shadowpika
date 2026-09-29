@@ -138,7 +138,7 @@ $stmt = $conn->prepare(
 );
 
 $stmt->bind_param(
-    "si",
+    "ssi",
     $new_username,
     $new_email,
     $user_id
