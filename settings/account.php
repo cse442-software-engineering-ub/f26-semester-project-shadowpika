@@ -18,7 +18,6 @@ header("Content-Type: application/json");
 $raw_input = file_get_contents("php://input");
 $data = json_decode($raw_input, true);
 
-// Make sure the data exists
 if (!$data) {
     echo json_encode([
         "success" => false,
@@ -28,22 +27,32 @@ if (!$data) {
 }
 
 
-// Get user ID
-$user_id = isset($data["user_id"])
-    ? intval($data["user_id"])
-    : 0;
+// Current username
+$current_username = isset($data["current_username"])
+    ? trim($data["current_username"])
+    : "";
 
-// Get username
-$name = isset($data["username"])
+// New username
+$new_username = isset($data["username"])
     ? trim($data["username"])
     : "";
 
 
-// Make sure user ID was provided
-if ($user_id <= 0) {
+// Make sure current username was provided
+if (empty($current_username)) {
     echo json_encode([
         "success" => false,
-        "error" => "User ID is required."
+        "error" => "Current username is required."
+    ]);
+    exit;
+}
+
+
+// Make sure new username was provided
+if (empty($new_username)) {
+    echo json_encode([
+        "success" => false,
+        "error" => "New username is required."
     ]);
     exit;
 }
@@ -65,6 +74,7 @@ $conn = new mysqli(
     $db_name
 );
 
+
 // Check connection
 if ($conn->connect_error) {
     echo json_encode([
@@ -76,7 +86,45 @@ if ($conn->connect_error) {
 
 
 // -----------------------------
-// UPDATE USER
+// FIND USER ID
+// -----------------------------
+
+$stmt = $conn->prepare(
+    "SELECT id FROM users WHERE username = ?"
+);
+
+$stmt->bind_param(
+    "s",
+    $current_username
+);
+
+$stmt->execute();
+
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
+
+
+// Make sure user exists
+if (!$user) {
+    echo json_encode([
+        "success" => false,
+        "error" => "Current user not found."
+    ]);
+
+    $stmt->close();
+    $conn->close();
+    exit;
+}
+
+
+// Store the user's ID
+$user_id = $user["id"];
+
+$stmt->close();
+
+
+// -----------------------------
+// UPDATE USERNAME
 // -----------------------------
 
 $stmt = $conn->prepare(
@@ -85,7 +133,7 @@ $stmt = $conn->prepare(
 
 $stmt->bind_param(
     "si",
-    $name,
+    $new_username,
     $user_id
 );
 
@@ -95,16 +143,16 @@ if ($stmt->execute()) {
 
     echo json_encode([
         "success" => true,
-        "message" => "Account updated successfully.",
+        "message" => "Username updated successfully.",
         "user_id" => $user_id,
-        "username" => $name
+        "username" => $new_username
     ]);
 
 } else {
 
     echo json_encode([
         "success" => false,
-        "error" => "Failed to update account."
+        "error" => "Failed to update username."
     ]);
 }
 
