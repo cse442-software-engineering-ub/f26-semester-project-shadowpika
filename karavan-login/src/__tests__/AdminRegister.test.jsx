@@ -71,20 +71,35 @@ describe('AdminRegister page', () => {
         expect(screen.getByText('Invalid file type. Accepted formats: PDF, JPG, PNG.')).toBeInTheDocument();
     });
 
-    it('rejects files over 10MB on the client', async () => {
+    it('rejects files over 2MB on the client', async () => {
         const fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);
         const user = userEvent.setup();
         render(<AdminRegister />);
         const huge = new File(['x'], 'deed.pdf', { type: 'application/pdf' });
-        Object.defineProperty(huge, 'size', { value: 10 * 1024 * 1024 + 1 });
+        Object.defineProperty(huge, 'size', { value: 2 * 1024 * 1024 + 1 });
 
         await fillValidForm(user);
         await user.upload(uploadInput(), huge);
         await user.click(screen.getByRole('button', { name: 'Submit for Approval' }));
 
         expect(fetchMock).not.toHaveBeenCalled();
-        expect(screen.getByText('File is too large. Maximum size is 10MB.')).toBeInTheDocument();
+        expect(screen.getByText('File is too large. Maximum size is 2MB.')).toBeInTheDocument();
+    });
+
+    it('rejects an empty file on the client', async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+        const user = userEvent.setup();
+        render(<AdminRegister />);
+
+        await fillValidForm(user);
+        await user.upload(uploadInput(), new File([], 'empty.pdf', { type: 'application/pdf' }));
+        await user.click(screen.getByRole('button', { name: 'Submit for Approval' }));
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(screen.getByTestId('proof-dropzone')).toHaveClass('kv-dropzone--error');
+        expect(screen.getByText('The file is empty. Please choose a different file.')).toBeInTheDocument();
     });
 
     it('blocks submission when passwords do not match', async () => {
