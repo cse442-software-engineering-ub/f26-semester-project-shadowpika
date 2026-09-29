@@ -27,16 +27,23 @@ if (!$data) {
     exit;
 }
 
-// Get username sent by JavaScript
+
+// Get user ID
+$user_id = isset($data["user_id"])
+    ? intval($data["user_id"])
+    : 0;
+
+// Get username
 $name = isset($data["username"])
     ? trim($data["username"])
     : "";
 
-// Make sure username was provided
-if (empty($name)) {
+
+// Make sure user ID was provided
+if ($user_id <= 0) {
     echo json_encode([
         "success" => false,
-        "error" => "Username is required."
+        "error" => "User ID is required."
     ]);
     exit;
 }
@@ -69,40 +76,6 @@ if ($conn->connect_error) {
 
 
 // -----------------------------
-// FIND USER ID
-// -----------------------------
-
-$stmt = $conn->prepare(
-    "SELECT id FROM users WHERE username = ?"
-);
-
-$stmt->bind_param("s", $name);
-$stmt->execute();
-
-$result = $stmt->get_result();
-$user = $result->fetch_assoc();
-
-
-// Make sure the user exists
-if (!$user) {
-    echo json_encode([
-        "success" => false,
-        "error" => "User not found."
-    ]);
-
-    $stmt->close();
-    $conn->close();
-    exit;
-}
-
-
-// Get the ID associated with the username
-$user_id = $user["id"];
-
-$stmt->close();
-
-
-// -----------------------------
 // UPDATE USER
 // -----------------------------
 
@@ -123,7 +96,8 @@ if ($stmt->execute()) {
     echo json_encode([
         "success" => true,
         "message" => "Account updated successfully.",
-        "user_id" => $user_id
+        "user_id" => $user_id,
+        "username" => $name
     ]);
 
 } else {
