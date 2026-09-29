@@ -5,13 +5,14 @@ import './NavBar.css';
 // Swap each href for the real page once it is built (routing is a separate card).
 const NOT_FOUND = './404.html';
 
+const HOME_HREF = NOT_FOUND;
+
 const NAV_LINKS = [
-    { label: 'Meeting Request', href: NOT_FOUND },
+    { label: 'Home', href: HOME_HREF },
     { label: 'Settings', href: NOT_FOUND },
     { label: 'Sell', href: NOT_FOUND },
 ];
 
-const HOME_HREF = NOT_FOUND;
 const SEARCH_HREF = NOT_FOUND;
 const NOTIFICATIONS_HREF = NOT_FOUND;
 const PROFILE_HREF = NOT_FOUND;
