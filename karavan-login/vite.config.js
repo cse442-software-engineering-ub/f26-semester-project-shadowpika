@@ -2,7 +2,15 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
+    // Cattle/Aptitude host the app below /CSE442/.../cse-442j rather than
+    // at the domain root, so generated HTML must reference nearby assets.
+    base: './',
     plugins: [react()],
+    // Listing feature components live beside the app package in ../listing/frontend.
+    // Resolve every component against this app's single React installation.
+    resolve: {
+        dedupe: ['react', 'react-dom']
+    },
     build: {
         rollupOptions: {
             input: {
@@ -17,6 +25,9 @@ export default defineConfig({
         }
     },
     server: {
+        fs: {
+            allow: ['..']
+        },
         watch: {
             ignored: ['**/.vs/**']
         },
