@@ -20,7 +20,8 @@ const EMPTY_VALUES = Object.fromEntries(FIELDS.map((field) => [field.name, '']))
 const FILE_ERRORS = [
     'Proof of ownership is required.',
     'Invalid file type. Accepted formats: PDF, JPG, PNG.',
-    'File is too large. Maximum size is 10MB.',
+    'File is too large. Maximum size is 2MB.',
+    'The file is empty. Please choose a different file.',
 ];
 
 function validateFields(values) {

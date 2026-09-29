@@ -68,7 +68,7 @@ export default function FileDropzone({ id, file, error, onChange }) {
                 ) : (
                     <span className="kv-dropzone__title">Drag file here or click to browse</span>
                 )}
-                <span id={`${id}-hint`} className="kv-dropzone__hint">PDF, JPG, or PNG up to 10MB</span>
+                <span id={`${id}-hint`} className="kv-dropzone__hint">PDF, JPG, or PNG up to 2MB</span>
             </label>
             {file && (
                 <button type="button" className="kv-link-button" onClick={() => onChange(null)}>
