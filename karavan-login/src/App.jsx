@@ -11,7 +11,7 @@ function App() {
 
     const loginSuccess = () => {
         setMessage('Login successful!');
-        window.location.href = './product-search.html';
+        window.location.href = './home.html';
     };
 
     const handleSubmit = async (e) => {

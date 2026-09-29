@@ -1,20 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import './NavBar.css';
 
-// None of these pages exist yet, so every nav target goes to the 404 page.
-// Swap each href for the real page once it is built (routing is a separate card).
-const NOT_FOUND = './404.html';
-
-const HOME_HREF = NOT_FOUND;
+const HOME_HREF = './home.html';
 
 const NAV_LINKS = [
     { label: 'Home', href: HOME_HREF, icon: HomeIcon },
-    { label: 'Settings', href: NOT_FOUND, icon: SettingsIcon },
-    { label: 'Sell', href: NOT_FOUND, icon: CartIcon },
+    { label: 'Settings', href: './settings.html', icon: SettingsIcon },
+    { label: 'Sell', href: './sell.html', icon: CartIcon },
 ];
 
-const SEARCH_HREF = NOT_FOUND;
-const PROFILE_HREF = NOT_FOUND;
+const SEARCH_HREF = './product-search.html';
+const PROFILE_HREF = './profile.html';
 
 function CaravanLogo() {
     return (
