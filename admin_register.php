@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // When the body exceeds post_max_size PHP silently drops $_POST and $_FILES entirely.
 if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
-    karavan_send_json(413, ['success' => false, 'error' => 'File is too large. Maximum size is 10MB.']);
+    karavan_send_json(413, ['success' => false, 'error' => 'File is too large. Maximum size is 2MB.']);
 }
 
 try {

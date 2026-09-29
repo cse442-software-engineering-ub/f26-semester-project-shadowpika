@@ -36,8 +36,8 @@ final class EndpointsHttpTest extends TestCase
         $command = [
             PHP_BINARY,
             '-d', 'session.save_path=' . self::$sessionDir,
-            '-d', 'upload_max_filesize=11M',
-            '-d', 'post_max_size=12M',
+            '-d', 'upload_max_filesize=2M',
+            '-d', 'post_max_size=8M',
             '-S', "127.0.0.1:$port",
             '-t', $docRoot,
         ];
@@ -213,6 +213,25 @@ final class EndpointsHttpTest extends TestCase
         $this->assertSame(400, $status);
         $this->assertSame(['success' => false, 'error' => 'Invalid file type. Accepted formats: PDF, JPG, PNG.'], $json);
         $this->assertSame([], $this->storedFiles());
+        $this->assertSame(0, $this->requestCount());
+    }
+
+    public function testFileOverAptitudesTwoMegabyteLimitReturns400(): void
+    {
+        $tooLarge = Fixtures::pdfBytes() . str_repeat('0', (int) (2.5 * 1024 * 1024));
+        [$status, $json] = $this->request('POST', 'admin_register.php', $this->form([], $this->fileOf('big.pdf', $tooLarge)));
+
+        $this->assertSame(400, $status);
+        $this->assertSame(['success' => false, 'error' => 'File is too large. Maximum size is 2MB.'], $json);
+        $this->assertSame(0, $this->requestCount());
+    }
+
+    public function testEmptyFileReturns400(): void
+    {
+        [$status, $json] = $this->request('POST', 'admin_register.php', $this->form([], $this->fileOf('empty.pdf', '')));
+
+        $this->assertSame(400, $status);
+        $this->assertSame(['success' => false, 'error' => 'The file is empty. Please choose a different file.'], $json);
         $this->assertSame(0, $this->requestCount());
     }
 

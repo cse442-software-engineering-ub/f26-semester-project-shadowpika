@@ -59,6 +59,40 @@ final class AdminRegisterTest extends TestCase
         $this->assertSame('Proof of ownership is required.', $body['error']);
     }
 
+    public function testRejectsEmptyFile(): void
+    {
+        $files = ['proof_of_ownership' => Fixtures::upload($this->tmpDir, 'empty.pdf', '')];
+
+        [$status, $body] = $this->register($this->validPost(), $files);
+
+        $this->assertSame(400, $status);
+        $this->assertSame(['success' => false, 'error' => 'The file is empty. Please choose a different file.'], $body);
+        $this->assertSame(0, (int) $this->pdo->query('SELECT COUNT(*) FROM admin_requests')->fetchColumn());
+    }
+
+    public function testAcceptsFileJustUnderTheLimit(): void
+    {
+        $files = ['proof_of_ownership' => Fixtures::upload(
+            $this->tmpDir,
+            'big.pdf',
+            Fixtures::pdfBytes() . str_repeat('0', KARAVAN_MAX_PROOF_BYTES - strlen(Fixtures::pdfBytes()))
+        )];
+
+        [$status] = $this->register($this->validPost(), $files);
+
+        $this->assertSame(201, $status);
+    }
+
+    public function testUploadFolderGetsBlankIndexSoApacheCannotListIt(): void
+    {
+        $files = ['proof_of_ownership' => Fixtures::upload($this->tmpDir, 'lease.pdf', Fixtures::pdfBytes())];
+
+        $this->register($this->validPost(), $files);
+
+        $this->assertFileExists($this->uploadDir . '/index.html');
+        $this->assertSame('', file_get_contents($this->uploadDir . '/index.html'));
+    }
+
     public function testRejectsDisallowedExtension(): void
     {
         $files = ['proof_of_ownership' => Fixtures::upload($this->tmpDir, 'notes.txt', 'plain text')];
@@ -79,7 +113,7 @@ final class AdminRegisterTest extends TestCase
         $this->assertSame('Invalid file type. Accepted formats: PDF, JPG, PNG.', $body['error']);
     }
 
-    public function testRejectsFilesOverTenMegabytes(): void
+    public function testRejectsFilesOverTwoMegabytes(): void
     {
         $files = ['proof_of_ownership' => Fixtures::upload(
             $this->tmpDir,
@@ -90,7 +124,7 @@ final class AdminRegisterTest extends TestCase
         [$status, $body] = $this->register($this->validPost(), $files);
 
         $this->assertSame(400, $status);
-        $this->assertSame('File is too large. Maximum size is 10MB.', $body['error']);
+        $this->assertSame('File is too large. Maximum size is 2MB.', $body['error']);
     }
 
     public function testCreatesPendingRequestOnSuccess(): void
