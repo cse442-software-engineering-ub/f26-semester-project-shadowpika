@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// Shared by the image API and the future create-listing endpoint.
+// Shared by the image API and the create-listing endpoint.
 const LISTING_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const LISTING_IMAGE_STORAGE_DIRECTORY = __DIR__ . '/../uploads';
 
@@ -89,7 +89,7 @@ function store_listing_image(array $upload): array
     }
 
     // Failure to change permissions should not make an otherwise valid upload fail.
-    @chmod($destination, 0644);
+    @chmod($destination, 0664);
 
     return [
         'filename' => $filename,
@@ -101,7 +101,7 @@ function store_listing_image(array $upload): array
 function ensure_listing_image_storage_directory(): void
 {
     if (!is_dir(LISTING_IMAGE_STORAGE_DIRECTORY)) {
-        if (!mkdir(LISTING_IMAGE_STORAGE_DIRECTORY, 0755, true) && !is_dir(LISTING_IMAGE_STORAGE_DIRECTORY)) {
+        if (!mkdir(LISTING_IMAGE_STORAGE_DIRECTORY, 0775, true) && !is_dir(LISTING_IMAGE_STORAGE_DIRECTORY)) {
             throw new ListingImageException('The image storage directory is unavailable.', 500);
         }
     }
@@ -156,6 +156,37 @@ function listing_image_path(string $filename): ?string
     }
 
     return LISTING_IMAGE_STORAGE_DIRECTORY . DIRECTORY_SEPARATOR . $filename;
+}
+
+/**
+ * Returns the server-generated filename from one of this module's public URLs.
+ * External URLs and unexpected query parameters are intentionally rejected.
+ */
+function listing_image_filename_from_url(string $imageUrl): ?string
+{
+    $parts = parse_url($imageUrl);
+    if ($parts === false || isset($parts['scheme']) || isset($parts['host']) || isset($parts['fragment'])) {
+        return null;
+    }
+
+    $path = isset($parts['path']) ? (string) $parts['path'] : '';
+    if (!preg_match('#(?:^|/)listing/api/image\.php\z#', $path)) {
+        return null;
+    }
+
+    $query = [];
+    parse_str(isset($parts['query']) ? (string) $parts['query'] : '', $query);
+    if (count($query) !== 1 || !isset($query['file']) || !is_string($query['file'])) {
+        return null;
+    }
+
+    return listing_image_path($query['file']) === null ? null : $query['file'];
+}
+
+function listing_image_exists(string $filename): bool
+{
+    $imagePath = listing_image_path($filename);
+    return $imagePath !== null && is_file($imagePath) && is_readable($imagePath);
 }
 
 /**

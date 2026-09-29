@@ -16,15 +16,16 @@ function create_listing(mysqli $connection, array $listing, ?int $ownerId): arra
     $relatedCourse = $listing['related_course'];
     $meetingLocation = $listing['meeting_location'];
     $description = $listing['description'];
+    $imageUrl = $listing['image_url'];
 
     if ($ownerId !== null && $ownerId > 0) {
         $statement = $connection->prepare(
             "INSERT INTO listings
                 (owner_id, name, category, `condition`, price, related_course, meeting_location, description, image_url, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'active')"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
         );
         $statement->bind_param(
-            'isssssss',
+            'issssssss',
             $ownerId,
             $title,
             $category,
@@ -32,23 +33,25 @@ function create_listing(mysqli $connection, array $listing, ?int $ownerId): arra
             $price,
             $relatedCourse,
             $meetingLocation,
-            $description
+            $description,
+            $imageUrl
         );
     } else {
         $statement = $connection->prepare(
             "INSERT INTO listings
                 (name, category, `condition`, price, related_course, meeting_location, description, image_url, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 'active')"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')"
         );
         $statement->bind_param(
-            'sssssss',
+            'ssssssss',
             $title,
             $category,
             $condition,
             $price,
             $relatedCourse,
             $meetingLocation,
-            $description
+            $description,
+            $imageUrl
         );
     }
 

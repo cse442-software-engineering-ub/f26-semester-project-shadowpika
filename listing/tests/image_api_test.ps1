@@ -51,7 +51,9 @@ function Invoke-JsonRequest {
 
     $body = $rawResponse.Substring(0, $markerIndex)
     $status = [int] $rawResponse.Substring($markerIndex + $marker.Length)
-    Assert-Equal -Expected $ExpectedStatus -Actual $status -Message 'Unexpected HTTP status.'
+    if ($status -ne $ExpectedStatus) {
+        throw "Unexpected HTTP status. Expected '$ExpectedStatus' but received '$status'. Body: $body"
+    }
 
     try {
         $payload = $body | ConvertFrom-Json
