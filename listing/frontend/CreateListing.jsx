@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import NavBar from '../../karavan-login/src/NavBar.jsx';
 import './CreateListing.css';
 
@@ -31,6 +31,7 @@ const INITIAL_FORM = {
 };
 
 const FIELD_LABELS = {
+    image: 'Item photo',
     title: 'Item title',
     category: 'Category',
     condition: 'Condition',
@@ -42,6 +43,8 @@ const FIELD_LABELS = {
 
 const REQUIRED_FIELDS = ['title', 'category', 'condition', 'price', 'meeting_location', 'description'];
 const LOCAL_LISTING_KEY = 'karavan:last-created-listing';
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 const isLocalPreview = () => (
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -75,6 +78,40 @@ function validateListing(values) {
     }
 
     return errors;
+}
+
+function validateListingImage(file) {
+    if (!file) return 'Item photo is required.';
+    if (!IMAGE_TYPES.includes(file.type)) return 'Select a JPEG, PNG, or WebP image.';
+    if (file.size <= 0) return 'The selected image is empty.';
+    if (file.size > IMAGE_MAX_BYTES) return 'The image must be 5 MB or smaller.';
+    return '';
+}
+
+function readImageAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('The selected image could not be read.'));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function uploadListingImage(file) {
+    const body = new FormData();
+    body.append('image', file);
+
+    const response = await fetch('./listing/api/upload_image.php', {
+        method: 'POST',
+        body,
+    });
+    const data = await response.json();
+
+    if (!response.ok || !data.success || !data.image_url) {
+        throw new Error(data.error || 'The item image could not be uploaded. Please try again.');
+    }
+
+    return data.image_url;
 }
 
 function FormField({
@@ -113,12 +150,23 @@ function FormField({
 
 function CreateListing() {
     const [form, setForm] = useState(INITIAL_FORM);
+    const [imageFile, setImageFile] = useState(null);
     const [errors, setErrors] = useState({});
     const [submitError, setSubmitError] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const fieldRefs = useRef({});
+    const imageInputRef = useRef(null);
+    const imageButtonRef = useRef(null);
 
     const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors]);
+    const imagePreviewUrl = useMemo(
+        () => (imageFile ? URL.createObjectURL(imageFile) : ''),
+        [imageFile],
+    );
+
+    useEffect(() => () => {
+        if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    }, [imagePreviewUrl]);
 
     const updateField = (event) => {
         const { name, value } = event.target;
@@ -133,14 +181,41 @@ function CreateListing() {
     };
 
     const focusFirstError = (nextErrors) => {
+        if (nextErrors.image) {
+            window.requestAnimationFrame(() => imageButtonRef.current?.focus());
+            return;
+        }
         const firstInvalidField = REQUIRED_FIELDS.find((field) => nextErrors[field])
             || Object.keys(nextErrors)[0];
         window.requestAnimationFrame(() => fieldRefs.current[firstInvalidField]?.focus());
     };
 
+    const handleImageChange = (event) => {
+        const selectedImage = event.target.files?.[0] || null;
+        const imageValidationError = validateListingImage(selectedImage);
+
+        if (imageValidationError) {
+            setImageFile(null);
+            setErrors((current) => ({ ...current, image: imageValidationError }));
+            event.target.value = '';
+            return;
+        }
+
+        setImageFile(selectedImage);
+        setErrors((current) => {
+            if (!current.image) return current;
+            const next = { ...current };
+            delete next.image;
+            return next;
+        });
+        setSubmitError('');
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         const validationErrors = validateListing(form);
+        const imageValidationError = validateListingImage(imageFile);
+        if (imageValidationError) validationErrors.image = imageValidationError;
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
             setSubmitError('');
@@ -165,6 +240,7 @@ function CreateListing() {
         try {
             let listing;
             if (isLocalPreview()) {
+                const imageUrl = await readImageAsDataUrl(imageFile);
                 listing = {
                     listing_id: 99999,
                     name: payload.title,
@@ -175,15 +251,16 @@ function CreateListing() {
                     related_course: payload.related_course || null,
                     meeting_location: payload.meeting_location,
                     description: payload.description,
-                    image_url: null,
+                    image_url: imageUrl,
                     status: 'active',
                 };
                 localStorage.setItem(LOCAL_LISTING_KEY, JSON.stringify(listing));
             } else {
+                const imageUrl = await uploadListingImage(imageFile);
                 const response = await fetch('./listing/api/create_listing.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify({ ...payload, image_url: imageUrl }),
                 });
                 const data = await response.json();
 
@@ -234,19 +311,46 @@ function CreateListing() {
                 )}
 
                 <form className="listing-form-card" noValidate onSubmit={handleSubmit}>
-                    <section className="listing-photo-section" aria-labelledby="item-photo-label">
-                        <span id="item-photo-label" className="listing-label">ITEM PHOTO</span>
+                    <section
+                        className={`listing-photo-section${errors.image ? ' listing-photo-section-error' : ''}`}
+                        aria-labelledby="item-photo-label"
+                    >
+                        <span id="item-photo-label" className="listing-label">
+                            ITEM PHOTO<span aria-hidden="true"> *</span>
+                        </span>
+                        <input
+                            ref={imageInputRef}
+                            className="listing-file-input"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleImageChange}
+                            aria-describedby={errors.image ? 'image-error image-help' : 'image-help'}
+                        />
                         <button
+                            ref={imageButtonRef}
                             type="button"
-                            className="listing-photo-upload"
-                            disabled
-                            title="Image upload will be implemented in the listing image task."
+                            className={`listing-photo-upload${imagePreviewUrl ? ' listing-photo-upload-selected' : ''}`}
+                            onClick={() => imageInputRef.current?.click()}
+                            aria-invalid={Boolean(errors.image)}
                         >
-                            <span className="listing-photo-plus" aria-hidden="true">＋</span>
-                            <span className="listing-photo-title">Upload item image</span>
-                            <span className="listing-photo-format">PNG or JPG · up to 10 MB</span>
+                            {imagePreviewUrl ? (
+                                <>
+                                    <img className="listing-photo-preview" src={imagePreviewUrl} alt="Selected item preview" />
+                                    <span className="listing-photo-change">Change item image</span>
+                                    <span className="listing-photo-filename">{imageFile.name}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="listing-photo-plus" aria-hidden="true">＋</span>
+                                    <span className="listing-photo-title">Upload item image</span>
+                                    <span className="listing-photo-format">JPEG, PNG, or WebP · up to 5 MB</span>
+                                </>
+                            )}
                         </button>
-                        <p className="listing-photo-help">Image upload will be enabled after image support is added.</p>
+                        <p id="image-help" className="listing-photo-help">
+                            Choose a clear photo that shows the item being listed.
+                        </p>
+                        {errors.image && <p id="image-error" className="listing-photo-error">{errors.image}</p>}
                     </section>
 
                     <div className="listing-fields">
