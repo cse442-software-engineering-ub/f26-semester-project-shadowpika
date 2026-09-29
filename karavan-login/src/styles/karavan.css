@@ -411,6 +411,114 @@
     margin-bottom: 16px;
 }
 
+/* Moderator dashboard: pending request list */
+.kv-dashboard {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 40px 24px 64px;
+}
+
+.kv-dashboard__intro .kv-card__title,
+.kv-dashboard__intro .kv-card__subtitle {
+    text-align: left;
+}
+
+.kv-dashboard__intro .kv-card__title {
+    font-size: 28px;
+}
+
+.kv-dashboard__empty {
+    color: var(--kv-muted);
+    font-size: 15px;
+    margin: 0;
+}
+
+.kv-dashboard__empty-card {
+    text-align: center;
+}
+
+.kv-confirmation-banner {
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #eef6f0;
+    color: var(--kv-success);
+    font-size: 14px;
+}
+
+.kv-summary {
+    margin: 0 0 12px;
+    font-size: 15px;
+}
+
+.kv-request-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.kv-request {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    background: var(--kv-white);
+    border: 1px solid rgba(31, 58, 95, 0.18);
+    border-radius: 14px;
+    padding: 20px 24px;
+    box-shadow: 0 6px 18px rgba(31, 58, 95, 0.06);
+}
+
+.kv-request__info {
+    min-width: 0;
+}
+
+.kv-request__name {
+    font-family: var(--kv-heading);
+    font-weight: 600;
+    font-size: 19px;
+    margin: 0;
+}
+
+.kv-request__business {
+    color: var(--kv-muted);
+    font-size: 14px;
+    margin: 2px 0 10px;
+    overflow-wrap: anywhere;
+}
+
+.kv-request__details {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 12px;
+    margin: 0 0 10px;
+    font-size: 13px;
+}
+
+.kv-request__details dt {
+    color: var(--kv-muted);
+}
+
+.kv-request__details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.kv-request__proof {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--kv-navy);
+}
+
+.kv-request__actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
 /* Mobile: everything stacks */
 @media (max-width: 900px) {
     .kv-split {
@@ -439,5 +547,19 @@
 
     .kv-centered {
         padding: 32px 16px;
+    }
+
+    .kv-dashboard {
+        padding: 24px 16px 40px;
+    }
+
+    .kv-request {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 18px;
+    }
+
+    .kv-request__actions .kv-button {
+        flex: 1;
     }
 }
