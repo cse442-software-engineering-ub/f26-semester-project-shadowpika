@@ -1,3 +1,4 @@
+```php
 <?php
 
 ini_set('display_errors', '1');
@@ -9,7 +10,11 @@ header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST");
 header("Content-Type: application/json");
 
-// Read the JSON sent by JavaScript
+
+// -----------------------------
+// READ DATA FROM JAVASCRIPT
+// -----------------------------
+
 $raw_input = file_get_contents("php://input");
 $data = json_decode($raw_input, true);
 
@@ -22,15 +27,16 @@ if (!$data) {
     exit;
 }
 
-// Get the values sent by JavaScript
-$name = isset($data["name"]) ? trim($data["name"]) : "";
-$email = isset($data["email"]) ? trim($data["email"]) : "";
+// Get username sent by JavaScript
+$name = isset($data["username"])
+    ? trim($data["username"])
+    : "";
 
-// Make sure both fields were filled in
-if (empty($name) || empty($email)) {
+// Make sure username was provided
+if (empty($name)) {
     echo json_encode([
         "success" => false,
-        "error" => "Name and email are required."
+        "error" => "Username is required."
     ]);
     exit;
 }
@@ -40,10 +46,10 @@ if (empty($name) || empty($email)) {
 // DATABASE CONNECTION
 // -----------------------------
 
-$db_host = 'localhost'; 
-$db_name   = 'cse442_2026_fall_team_j_db';     // Replace with your database name
-$db_user = 'ndberg';     // Replace with your database username
-$db_pass = '50250298'; // Replace with your database password
+$db_host = 'localhost';
+$db_name = 'cse442_2026_fall_team_j_db';
+$db_user = 'ndberg';
+$db_pass = 'YOUR_PASSWORD';
 
 $conn = new mysqli(
     $db_host,
@@ -63,28 +69,61 @@ if ($conn->connect_error) {
 
 
 // -----------------------------
+// FIND USER ID
+// -----------------------------
+
+$stmt = $conn->prepare(
+    "SELECT id FROM users WHERE username = ?"
+);
+
+$stmt->bind_param("s", $name);
+$stmt->execute();
+
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
+
+
+// Make sure the user exists
+if (!$user) {
+    echo json_encode([
+        "success" => false,
+        "error" => "User not found."
+    ]);
+
+    $stmt->close();
+    $conn->close();
+    exit;
+}
+
+
+// Get the ID associated with the username
+$user_id = $user["id"];
+
+$stmt->close();
+
+
+// -----------------------------
 // UPDATE USER
 // -----------------------------
 
 $stmt = $conn->prepare(
-    "UPDATE users SET username = ?, email = ? WHERE id = ?"
+    "UPDATE users SET username = ? WHERE id = ?"
 );
 
-// Example user ID
-$user_id = 1; //placeholder, dont keep it like this
-
 $stmt->bind_param(
-    "ssi",
+    "si",
     $name,
-    $email,
     $user_id
 );
 
+
+// Execute update
 if ($stmt->execute()) {
 
     echo json_encode([
         "success" => true,
-        "message" => "Account updated successfully."
+        "message" => "Account updated successfully.",
+        "user_id" => $user_id
     ]);
 
 } else {
@@ -96,7 +135,10 @@ if ($stmt->execute()) {
 }
 
 
-// Clean up
+// -----------------------------
+// CLEAN UP
+// -----------------------------
+
 $stmt->close();
 $conn->close();
 
