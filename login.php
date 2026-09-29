@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/includes/db.php';
+
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST");
@@ -20,27 +22,20 @@ if (empty($input_username) || empty($input_password)) {
     exit;
 }
 
-// --- DATABASE CONNECTION CONFIGURATION ---
-$db_host = 'localhost'; 
-$db_name   = 'cse442_2026_fall_team_j_db';     // Replace with your database name
-$db_user = 'ndberg';     // Replace with your database username
-$db_pass = '50250298'; // Replace with your database password
-
-// 2. Wrap database connection in a try/catch block to prevent crash output
+// --- DATABASE CONNECTION (credentials live in config.local.php, see includes/config.php) ---
 try {
-    $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
-    
-    if ($conn->connect_error) {
-        echo json_encode(["success" => false, "error" => "Database connection failure."]);
-        exit;
-    }
+    $pdo = karavan_pdo();
+} catch (Throwable $e) {
+    echo json_encode(["success" => false, "error" => "Database connection failure."]);
+    exit;
+}
 
+// 2. Wrap the lookup in a try/catch block to prevent crash output
+try {
     // --- FIXED DYNAMIC LOOKUP ---
-    $stmt = $conn->prepare("SELECT * FROM users WHERE LOWER(username) = LOWER(?)");
-    $stmt->bind_param("s", $input_username);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $db_user_row = $result->fetch_assoc();
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(username) = LOWER(?)");
+    $stmt->execute([$input_username]);
+    $db_user_row = $stmt->fetch();
 
     // --- SECURE BCRYPT VERIFICATION ---
     if ($db_user_row && password_verify($input_password, $db_user_row['password_hash'])) {
@@ -58,14 +53,11 @@ try {
         ]);
     }
 
-    $stmt->close();
-    $conn->close();
-
 } catch (Throwable $e) {
-    // This intercepts low-level engine errors and prints them right onto the page
+    // Details stay out of the response so database internals aren't shown to users.
     echo json_encode([
-        "success" => false, 
-        "error" => "Server Error: " . $e->getMessage() . " on line " . $e->getLine()
+        "success" => false,
+        "error" => "Server error. Please try again."
     ]);
 }
 exit;
