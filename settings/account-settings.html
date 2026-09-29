@@ -67,7 +67,7 @@
                         <input
                             class="field-input"
                             type="text"
-                            placeholder="Jane Doe"
+                            value="Shadowpika"
                             id="name"
                             name="input_username"
                         >
@@ -78,7 +78,7 @@
                         <input
                             class="field-input"
                             type="email"
-                            placeholder="jane.doe@example.com"
+                            placeholder="shadow.pika@example.com"
                             id="email"
                             name="input_email"
                         >
@@ -176,8 +176,46 @@
             // });
             // }
 
-            function submitData() {
-            var pass = prompt("Please enter your password to make these changes:")
+        //     function submitData() {
+        //     var pass = prompt("Please enter your password to make these changes:")
+        //     let name = document.user_info.input_username.value;
+        //     let address = document.user_info.input_email.value;
+
+        //     fetch("account.php", {
+        //         method: "POST",
+        //         headers: {
+        //             "Content-Type": "application/json"
+        //         },
+        //         body: JSON.stringify({
+        //             current_username: "Shadowpika",
+        //             username: name,
+        //             email: address,
+        //             password: pass
+        //         })
+        //     })
+        //     .then(response => {
+        //         console.log("HTTP status:", response.status);
+        //         return response.text();
+        //     })
+        //     .then(data => {
+        //         console.log("PHP response:", data);
+        //     })
+        //     .catch(error => {
+        //         console.error("Fetch error:", error);
+        //     });
+        //     .then(data => {
+        //         console.log("PHP response:", data);
+
+        //         if (data.success) {
+        //             document.getElementById("name").value = data.username;
+        //             document.getElementById("email").value = data.email;
+        //         }
+        //     })
+        // }
+
+        function submitData() {
+            var pass = prompt("Please enter your password to make these changes:");
+
             let name = document.user_info.input_username.value;
             let address = document.user_info.input_email.value;
 
@@ -195,15 +233,26 @@
             })
             .then(response => {
                 console.log("HTTP status:", response.status);
-                return response.text();
+                return response.json();
             })
             .then(data => {
                 console.log("PHP response:", data);
+
+                if (data.success) {
+                    document.getElementById("name").value = data.username;
+                    document.getElementById("email").value = data.email;
+                } else {
+                    document.getElementById("name").value = "Shadowpika";
+                    document.getElementById("email").value = "";
+                    console.log("Error:", data.error);
+                    alert(data.error);
+                }
             })
             .catch(error => {
                 console.error("Fetch error:", error);
             });
         }
+
         </script>
 
     </main>
