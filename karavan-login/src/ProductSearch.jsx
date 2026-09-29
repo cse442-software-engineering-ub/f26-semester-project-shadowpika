@@ -5,6 +5,7 @@ import { searchLocalListings } from './localListings.js';
 
 const MAX_QUERY_LENGTH = 50;
 const SEARCH_DELAY_MS = 300;
+const LOCAL_LISTING_KEY = 'karavan:last-created-listing';
 
 // Emoji, pictographs, flags, and the joiners/variation selectors used to build them.
 // Kept in sync with the pattern in api/search_listings.php.
@@ -53,18 +54,31 @@ function BookCover({ name, imageUrl }) {
     );
 }
 
-function BookCard({ book }) {
+function BookCard({ book, isOwner = false }) {
     return (
         <article className="ps-book-card">
             <div className="ps-book-cover">
                 <BookCover name={book.name} imageUrl={book.image_url} />
             </div>
             <div className="ps-book-body">
+                {isOwner && (
+                    <span className="ps-owner-label">YOUR LISTING · {book.category || 'MARKETPLACE'}</span>
+                )}
                 <h3 className="ps-book-name" title={book.name}>{book.name}</h3>
                 <div className="ps-book-meta">
                     <span className="ps-book-price">${book.price}</span>
                     <span className="ps-book-condition">{book.condition}</span>
                 </div>
+                {isOwner && (
+                    <button
+                        type="button"
+                        className="ps-manage-button"
+                        disabled
+                        title="Listing management will be added in a separate task."
+                    >
+                        Manage
+                    </button>
+                )}
             </div>
         </article>
     );
@@ -76,7 +90,48 @@ function ProductSearch() {
     const [status, setStatus] = useState('idle'); // idle | loading | done | error
     const [error, setError] = useState('');
     const [inputNotice, setInputNotice] = useState('');
+    const [publishedListing, setPublishedListing] = useState(null);
+    const [publishedStatus, setPublishedStatus] = useState('idle');
     const requestId = useRef(0);
+
+    useEffect(() => {
+        const publishedId = new URLSearchParams(window.location.search).get('published');
+        if (!publishedId || !/^\d+$/.test(publishedId)) return;
+
+        let cancelled = false;
+        const loadPublishedListing = async () => {
+            setPublishedStatus('loading');
+            try {
+                let listing;
+                if (isLocalPreview()) {
+                    const storedListing = localStorage.getItem(LOCAL_LISTING_KEY);
+                    listing = storedListing ? JSON.parse(storedListing) : null;
+                    if (!listing || String(listing.listing_id) !== publishedId) {
+                        throw new Error('The newly created listing could not be loaded.');
+                    }
+                } else {
+                    const response = await fetch(`./listing/api/get_listing.php?listing_id=${encodeURIComponent(publishedId)}`);
+                    const data = await response.json();
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.error || 'The newly created listing could not be loaded.');
+                    }
+                    listing = data.listing;
+                }
+
+                if (!cancelled) {
+                    setPublishedListing({ ...listing, name: listing.name || listing.title });
+                    setPublishedStatus('done');
+                }
+            } catch {
+                if (!cancelled) setPublishedStatus('error');
+            }
+        };
+
+        loadPublishedListing();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const runSearch = async (rawTerm) => {
         const term = rawTerm.trim();
@@ -178,6 +233,36 @@ function ProductSearch() {
                     <span className="ps-search-notice">{inputNotice}</span>
                     {charCount > 0 && <span className="ps-search-count">{charCount}/{MAX_QUERY_LENGTH}</span>}
                 </div>
+
+                {publishedStatus !== 'idle' && (
+                    <section className="ps-published-section" aria-live="polite">
+                        {publishedStatus === 'loading' && (
+                            <div className="ps-published-banner">Loading your newly published listing…</div>
+                        )}
+                        {publishedStatus === 'error' && (
+                            <div className="ps-published-banner ps-published-error">
+                                Your listing was published, but its marketplace card could not be loaded.
+                            </div>
+                        )}
+                        {publishedStatus === 'done' && publishedListing && (
+                            <>
+                                <div className="ps-published-banner">
+                                    <span aria-hidden="true">✓</span> Your listing was published.
+                                </div>
+                                <div className="ps-published-header">
+                                    <div>
+                                        <h2>Active listings</h2>
+                                        <p>Newest campus listings, including your newly published item.</p>
+                                    </div>
+                                    <span>1 item</span>
+                                </div>
+                                <div className="ps-book-grid ps-published-grid">
+                                    <BookCard book={publishedListing} isOwner />
+                                </div>
+                            </>
+                        )}
+                    </section>
+                )}
 
                 {status !== 'idle' && (
                     <section className="ps-results" aria-live="polite">
