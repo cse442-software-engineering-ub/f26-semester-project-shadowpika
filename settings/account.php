@@ -70,26 +70,37 @@ if (!str_contains($new_email, "@")){
     ]);
     exit;
 }
-// Assuming $pdo is your active PDO connection instance
 
-$emailToCheck = "user@example.com";
+// -----------------------------
+// CHECK IF EMAIL IS ALREADY USED
+// -----------------------------
 
-// 1. Prepare a SQL statement counting matching records
-$stmt = $pdo->prepare("SELECT COUNT(1) FROM users WHERE email = ?");
+$stmt = $conn->prepare(
+    "SELECT COUNT(*) AS count FROM users WHERE email = ?"
+);
 
-// 2. Execute the query by passing the parameters
-$stmt->execute([$emailToCheck]);
+$stmt->bind_param(
+    "s",
+    $new_email
+);
 
-// 3. Fetch the count value
-$exists = $stmt->fetchColumn();
+$stmt->execute();
 
-if ($exists) {
+$result = $stmt->get_result();
+$row = $result->fetch_assoc();
+
+if ($row["count"] > 0) {
     echo json_encode([
         "success" => false,
         "error" => "Email already in use."
     ]);
+
+    $stmt->close();
+    $conn->close();
     exit;
 }
+
+$stmt->close();
 
 
 
