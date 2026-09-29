@@ -9,23 +9,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit(0);
 }
 
-// 2. YOUR DATABASE CREDENTIALS (Make sure these match your login.php details!)
-$host = 'localhost'; 
-$db   = 'cse442_2026_fall_team_j_db';     // Replace with your database name
-$user = 'ndberg';     // Replace with your database username
-$pass = '50250298'; // Replace with your database password
-$charset = 'utf8mb4';
-
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
-];
+// 2. DATABASE CONNECTION (credentials live in config.local.php, see includes/config.php)
+require_once __DIR__ . '/includes/db.php';
 
 try {
-     $pdo = new PDO($dsn, $user, $pass, $options);
-} catch (\PDOException $e) {
+     $pdo = karavan_pdo();
+} catch (\Throwable $e) {
      echo json_encode(["success" => false, "error" => "Database connection failure."]);
      exit;
 }

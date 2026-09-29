@@ -20,3 +20,14 @@ npm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# PHP backend: local secrets, dependencies, and runtime data
+config.local.php
+vendor/
+.phpunit.cache/
+.phpunit.result.cache
+karavan_uploads/
+dev/local.sqlite
+dev/uploads/
+dev/sessions/
+deploy/
