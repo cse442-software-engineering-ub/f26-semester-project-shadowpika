@@ -7,7 +7,12 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 main: 'index.html',
-                productSearch: 'product-search.html'
+                productSearch: 'product-search.html',
+                home: 'home.html',
+                settings: 'settings.html',
+                sell: 'sell.html',
+                profile: 'profile.html',
+                notFound: '404.html'
             }
         }
     },
