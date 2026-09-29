@@ -1,4 +1,3 @@
-```php
 <?php
 
 ini_set('display_errors', '1');
@@ -37,6 +36,13 @@ $new_username = isset($data["username"])
     ? trim($data["username"])
     : "";
 
+$new_email = isset($data["email"])
+    ? trim($data["email"])
+    : "";
+
+    $curr_pass = isset($data["password"])
+    ? trim($data["password"])
+    : "";
 
 // Make sure current username was provided
 if (empty($current_username)) {
@@ -49,10 +55,10 @@ if (empty($current_username)) {
 
 
 // Make sure new username was provided
-if (empty($new_username)) {
+if (empty($new_username) || empty($new_email)) {
     echo json_encode([
         "success" => false,
-        "error" => "New username is required."
+        "error" => "New username and email is required."
     ]);
     exit;
 }
@@ -105,7 +111,7 @@ $user = $result->fetch_assoc();
 
 
 // Make sure user exists
-if (!$user) {
+if (!$user || !password_verify($curr_pass, $user["password_hash"])) {
     echo json_encode([
         "success" => false,
         "error" => "Current user not found."
@@ -134,6 +140,7 @@ $stmt = $conn->prepare(
 $stmt->bind_param(
     "si",
     $new_username,
+    $new_email,
     $user_id
 );
 
@@ -145,7 +152,8 @@ if ($stmt->execute()) {
         "success" => true,
         "message" => "Username updated successfully.",
         "user_id" => $user_id,
-        "username" => $new_username
+        "username" => $new_username,
+        "email" => $new_email
     ]);
 
 } else {

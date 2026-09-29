@@ -177,6 +177,7 @@
             // }
 
             function submitData() {
+            var pass = prompt("Please enter your password to make these changes:")
             let name = document.user_info.input_username.value;
             let address = document.user_info.input_email.value;
 
@@ -188,7 +189,8 @@
                 body: JSON.stringify({
                     current_username: "Shadowpika",
                     username: name,
-                    email: address
+                    email: address,
+                    password: pass
                 })
             })
             .then(response => {
