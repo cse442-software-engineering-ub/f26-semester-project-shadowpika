@@ -63,6 +63,14 @@ if (empty($new_username) || empty($new_email)) {
     exit;
 }
 
+if (!str_contains($new_email, "@")){
+    echo json_encode([
+        "success" => false,
+        "error" => "Invalid Email."
+    ]);
+    exit;
+}
+
 
 // -----------------------------
 // DATABASE CONNECTION
