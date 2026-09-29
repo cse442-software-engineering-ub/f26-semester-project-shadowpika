@@ -40,7 +40,16 @@ function BookCover({ name, imageUrl }) {
     const [failed, setFailed] = useState(!imageUrl);
 
     if (!failed) {
-        return <img className="ps-book-img" src={imageUrl} alt={name} onError={() => setFailed(true)} />;
+        return (
+            <img
+                className="ps-book-img"
+                src={imageUrl}
+                alt={`${name} listing`}
+                loading="lazy"
+                decoding="async"
+                onError={() => setFailed(true)}
+            />
+        );
     }
     return (
         <div className="ps-book-placeholder" aria-hidden="true">
@@ -58,7 +67,7 @@ function BookCard({ book, isOwner = false }) {
     return (
         <article className="ps-book-card">
             <div className="ps-book-cover">
-                <BookCover name={book.name} imageUrl={book.image_url} />
+                <BookCover key={book.image_url || 'placeholder'} name={book.name} imageUrl={book.image_url} />
             </div>
             <div className="ps-book-body">
                 {isOwner && (

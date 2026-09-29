@@ -79,8 +79,7 @@
   padding-block: 8px;
 }
 
-.manage-listings-button:disabled,
-.listing-photo-upload:disabled {
+.manage-listings-button:disabled {
   cursor: not-allowed;
   opacity: 1;
 }
@@ -148,6 +147,7 @@
 }
 
 .listing-photo-upload {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -162,6 +162,73 @@
   color: var(--listing-navy);
   font-family: inherit;
   text-align: center;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.listing-photo-upload:hover {
+  border-color: var(--listing-blue);
+  background: #f1ede4;
+}
+
+.listing-photo-upload:focus-visible {
+  outline: none;
+  border-color: var(--listing-navy);
+  box-shadow: 0 0 0 3px rgba(31, 47, 70, 0.16);
+}
+
+.listing-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.listing-photo-upload-selected {
+  padding: 0;
+  border-style: solid;
+  background: #e9e4d9;
+}
+
+.listing-photo-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #e9e4d9;
+}
+
+.listing-photo-change {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(31, 47, 70, 0.92);
+  color: var(--listing-white);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.listing-photo-filename {
+  position: absolute;
+  right: 12px;
+  bottom: 55px;
+  left: 12px;
+  overflow: hidden;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--listing-navy);
+  font-size: 12px;
+  line-height: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .listing-photo-plus {
@@ -185,6 +252,23 @@
 
 .listing-photo-help {
   margin: 0;
+}
+
+.listing-photo-error {
+  margin: 0;
+  color: var(--listing-error);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.listing-photo-section-error > .listing-label {
+  color: var(--listing-error);
+}
+
+.listing-photo-section-error .listing-photo-upload {
+  border-color: var(--listing-error);
+  background: var(--listing-error-bg);
 }
 
 .listing-fields {
