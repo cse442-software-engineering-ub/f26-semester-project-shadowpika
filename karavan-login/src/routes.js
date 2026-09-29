@@ -1,6 +1,6 @@
 // The build is deployed under a course subdirectory, so every route and PHP endpoint
 // is resolved relative to wherever index.html is being served from.
-export const ROUTES = ['admin-register'];
+export const ROUTES = ['admin-register', 'moderator'];
 
 export function currentRoute(location = window.location) {
     const fromHash = location.hash.replace(/^#\/?/, '');

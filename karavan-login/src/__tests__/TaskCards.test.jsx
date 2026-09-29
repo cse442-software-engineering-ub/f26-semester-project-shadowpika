@@ -1,9 +1,18 @@
-// Mirrors the frontend task cards for #101 (admin registration), using the same
-// network-override payloads the cards specify.
+// Mirrors the frontend task cards for #101 (admin registration) and the moderator
+// approval page, using the same network-override payloads the cards specify.
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import App from '../App.jsx';
 import AdminRegister from '../pages/AdminRegister.jsx';
+import ModeratorDashboard from '../pages/ModeratorDashboard.jsx';
+
+const ALEX = {
+    request_id: 5001,
+    full_name: 'Alex Landlord',
+    business_name: 'Landlord Properties LLC',
+    proof_of_ownership_url: 'uploads/lease.pdf',
+};
 
 function json(status, body) {
     return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }));
@@ -87,5 +96,81 @@ describe('Frontend: Admin Registration Page (#101)', () => {
         expect(await screen.findByText('Invalid file type. Accepted formats: PDF, JPG, PNG.')).toBeInTheDocument();
         expect(screen.getByTestId('proof-dropzone')).toHaveClass('kv-dropzone--error');
         expect(screen.queryByText('Your request is pending review')).not.toBeInTheDocument();
+    });
+});
+
+describe('Frontend: Moderator Approval Page', () => {
+    const pendingOverride = { 'moderator_requests.php': [200, { success: true, requests: [ALEX] }] };
+
+    it('Test 1: a moderator logging in on the normal login page is sent to the moderator page', async () => {
+        vi.stubEnv('VITE_LOCAL_BACKEND', 'true');
+        const assign = vi.fn();
+        vi.stubGlobal('location', { ...window.location, hostname: 'localhost', pathname: '/', hash: '', assign });
+        override({ 'login.php': [200, { success: true, authenticated: true, role: 'moderator' }] });
+        const user = userEvent.setup();
+        render(<App />);
+
+        await user.type(screen.getByRole('textbox'), 'moderator@test.com');
+        await user.type(document.querySelector('input[type="password"]'), 'Moderator123!');
+        await user.click(screen.getByRole('button', { name: 'Login' }));
+
+        await waitFor(() => expect(assign).toHaveBeenCalledWith('/#/moderator'));
+    });
+
+    it('Test 1: the moderator page lists Alex Landlord and Landlord Properties LLC', async () => {
+        override(pendingOverride);
+        render(<ModeratorDashboard />);
+
+        const item = await screen.findByRole('listitem', { name: 'Request from Alex Landlord' });
+        expect(within(item).getByText('Alex Landlord')).toBeInTheDocument();
+        expect(within(item).getByText('Landlord Properties LLC')).toBeInTheDocument();
+    });
+
+    it('Test 2: the pending request renders a link to the proof-of-ownership document', async () => {
+        override(pendingOverride);
+        render(<ModeratorDashboard />);
+
+        const item = await screen.findByRole('listitem', { name: 'Request from Alex Landlord' });
+        const link = within(item).getByRole('link', { name: 'View proof of ownership' });
+
+        expect(link.getAttribute('href')).toMatch(/\/uploads\/lease\.pdf$/);
+    });
+
+    it('Test 2: absolute proof URLs are used as-is', async () => {
+        override({ 'moderator_requests.php': [200, { success: true, requests: [{ ...ALEX, proof_of_ownership_url: 'https://example.com/docs/lease.pdf' }] }] });
+        render(<ModeratorDashboard />);
+
+        const item = await screen.findByRole('listitem', { name: 'Request from Alex Landlord' });
+
+        expect(within(item).getByRole('link', { name: 'View proof of ownership' })).toHaveAttribute('href', 'https://example.com/docs/lease.pdf');
+    });
+
+    it('Test 5: shows an empty state when nothing is pending', async () => {
+        override({ 'moderator_requests.php': [200, { success: true, requests: [] }] });
+        render(<ModeratorDashboard />);
+
+        expect(await screen.findByText(/no pending requests/i)).toBeInTheDocument();
+    });
+
+    it.each([
+        ['Test 3', 'Approve', 'approve', 'approved', "Approved Alex Landlord's request for Landlord Properties LLC."],
+        ['Test 4', 'Deny', 'deny', 'denied', "Denied Alex Landlord's request for Landlord Properties LLC."],
+    ])('%s: clicking %s sends the exact body, confirms, and removes the request', async (_card, button, action, status, message) => {
+        const fetchMock = override({
+            ...pendingOverride,
+            'moderator_approve.php': [200, { success: true, request_id: 5001, status }],
+        });
+        const user = userEvent.setup();
+        render(<ModeratorDashboard />);
+
+        const item = await screen.findByRole('listitem', { name: 'Request from Alex Landlord' });
+        await user.click(within(item).getByRole('button', { name: button }));
+
+        expect(await screen.findByText(message)).toBeInTheDocument();
+        expect(screen.queryByRole('listitem', { name: 'Request from Alex Landlord' })).not.toBeInTheDocument();
+
+        const [[, options]] = callsTo(fetchMock, 'moderator_approve.php');
+        expect(options.method).toBe('POST');
+        expect(options.body).toBe(`{"request_id":5001,"action":"${action}"}`);
     });
 });

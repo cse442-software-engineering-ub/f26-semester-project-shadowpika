@@ -3,10 +3,12 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import AdminRegister from './pages/AdminRegister.jsx'
+import ModeratorDashboard from './pages/ModeratorDashboard.jsx'
 import { currentRoute } from './routes.js'
 
 const PAGES = {
   'admin-register': AdminRegister,
+  moderator: ModeratorDashboard,
   login: App,
 }
 

@@ -7,6 +7,7 @@ describe('routes', () => {
     it.each([
         ['/admin-register', 'admin-register'],
         ['/CSE442/2026-Fall/cse-442j/admin-register/', 'admin-register'],
+        ['/CSE442/2026-Fall/cse-442j/moderator', 'moderator'],
         ['/CSE442/2026-Fall/cse-442j/', 'login'],
         ['/CSE442/2026-Fall/cse-442j/index.html', 'login'],
     ])('%s resolves to %s', (pathname, route) => {
@@ -18,6 +19,7 @@ describe('routes', () => {
     });
 
     it('links to pages with hash routes so no server rewrite is needed', () => {
+        expect(pathFor('moderator')).toBe('/#/moderator');
         expect(pathFor('admin-register')).toBe('/#/admin-register');
         expect(pathFor('login')).toBe('/');
     });
@@ -25,6 +27,7 @@ describe('routes', () => {
     it.each([
         ['/admin-register', '/'],
         ['/CSE442/2026-Fall/cse-442j/admin-register', '/CSE442/2026-Fall/cse-442j/'],
+        ['/CSE442/2026-Fall/cse-442j/moderator/', '/CSE442/2026-Fall/cse-442j/'],
         ['/CSE442/2026-Fall/cse-442j/index.html', '/CSE442/2026-Fall/cse-442j/'],
     ])('base of %s is %s', (pathname, base) => {
         expect(appBase(loc(pathname))).toBe(base);

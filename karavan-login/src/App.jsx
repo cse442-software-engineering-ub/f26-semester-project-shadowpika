@@ -23,7 +23,9 @@ function App() {
         const isDemoAccount = lowerUser === DEMO_EMAIL && password === DEMO_PASSWORD;
 
         // 1. LOCAL PREVIEW MODE
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        // `npm run dev:backend` sets this so local logins go to the real login.php instead of the mock.
+        if (isLocalHost && import.meta.env.VITE_LOCAL_BACKEND !== 'true') {
             setTimeout(() => {
                 const currentTable = JSON.parse(localStorage.getItem('cse442_users_table')) || [
                     { id: 1, username: 'admin', password_hash: '\$2y\$10\$vO8wK18IuYkOQzMfe3p1e...' }
@@ -57,7 +59,8 @@ function App() {
                 body: JSON.stringify({ username, password }),
             });
             const data = await response.json();
-            if (data.success) loginSuccess();
+            if (data.success && data.role === 'moderator') window.location.assign(pathFor('moderator'));
+            else if (data.success) loginSuccess();
             else setMessage(data.error || 'An error occurred.');
         } catch (error) {
             setMessage('Could not connect to database.');
