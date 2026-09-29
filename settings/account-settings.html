@@ -157,24 +157,50 @@
 
         </section>
         <script>
+            // function submitData() {
+            // let username = document.user_info.input_username.value;
+            // let address = document.user_info.input_email.value;
+            // fetch("account.php", {
+            //     method: "POST",
+            //     headers: {
+            //         "Content-Type": "application/json"
+            //     },
+            //     body: JSON.stringify({
+            //         name: username,
+            //         email: address
+            //     })
+            // })
+            // .then(response => response.json())
+            // .then(data => {
+            //     console.log(data);
+            // });
+            // }
+
             function submitData() {
-            let username = document.user_info.input_username.value;
+            let name = document.user_info.input_username.value;
             let address = document.user_info.input_email.value;
+
             fetch("account.php", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    name: username,
+                    name: name,
                     email: address
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log("HTTP status:", response.status);
+                return response.text();
+            })
             .then(data => {
-                console.log(data);
+                console.log("PHP response:", data);
+            })
+            .catch(error => {
+                console.error("Fetch error:", error);
             });
-            }
+        }
         </script>
 
     </main>
