@@ -134,7 +134,7 @@ $stmt->close();
 // -----------------------------
 
 $stmt = $conn->prepare(
-    "UPDATE users SET username = ? WHERE id = ?"
+    "UPDATE users SET username = ?, email = ? WHERE id = ?"
 );
 
 $stmt->bind_param(
