@@ -37,7 +37,17 @@ export default defineConfig({
                 target: 'https://buffalo.edu',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, '')
+            },
+            // Local backend: run `php -S localhost:8000` from the repo root.
+            '^/[^/]+\\.php': {
+                target: 'http://localhost:8000',
+                changeOrigin: true
             }
         }
+    },
+    test: {
+        environment: 'jsdom',
+        setupFiles: './src/test/setup.js',
+        css: false
     }
 })

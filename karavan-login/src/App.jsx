@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { pathFor } from './routes.js';
 
 // Hard-coded demo account, accepted in addition to the normal login checks.
 const DEMO_EMAIL = 'chun.buyer@test.com';
@@ -89,6 +90,10 @@ function App() {
                         Login
                     </button>
                 </form>
+                <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#666' }}>
+                    Property manager or community business?{' '}
+                    <a href={pathFor('admin-register')} style={{ color: '#007bff', fontWeight: 'bold' }}>Apply as a Community Partner</a>
+                </p>
             </div>
         </div>
     );
