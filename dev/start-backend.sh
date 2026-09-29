@@ -13,6 +13,6 @@ KARAVAN_DB_DSN="sqlite:$(pwd)/dev/local.sqlite" \
 KARAVAN_UPLOAD_DIR="$(pwd)/dev/uploads" \
 exec php \
     -d session.save_path="$(pwd)/dev/sessions" \
-    -d upload_max_filesize=11M \
-    -d post_max_size=12M \
+    -d upload_max_filesize=2M \
+    -d post_max_size=8M \
     -S localhost:8000 -t .

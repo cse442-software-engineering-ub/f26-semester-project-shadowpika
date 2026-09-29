@@ -4,7 +4,7 @@ Context for writing test cards / automated tests for this feature (CSE442, team 
 
 ## What the feature does (PM requirements)
 
-1. A community partner applies to become an **admin** at `/admin-register`, submitting their details and a proof-of-ownership document (PDF/JPG/PNG, max 10MB).
+1. A community partner applies to become an **admin** at `/admin-register`, submitting their details and a proof-of-ownership document (PDF/JPG/PNG, max 2MB — Aptitude's PHP upload limit).
 2. Applying does **not** create an account. The application is stored in `admin_requests` with `status = 'pending'`.
 3. A **moderator** logs in from the **standard login page** and is redirected to the moderator page (`/moderator`), which lists every pending request with the applicant's details and a link to their document, plus **Approve** / **Deny** buttons.
 4. **Approve** creates a `users` row for the applicant (`username` = their email, their chosen password, `role = 'admin'`) and marks the request `approved`.
@@ -43,7 +43,8 @@ The file checks run **before** the text-field checks.
 | Success | 201 | `{"success":true,"request_id":5001,"status":"pending"}` |
 | No file | 400 | `{"success":false,"error":"Proof of ownership is required."}` |
 | Wrong type (checks extension **and** real file content) | 400 | `{"success":false,"error":"Invalid file type. Accepted formats: PDF, JPG, PNG."}` |
-| Over 10MB | 400 (413 if over PHP's post limit) | `{"success":false,"error":"File is too large. Maximum size is 10MB."}` |
+| Over 2MB | 400 (413 if over PHP's 8MB post limit) | `{"success":false,"error":"File is too large. Maximum size is 2MB."}` |
+| Empty (0 bytes) | 400 | `{"success":false,"error":"The file is empty. Please choose a different file."}` |
 | Missing text field | 400 | `{"success":false,"error":"Please fill in all fields."}` |
 | Bad email | 400 | `"Please enter a valid email address."` |
 | Password < 8 chars | 400 | `"Password must be at least 8 characters."` |
@@ -167,3 +168,5 @@ Seeded accounts: `mod@test.com` / `Moderator123!` (moderator) and `user@test.com
   - A partner-admin dashboard (approved admins just see "Login successful!")
   - A distinct "pending" message on login for applicants
   - Email notifications
+  - Uploads outside the web root on Aptitude: `karavan_uploads` currently sits inside the site folder, because that's where the web server can write. Apache ignores `.htaccess` there, so the folder is protected only by a blank `index.html` (written automatically on the first upload) and random 32-character file names. The documents themselves are served to moderators through `proof_file.php`.
+- **Test upload files** live in `docs/test-files/`; `docs/task-cards.md` lists what each one should do.

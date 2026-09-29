@@ -9,6 +9,25 @@
 - **Applicants have no account until approved.** Approve *creates* a `users` row with `role = 'admin'` (it doesn't update an existing one). Deny *deletes* the request and its document, so there is no "denied" row to look at afterwards.
 - **Applying doesn't need a login**, so the "log in and obtain PHPSESSID" step is gone from the admin-register backend cards.
 - **Request IDs:** `5001` / `5002` are only guaranteed on a freshly created `admin_requests` table. On Aptitude, IDs keep counting up after every test run, so use the `request_id` the register call returned.
+- **The upload limit is 2MB, not 10MB.** Aptitude's PHP rejects anything over 2MB and ignores `.user.ini`/`.htaccess` overrides, so the app, the messages and these cards all use 2MB.
+
+## Test files
+
+Attach these to the task cards. Testers download them and use them **by name**; they're also in the repo under `docs/test-files/`.
+
+| File | What it is | Expected result |
+|---|---|---|
+| `valid_lease.pdf` | Real 1-page PDF (1KB) | Accepted |
+| `valid_deed.jpg` | Real JPG image (38KB) | Accepted |
+| `valid_business_license.png` | Real PNG image (4KB) | Accepted |
+| `valid_1.9MB_lease.pdf` | Real PDF just **under** the 2MB limit | Accepted |
+| `too_large_2.5MB_lease.pdf` | Real PDF **over** the 2MB limit | `File is too large. Maximum size is 2MB.` |
+| `empty_0KB_lease.pdf` | 0-byte file with a `.pdf` name | `The file is empty. Please choose a different file.` |
+| `wrong_type_setup.exe` | Harmless text file with a `.exe` name | `Invalid file type. Accepted formats: PDF, JPG, PNG.` |
+| `wrong_type_notes.txt` | Plain text file | `Invalid file type. Accepted formats: PDF, JPG, PNG.` |
+| `fake_lease.pdf` | Text file renamed to `.pdf` (right name, wrong contents) | `Invalid file type. Accepted formats: PDF, JPG, PNG.` (from the server) |
+
+If an email/Discord upload blocks `wrong_type_setup.exe`, use `wrong_type_notes.txt` for the same tests.
 
 ## Test accounts
 
@@ -33,10 +52,11 @@
 1. Open `[APTITUDE_BASE_URL]/#/admin-register`.
 2. Open Developer Tools → Network.
 3. Fill in Full Name `Alex Landlord`, Business Name `Landlord Properties LLC`, an email address not used before, Phone `123-456-7890`, Password and Confirm Password `Landlord123!`.
-4. Upload a valid PDF under 10MB.
+4. Download `valid_lease.pdf` and upload it to the proof-of-ownership control.
 5. Click "Submit for Approval."
 6. Verify a POST to `admin_register.php` returns 201.
 7. Verify "Your request is pending review" is shown on the page.
+8. Repeat steps 1–7 with a new email each time, using `valid_deed.jpg`, then `valid_business_license.png`, then `valid_1.9MB_lease.pdf`. Verify each one is accepted.
 
 ### Test 3 — Detects failure to block submission when proof-of-ownership is missing
 1. Open `[APTITUDE_BASE_URL]/#/admin-register`.
@@ -46,15 +66,43 @@
 5. Verify no request is sent to `admin_register.php`.
 6. Verify the upload control is outlined in red and "Proof of ownership is required." is shown.
 
-### Test 4 — Detects failure to handle a rejected file type
+### Test 4 — Detects failure to block a wrong file type
 1. Open `[APTITUDE_BASE_URL]/#/admin-register`.
-2. Fill in all fields and attach a `.exe` file.
-3. Click "Submit for Approval."
-4. Verify no request is sent to `admin_register.php` (the page rejects it before sending).
-5. Verify the upload control is outlined in red and "Invalid file type. Accepted formats: PDF, JPG, PNG." is shown.
-6. Verify no success confirmation is displayed.
+2. Open Developer Tools → Network and clear the log.
+3. Fill in all fields, then drag `wrong_type_setup.exe` from your Downloads folder onto the upload box. (The file picker greys out non-PDF/JPG/PNG files, so dragging is the reliable way.)
+4. Click "Submit for Approval."
+5. Verify no request is sent to `admin_register.php` (the page rejects it before sending).
+6. Verify the upload control is outlined in red and "Invalid file type. Accepted formats: PDF, JPG, PNG." is shown.
+7. Verify no success confirmation is displayed.
+8. Repeat with `wrong_type_notes.txt` and verify the same result.
 
-### Test 5 — Detects failure to render responsively at mobile size
+### Test 5 — Detects failure to block a file that is too large
+1. Open `[APTITUDE_BASE_URL]/#/admin-register`.
+2. Open Developer Tools → Network and clear the log.
+3. Fill in all fields and upload `too_large_2.5MB_lease.pdf`.
+4. Click "Submit for Approval."
+5. Verify no request is sent to `admin_register.php`.
+6. Verify the upload control is outlined in red and "File is too large. Maximum size is 2MB." is shown.
+7. Verify no success confirmation is displayed.
+
+### Test 6 — Detects failure to block an empty file
+1. Open `[APTITUDE_BASE_URL]/#/admin-register`.
+2. Open Developer Tools → Network and clear the log.
+3. Fill in all fields and upload `empty_0KB_lease.pdf`.
+4. Click "Submit for Approval."
+5. Verify no request is sent to `admin_register.php`.
+6. Verify the upload control is outlined in red and "The file is empty. Please choose a different file." is shown.
+
+### Test 7 — Detects failure to show the server's rejection of a disguised file
+1. Open `[APTITUDE_BASE_URL]/#/admin-register`.
+2. Open Developer Tools → Network.
+3. Fill in all fields (use a new email) and upload `fake_lease.pdf`. The name looks fine, so the page sends it.
+4. Click "Submit for Approval."
+5. Verify a POST to `admin_register.php` is sent and returns 400.
+6. Verify the upload control is outlined in red and "Invalid file type. Accepted formats: PDF, JPG, PNG." is shown.
+7. Verify no success confirmation is displayed.
+
+### Test 8 — Detects failure to render responsively at mobile size
 1. Open `[APTITUDE_BASE_URL]/#/admin-register`.
 2. In Chrome DevTools, set the viewport to 390 × 844.
 3. Verify all form controls stack vertically in one column.
@@ -66,7 +114,7 @@
 
 ### Test 1 — Detects failure to create a pending admin request with valid data
 1. In Postman, create a POST request to `[APTITUDE_BASE_URL]/admin_register.php`. No login is needed.
-2. Body → form-data: `full_name=Alex Landlord`, `business_name=Landlord Properties LLC`, `email=alex.landlord@test.com`, `phone=123-456-7890`, `password=Landlord123!`, and a **File** field `proof_of_ownership` with a PDF under 10MB.
+2. Body → form-data: `full_name=Alex Landlord`, `business_name=Landlord Properties LLC`, `email=alex.landlord@test.com`, `phone=123-456-7890`, `password=Landlord123!`, and a **File** field `proof_of_ownership` with `valid_lease.pdf`.
 3. Send the request.
 4. Verify the HTTP status is 201.
 5. Verify the response is `{"success":true,"request_id":<id>,"status":"pending"}` (`<id>` is `5001` on a fresh table). Write down the `<id>`.
@@ -81,12 +129,32 @@
 4. Verify no new row is created in `admin_requests`.
 
 ### Test 3 — Detects failure to reject a disallowed file type
-1. In Postman, POST to `[APTITUDE_BASE_URL]/admin_register.php` with the same fields (a new email) and a `.exe` file as `proof_of_ownership`.
+1. In Postman, POST to `[APTITUDE_BASE_URL]/admin_register.php` with the same fields (a new email) and `wrong_type_setup.exe` as `proof_of_ownership`.
 2. Verify the HTTP status is 400.
 3. Verify the response is exactly `{"success":false,"error":"Invalid file type. Accepted formats: PDF, JPG, PNG."}`
 4. Verify no new row is created in `admin_requests` and no new file appears in `ayushstuff/karavan_uploads` (check in FileZilla).
+5. Repeat with `wrong_type_notes.txt` and with `fake_lease.pdf` (a text file renamed to `.pdf`; the server checks the contents, not just the name). Verify the same 400 response each time.
 
-### Test 4 — Detects failure to block a pending applicant from logging in
+### Test 4 — Detects failure to reject a file that is too large
+1. In Postman, POST to `[APTITUDE_BASE_URL]/admin_register.php` with the same fields (a new email) and `too_large_2.5MB_lease.pdf` as `proof_of_ownership`.
+2. Verify the HTTP status is 400.
+3. Verify the response is exactly `{"success":false,"error":"File is too large. Maximum size is 2MB."}`
+4. Verify no new row is created in `admin_requests`.
+5. Repeat with `valid_1.9MB_lease.pdf` (a new email). Verify 201 — files just under the limit are accepted.
+
+### Test 5 — Detects failure to reject an empty file
+1. In Postman, POST to `[APTITUDE_BASE_URL]/admin_register.php` with the same fields (a new email) and `empty_0KB_lease.pdf` as `proof_of_ownership`.
+2. Verify the HTTP status is 400.
+3. Verify the response is exactly `{"success":false,"error":"The file is empty. Please choose a different file."}`
+4. Verify no new row is created in `admin_requests`.
+
+### Test 6 — Detects failure to keep uploaded documents private
+1. After Test 1, open `[APTITUDE_BASE_URL]/karavan_uploads/` in a browser.
+2. Verify the page is blank and does **not** list any files.
+3. Log out (or use a private window) and open `[APTITUDE_BASE_URL]/proof_file.php?request_id=<id>` with the id from Test 1.
+4. Verify the response is 403 `{"success":false,"error":"You do not have permission to perform this action."}`
+
+### Test 7 — Detects failure to block a pending applicant from logging in
 1. After Test 1, open `[APTITUDE_BASE_URL]`.
 2. Log in with `alex.landlord@test.com` / `Landlord123!`.
 3. Verify login fails with "Invalid username or password."
@@ -95,7 +163,7 @@
 
 ## Frontend: Moderator Approval Page (#103)
 
-Setup: submit two applications through `[APTITUDE_BASE_URL]/#/admin-register` (for example, Alex Landlord / Landlord Properties LLC and a second applicant) so at least two requests are pending.
+Setup: submit two applications through `[APTITUDE_BASE_URL]/#/admin-register` so at least two requests are pending: Alex Landlord / Landlord Properties LLC with `valid_lease.pdf`, and a second applicant with `valid_deed.jpg`.
 
 ### Test 1 — Detects failure to route a moderator to the pending-request list
 1. Open `[APTITUDE_BASE_URL]`.
@@ -107,7 +175,7 @@ Setup: submit two applications through `[APTITUDE_BASE_URL]/#/admin-register` (f
 1. Log in as the moderator (you land on `[APTITUDE_BASE_URL]/#/moderator`).
 2. In Alex Landlord's entry, verify there is a "View proof of ownership" link.
 3. Click it.
-4. Verify the uploaded document opens in a new tab with no 404 or broken-link error.
+4. Verify the document opens in a new tab with no 404 or broken-link error, and it's the "Sample Lease Agreement" from `valid_lease.pdf`.
 
 ### Test 3 — Detects failure to approve a pending request
 1. Log in as the moderator.
