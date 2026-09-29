@@ -70,6 +70,27 @@ if (!str_contains($new_email, "@")){
     ]);
     exit;
 }
+// Assuming $pdo is your active PDO connection instance
+
+$emailToCheck = "user@example.com";
+
+// 1. Prepare a SQL statement counting matching records
+$stmt = $pdo->prepare("SELECT COUNT(1) FROM users WHERE email = ?");
+
+// 2. Execute the query by passing the parameters
+$stmt->execute([$emailToCheck]);
+
+// 3. Fetch the count value
+$exists = $stmt->fetchColumn();
+
+if ($exists) {
+    echo json_encode([
+        "success" => false,
+        "error" => "Email already in use."
+    ]);
+    exit;
+}
+
 
 
 // -----------------------------
