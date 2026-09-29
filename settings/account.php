@@ -23,7 +23,7 @@ if (!$data) {
         "success" => false,
         "error" => "Invalid data received."
     ]);
-    http_response_code(502)
+    http_response_code(502);
     exit;
 }
 
@@ -52,7 +52,7 @@ if (empty($current_username)) {
         "success" => false,
         "error" => "Current username is required."
     ]);
-    http_response_code(404)
+    http_response_code(404);
     exit;
 }
 
@@ -63,7 +63,7 @@ if (empty($new_username) || empty($new_email)) {
         "success" => false,
         "error" => "New username and email is required."
     ]);
-    http_response_code(404)
+    http_response_code(404);
     exit;
 }
 
@@ -72,7 +72,7 @@ if (!str_contains($new_email, "@")){
         "success" => false,
         "error" => "Invalid Email."
     ]);
-    http_response_code(422)
+    http_response_code(422);
     exit;
 }
 
@@ -99,7 +99,7 @@ if ($conn->connect_error) {
         "success" => false,
         "error" => "Database connection failed."
     ]);
-    http_response_code(500)
+    http_response_code(500);
     exit;
 }
 
@@ -129,7 +129,7 @@ if ($row["count"] > 0) {
 
     $stmt->close();
     $conn->close();
-    http_response_code(409)
+    http_response_code(409);
     exit;
 }
 
@@ -164,7 +164,7 @@ if (!$user) {
 
     $stmt->close();
     $conn->close();
-    http_response_code(404)
+    http_response_code(404);
     exit;
 }
 
@@ -180,7 +180,7 @@ if (!password_verify($curr_pass, $user["password_hash"])){
 
     $stmt->close();
     $conn->close();
-    http_response_code(401)
+    http_response_code(401);
     exit;
 }
 
