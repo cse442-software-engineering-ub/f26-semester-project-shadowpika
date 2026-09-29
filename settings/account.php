@@ -72,6 +72,32 @@ if (!str_contains($new_email, "@")){
 }
 
 // -----------------------------
+// DATABASE CONNECTION
+// -----------------------------
+
+$db_host = 'localhost';
+$db_name = 'cse442_2026_fall_team_j_db';
+$db_user = 'ndberg';
+$db_pass = '50250298';
+
+$conn = new mysqli(
+    $db_host,
+    $db_user,
+    $db_pass,
+    $db_name
+);
+
+
+// Check connection
+if ($conn->connect_error) {
+    echo json_encode([
+        "success" => false,
+        "error" => "Database connection failed."
+    ]);
+    exit;
+}
+
+// -----------------------------
 // CHECK IF EMAIL IS ALREADY USED
 // -----------------------------
 
@@ -101,34 +127,6 @@ if ($row["count"] > 0) {
 }
 
 $stmt->close();
-
-
-
-// -----------------------------
-// DATABASE CONNECTION
-// -----------------------------
-
-$db_host = 'localhost';
-$db_name = 'cse442_2026_fall_team_j_db';
-$db_user = 'ndberg';
-$db_pass = '50250298';
-
-$conn = new mysqli(
-    $db_host,
-    $db_user,
-    $db_pass,
-    $db_name
-);
-
-
-// Check connection
-if ($conn->connect_error) {
-    echo json_encode([
-        "success" => false,
-        "error" => "Database connection failed."
-    ]);
-    exit;
-}
 
 
 // -----------------------------
