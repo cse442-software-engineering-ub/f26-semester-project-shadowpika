@@ -40,7 +40,7 @@ $new_email = isset($data["email"])
     ? trim($data["email"])
     : "";
 
-    $curr_pass = isset($data["password"])
+$curr_pass = isset($data["password"])
     ? trim($data["password"])
     : "";
 
@@ -125,6 +125,17 @@ if (!$user) {
 
 // Store the user's ID
 $user_id = $user["id"];
+
+if (!password_verify($curr_pass, $user["password_hash"])){
+    echo json_encode([
+        "success" => false,
+        "error" => "Password is incorrect."
+    ]);
+
+    $stmt->close();
+    $conn->close();
+    exit;
+}
 
 $stmt->close();
 
