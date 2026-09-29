@@ -12,6 +12,8 @@ const KARAVAN_ALLOWED_PROOF_TYPES = [
     'png'  => ['image/png'],
 ];
 
+const KARAVAN_FORBIDDEN_ERROR = 'You do not have permission to perform this action.';
+
 function karavan_validate_proof_file(?array $file): ?string
 {
     if ($file === null || !isset($file['error']) || is_array($file['error'])
@@ -127,4 +129,151 @@ function karavan_admin_register(PDO $pdo, array $post, array $files, string $upl
     }
 
     return [201, ['success' => true, 'request_id' => $requestId, 'status' => 'pending']];
+}
+
+function karavan_find_user(PDO $pdo, ?int $userId): ?array
+{
+    if ($userId === null) {
+        return null;
+    }
+    $stmt = $pdo->prepare('SELECT id, username, role FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    return $stmt->fetch() ?: null;
+}
+
+// Role is re-read from the database on every request so promotions/demotions apply immediately.
+function karavan_is_moderator(?array $user): bool
+{
+    return $user !== null && ($user['role'] ?? null) === 'moderator';
+}
+
+function karavan_forbidden(): array
+{
+    return [403, ['success' => false, 'error' => KARAVAN_FORBIDDEN_ERROR]];
+}
+
+function karavan_list_pending_requests(PDO $pdo, ?int $userId): array
+{
+    if (!karavan_is_moderator(karavan_find_user($pdo, $userId))) {
+        return karavan_forbidden();
+    }
+
+    $stmt = $pdo->query(
+        "SELECT id, full_name, business_name, email, phone, created_at
+         FROM admin_requests
+         WHERE status = 'pending'
+         ORDER BY created_at ASC, id ASC"
+    );
+
+    $requests = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $requests[] = [
+            'request_id'             => (int) $row['id'],
+            'full_name'              => $row['full_name'],
+            'business_name'          => $row['business_name'],
+            'email'                  => $row['email'],
+            'phone'                  => $row['phone'],
+            'status'                 => 'pending',
+            'created_at'             => $row['created_at'],
+            'proof_of_ownership_url' => 'proof_file.php?request_id=' . (int) $row['id'],
+        ];
+    }
+
+    return [200, ['success' => true, 'requests' => $requests]];
+}
+
+// approve: creates the applicant's users row (role 'admin') and marks the request approved.
+// deny:    deletes the request row and its uploaded document; no account is ever created.
+function karavan_decide_request(PDO $pdo, ?int $userId, $input, string $uploadDir): array
+{
+    $moderator = karavan_find_user($pdo, $userId);
+    if (!karavan_is_moderator($moderator)) {
+        return karavan_forbidden();
+    }
+
+    $requestId = is_array($input) ? filter_var($input['request_id'] ?? null, FILTER_VALIDATE_INT) : false;
+    $action = is_array($input) ? ($input['action'] ?? null) : null;
+    if ($requestId === false || $requestId <= 0 || !in_array($action, ['approve', 'deny'], true)) {
+        return [400, ['success' => false, 'error' => 'A valid request_id and action ("approve" or "deny") are required.']];
+    }
+
+    $newStatus = $action === 'approve' ? 'approved' : 'denied';
+
+    try {
+        $pdo->beginTransaction();
+
+        $find = $pdo->prepare('SELECT id, email, password_hash, proof_file_name, status FROM admin_requests WHERE id = ?');
+        $find->execute([$requestId]);
+        $request = $find->fetch();
+
+        if (!$request) {
+            $pdo->rollBack();
+            return [404, ['success' => false, 'error' => 'Request not found.']];
+        }
+
+        // The status guard in each WHERE clause stops two moderators from both deciding the same request.
+        if ($newStatus === 'approved') {
+            $update = $pdo->prepare(
+                "UPDATE admin_requests
+                 SET status = 'approved', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP
+                 WHERE id = ? AND status = 'pending'"
+            );
+            $update->execute([(int) $moderator['id'], $requestId]);
+        } else {
+            $update = $pdo->prepare("DELETE FROM admin_requests WHERE id = ? AND status = 'pending'");
+            $update->execute([$requestId]);
+        }
+
+        if ($update->rowCount() === 0) {
+            $pdo->rollBack();
+            return [409, ['success' => false, 'error' => 'This request has already been reviewed.']];
+        }
+
+        if ($newStatus === 'approved') {
+            $createUser = $pdo->prepare("INSERT INTO users (username, password_hash, role) VALUES (?, ?, 'admin')");
+            $createUser->execute([$request['email'], $request['password_hash']]);
+            $link = $pdo->prepare('UPDATE admin_requests SET user_id = ? WHERE id = ?');
+            $link->execute([(int) $pdo->lastInsertId(), $requestId]);
+        }
+
+        $pdo->commit();
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        if ($e->getCode() == 23000) {
+            return [409, ['success' => false, 'error' => 'An account with this email already exists.']];
+        }
+        return [500, ['success' => false, 'error' => 'Could not update the request.']];
+    }
+
+    if ($newStatus === 'denied') {
+        @unlink(rtrim($uploadDir, '/') . '/' . basename($request['proof_file_name']));
+    }
+
+    return [200, ['success' => true, 'request_id' => $requestId, 'status' => $newStatus]];
+}
+
+/** Returns [status, body] on failure or [200, ['path' => ..., 'mime' => ..., 'name' => ...]] on success. */
+function karavan_locate_proof_file(PDO $pdo, ?int $userId, $requestId, string $uploadDir): array
+{
+    if (!karavan_is_moderator(karavan_find_user($pdo, $userId))) {
+        return karavan_forbidden();
+    }
+
+    $requestId = filter_var($requestId, FILTER_VALIDATE_INT);
+    if ($requestId === false || $requestId <= 0) {
+        return [400, ['success' => false, 'error' => 'A valid request_id is required.']];
+    }
+
+    $stmt = $pdo->prepare('SELECT proof_file_name, proof_original_name, proof_mime_type FROM admin_requests WHERE id = ?');
+    $stmt->execute([$requestId]);
+    $row = $stmt->fetch();
+
+    $path = $row ? rtrim($uploadDir, '/') . '/' . basename($row['proof_file_name']) : null;
+    if (!$row || !is_file($path)) {
+        return [404, ['success' => false, 'error' => 'File not found.']];
+    }
+
+    return [200, ['path' => $path, 'mime' => $row['proof_mime_type'], 'name' => $row['proof_original_name']]];
 }

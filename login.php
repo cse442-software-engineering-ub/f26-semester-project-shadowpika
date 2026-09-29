@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/http.php';
 require_once __DIR__ . '/includes/db.php';
 
 header("Access-Control-Allow-Origin: *");
@@ -39,10 +40,15 @@ try {
 
     // --- SECURE BCRYPT VERIFICATION ---
     if ($db_user_row && password_verify($input_password, $db_user_row['password_hash'])) {
+        karavan_start_session();
+        session_regenerate_id(true);
+        $_SESSION['user_id'] = (int) $db_user_row['id'];
+
         echo json_encode([
             "success" => true,
             "status" => "success",
-            "authenticated" => true
+            "authenticated" => true,
+            "role" => $db_user_row['role'] ?? 'user'
         ]);
     } else {
         echo json_encode([
