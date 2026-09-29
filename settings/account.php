@@ -96,7 +96,7 @@ if ($conn->connect_error) {
 // -----------------------------
 
 $stmt = $conn->prepare(
-    "SELECT id FROM users WHERE username = ?"
+    "SELECT id, password_hash FROM users WHERE username = ?"
 );
 
 $stmt->bind_param(
