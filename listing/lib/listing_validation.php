@@ -39,6 +39,7 @@ function validate_create_listing(array $input): array
     $relatedCourse = listing_text($input['related_course'] ?? '');
     $meetingLocation = listing_text($input['meeting_location'] ?? '');
     $description = listing_text($input['description'] ?? '');
+    $imageUrl = listing_text($input['image_url'] ?? '');
 
     $errors = [];
 
@@ -83,6 +84,12 @@ function validate_create_listing(array $input): array
         $errors['description'] = 'Description must be 1,000 characters or fewer.';
     }
 
+    if ($imageUrl === '') {
+        $errors['image_url'] = 'Item photo is required.';
+    } elseif (!is_valid_listing_image_url($imageUrl)) {
+        $errors['image_url'] = 'Upload a valid item photo.';
+    }
+
     return [
         'data' => [
             'title' => $title,
@@ -92,9 +99,35 @@ function validate_create_listing(array $input): array
             'related_course' => $relatedCourse === '' ? null : $relatedCourse,
             'meeting_location' => $meetingLocation,
             'description' => $description,
+            'image_url' => $imageUrl,
         ],
         'errors' => $errors,
     ];
+}
+
+function is_valid_listing_image_url(string $imageUrl): bool
+{
+    if (listing_length($imageUrl) > 255) {
+        return false;
+    }
+
+    $parts = parse_url($imageUrl);
+    if ($parts === false || isset($parts['scheme']) || isset($parts['host']) || isset($parts['fragment'])) {
+        return false;
+    }
+
+    $path = isset($parts['path']) ? (string) $parts['path'] : '';
+    if (!preg_match('#(?:^|/)listing/api/image\.php\z#', $path)) {
+        return false;
+    }
+
+    $query = [];
+    parse_str(isset($parts['query']) ? (string) $parts['query'] : '', $query);
+    if (count($query) !== 1 || !isset($query['file']) || !is_string($query['file'])) {
+        return false;
+    }
+
+    return preg_match('/\A[a-f0-9]{32}\.(?:jpg|png|webp)\z/', $query['file']) === 1;
 }
 
 function listing_text($value): string

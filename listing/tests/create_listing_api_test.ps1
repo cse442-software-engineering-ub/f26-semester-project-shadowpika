@@ -2,7 +2,9 @@
 param(
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^https?://')]
-    [string] $ProjectBaseUrl
+    [string] $ProjectBaseUrl,
+
+    [string] $ValidImagePath = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -95,6 +97,23 @@ function Post-Json {
 $baseUrl = $ProjectBaseUrl.TrimEnd('/')
 $createUrl = "$baseUrl/listing/api/create_listing.php"
 $getListingUrl = "$baseUrl/listing/api/get_listing.php"
+$uploadUrl = "$baseUrl/listing/api/upload_image.php"
+$repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+if ([string]::IsNullOrWhiteSpace($ValidImagePath)) {
+    $ValidImagePath = Join-Path $repositoryRoot 'karavan-login\src\assets\hero.png'
+}
+$ValidImagePath = [IO.Path]::GetFullPath($ValidImagePath)
+if (-not (Test-Path -LiteralPath $ValidImagePath -PathType Leaf)) {
+    throw "Valid test image not found: $ValidImagePath"
+}
+
+$uploaded = Invoke-JsonRequest -CurlArguments @(
+    '-F', "image=@$ValidImagePath",
+    $uploadUrl
+) -ExpectedStatus 201
+Assert-True -Condition ([bool] $uploaded.success) -Message 'The listing test image was not uploaded.'
+$imageUrl = [string] $uploaded.image_url
+$imageAbsoluteUrl = [Uri]::new([Uri] $uploadUrl, $imageUrl).AbsoluteUri
 $uniqueSuffix = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
 $title = "Color Workbook API Test $uniqueSuffix"
 $separator = [char] 0x00B7
@@ -110,6 +129,7 @@ $validBody = @{
     related_course = $relatedCourse
     meeting_location = $meetingLocation
     description = 'Fourth edition by Becky Koenig M.F.A. Like new with no markings.'
+    image_url = $imageUrl
 } | ConvertTo-Json -Compress
 
 $created = Post-Json -Url $createUrl -Body $validBody -ExpectedStatus 201
@@ -122,7 +142,7 @@ Assert-Equal -Expected '40.00' -Actual $created.listing.price -Message 'The retu
 Assert-Equal -Expected $relatedCourse -Actual $created.listing.related_course -Message 'The returned course is incorrect.'
 Assert-Equal -Expected $meetingLocation -Actual $created.listing.meeting_location -Message 'The returned meeting location is incorrect.'
 Assert-Equal -Expected 'active' -Actual $created.listing.status -Message 'A new listing must be active.'
-Assert-True -Condition ($null -eq $created.listing.image_url) -Message 'Image URL must remain empty until the image story is implemented.'
+Assert-Equal -Expected $imageUrl -Actual $created.listing.image_url -Message 'The returned image URL is incorrect.'
 Assert-True -Condition ([int64] $created.listing.listing_id -gt 0) -Message 'The API did not return a valid listing ID.'
 
 $persisted = Invoke-JsonRequest -CurlArguments @(
@@ -133,12 +153,15 @@ Assert-Equal -Expected $created.listing.listing_id -Actual $persisted.listing.li
 Assert-Equal -Expected $title -Actual $persisted.listing.title -Message 'The persisted listing title is incorrect.'
 Assert-Equal -Expected '40.00' -Actual $persisted.listing.price -Message 'The persisted listing price is incorrect.'
 Assert-Equal -Expected 'active' -Actual $persisted.listing.status -Message 'The persisted listing status is incorrect.'
+Assert-Equal -Expected $imageUrl -Actual $persisted.listing.image_url -Message 'The persisted image URL is incorrect.'
+$imageStatus = (& curl.exe -sS -o NUL -w '%{http_code}' $imageAbsoluteUrl) -join ''
+Assert-Equal -Expected '200' -Actual $imageStatus -Message 'The persisted listing image could not be loaded.'
 Write-Host 'PASS' -ForegroundColor Green
 
 Write-Host 'Test 2: reject missing required fields'
 $missing = Post-Json -Url $createUrl -Body '{}' -ExpectedStatus 422
 Assert-True -Condition (-not [bool] $missing.success) -Message 'An empty listing was accepted.'
-foreach ($field in @('title', 'category', 'condition', 'price', 'meeting_location', 'description')) {
+foreach ($field in @('title', 'category', 'condition', 'price', 'meeting_location', 'description', 'image_url')) {
     Assert-True -Condition ($null -ne $missing.errors.$field) -Message "Missing-field response did not identify $field."
 }
 Assert-True -Condition ($null -eq $missing.errors.related_course) -Message 'The optional related course was treated as required.'
@@ -153,6 +176,7 @@ $invalidBody = @{
     related_course = ''
     meeting_location = 'Off Campus'
     description = 'This request should be rejected.'
+    image_url = $imageUrl
 } | ConvertTo-Json -Compress
 
 $invalid = Post-Json -Url $createUrl -Body $invalidBody -ExpectedStatus 422
@@ -161,12 +185,29 @@ foreach ($field in @('category', 'condition', 'price', 'meeting_location')) {
 }
 Write-Host 'PASS' -ForegroundColor Green
 
-Write-Host 'Test 4: reject malformed JSON'
+Write-Host 'Test 4: reject an external image URL'
+$externalImageBody = @{
+    title = 'External Image Test'
+    category = 'Textbooks'
+    condition = 'Good'
+    price = '12.00'
+    related_course = ''
+    meeting_location = $meetingLocation
+    description = 'This request must not attach an image hosted outside Karavan.'
+    image_url = 'https://example.com/not-a-karavan-image.jpg'
+} | ConvertTo-Json -Compress
+
+$externalImage = Post-Json -Url $createUrl -Body $externalImageBody -ExpectedStatus 422
+Assert-True -Condition (-not [bool] $externalImage.success) -Message 'An external image URL was accepted.'
+Assert-True -Condition ($null -ne $externalImage.errors.image_url) -Message 'The invalid image URL was not identified.'
+Write-Host 'PASS' -ForegroundColor Green
+
+Write-Host 'Test 5: reject malformed JSON'
 $malformed = Post-Json -Url $createUrl -Body '{"title":' -ExpectedStatus 400
 Assert-Equal -Expected 'The request body must contain valid JSON.' -Actual $malformed.error -Message 'Malformed-JSON error is incorrect.'
 Write-Host 'PASS' -ForegroundColor Green
 
-Write-Host 'Test 5: reject unsupported request methods'
+Write-Host 'Test 6: reject unsupported request methods'
 $wrongMethod = Invoke-JsonRequest -CurlArguments @($createUrl) -ExpectedStatus 405
 Assert-Equal -Expected 'Method not allowed.' -Actual $wrongMethod.error -Message 'Method error is incorrect.'
 Write-Host 'PASS' -ForegroundColor Green
