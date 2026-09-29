@@ -1,20 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './NavBar.css';
 
-// None of these pages exist yet, so every nav target goes to the 404 page.
-// Swap each href for the real page once it is built (routing is a separate card).
-const NOT_FOUND = './404.html';
+const HOME_HREF = './home.html';
 
 const NAV_LINKS = [
-    { label: 'Meeting Request', href: NOT_FOUND },
-    { label: 'Settings', href: NOT_FOUND },
-    { label: 'Sell', href: NOT_FOUND },
+    { label: 'Home', href: HOME_HREF, icon: HomeIcon },
+    { label: 'Settings', href: './settings.html', icon: SettingsIcon },
+    { label: 'Sell', href: './sell.html', icon: CartIcon },
 ];
 
-const HOME_HREF = NOT_FOUND;
-const SEARCH_HREF = NOT_FOUND;
-const NOTIFICATIONS_HREF = NOT_FOUND;
-const PROFILE_HREF = NOT_FOUND;
+const SEARCH_HREF = './product-search.html';
+const PROFILE_HREF = './profile.html';
 
 function CaravanLogo() {
     return (
@@ -43,16 +39,6 @@ function SearchIcon() {
     );
 }
 
-function BellIcon() {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M18 16V11a6 6 0 0 0-12 0v5l-2 2h16z" />
-            <path d="M10 21a2 2 0 0 0 4 0" />
-            <line x1="12" y1="3" x2="12" y2="5" />
-        </svg>
-    );
-}
-
 function MenuIcon() {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
@@ -63,8 +49,66 @@ function MenuIcon() {
     );
 }
 
+function HomeIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />
+        </svg>
+    );
+}
+
+function SettingsIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+    );
+}
+
+function CartIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M2 3h3l2.4 11.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.76L21 7H6" />
+            <circle cx="9" cy="20" r="1.4" />
+            <circle cx="18" cy="20" r="1.4" />
+        </svg>
+    );
+}
+
+function ProfileIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+        </svg>
+    );
+}
+
 function NavBar() {
     const [menuOpen, setMenuOpen] = useState(false);
+
+    // While the drawer is open: lock page scroll, let Escape close it, and close it
+    // if the window grows to desktop width (where the drawer is hidden).
+    useEffect(() => {
+        if (!menuOpen) return undefined;
+
+        const close = () => setMenuOpen(false);
+        const closeOnEscape = (event) => {
+            if (event.key === 'Escape') close();
+        };
+        const desktop = window.matchMedia('(min-width: 769px)');
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        document.addEventListener('keydown', closeOnEscape);
+        desktop.addEventListener('change', close);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener('keydown', closeOnEscape);
+            desktop.removeEventListener('change', close);
+        };
+    }, [menuOpen]);
 
     return (
         <header className="nav">
@@ -88,19 +132,16 @@ function NavBar() {
                         <a className="nav-icon-btn nav-search" href={SEARCH_HREF} aria-label="Search">
                             <SearchIcon />
                         </a>
-                        <a className="nav-icon-btn nav-bell" href={NOTIFICATIONS_HREF} aria-label="Notifications">
-                            <BellIcon />
-                        </a>
                         {/* Desktop only */}
                         <a className="nav-profile" href={PROFILE_HREF}>Profile</a>
                         {/* Mobile only */}
                         <button
                             type="button"
                             className="nav-icon-btn nav-menu-btn"
-                            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                            aria-label="Open menu"
                             aria-expanded={menuOpen}
-                            aria-controls="nav-mobile-menu"
-                            onClick={() => setMenuOpen((open) => !open)}
+                            aria-controls="nav-drawer"
+                            onClick={() => setMenuOpen(true)}
                         >
                             <MenuIcon />
                         </button>
@@ -108,19 +149,41 @@ function NavBar() {
                 </div>
             </nav>
 
-            {/* Mobile menu: the links that don't fit in the mobile bar */}
-            {menuOpen && (
-                <ul id="nav-mobile-menu" className="nav-mobile-menu">
-                    {NAV_LINKS.map((link) => (
-                        <li key={link.label}>
-                            <a className="nav-mobile-link" href={link.href}>{link.label}</a>
+            {/* Mobile menu: a drawer that slides in from the right over a dimmed page */}
+            <div
+                className={`nav-backdrop${menuOpen ? ' is-open' : ''}`}
+                onClick={() => setMenuOpen(false)}
+                aria-hidden="true"
+            />
+            <aside
+                id="nav-drawer"
+                className={`nav-drawer${menuOpen ? ' is-open' : ''}`}
+                aria-label="Menu"
+                inert={!menuOpen}
+            >
+                <a className="nav-drawer-brand" href={HOME_HREF} aria-label="Karavan home">
+                    <CaravanLogo />
+                    <span className="nav-drawer-title">KARAVAN</span>
+                    <span className="nav-drawer-tagline">Buy. Sell. Support Students.</span>
+                </a>
+
+                <ul className="nav-drawer-links">
+                    {NAV_LINKS.map(({ label, href, icon: Icon }) => (
+                        <li key={label}>
+                            <a className="nav-drawer-link" href={href}>
+                                <Icon />
+                                {label}
+                            </a>
                         </li>
                     ))}
                     <li>
-                        <a className="nav-mobile-link" href={PROFILE_HREF}>Profile</a>
+                        <a className="nav-drawer-link" href={PROFILE_HREF}>
+                            <ProfileIcon />
+                            Profile
+                        </a>
                     </li>
                 </ul>
-            )}
+            </aside>
         </header>
     );
 }
