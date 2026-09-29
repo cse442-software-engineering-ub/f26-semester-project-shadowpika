@@ -111,7 +111,7 @@ $user = $result->fetch_assoc();
 
 
 // Make sure user exists
-if (!$user || !password_verify($curr_pass, $user["password_hash"])) {
+if (!$user) {
     echo json_encode([
         "success" => false,
         "error" => "Current user not found."
