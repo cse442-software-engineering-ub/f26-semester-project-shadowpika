@@ -32,6 +32,32 @@ export async function decideRequest(requestId, action) {
     return { status: response.status, ...(await readJson(response)) };
 }
 
+// Doubles as the admin check: anyone who isn't an admin gets a 403.
+export async function fetchApprovedLocations() {
+    const response = await fetch(apiUrl('get_approved_locations.php'), { credentials: 'same-origin' });
+    return { status: response.status, ...(await readJson(response)) };
+}
+
+export async function addApprovedLocation({ lat, lng, label }) {
+    const response = await fetch(apiUrl('add_approved_location.php'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ lat, lng, label }),
+    });
+    return { status: response.status, ...(await readJson(response)) };
+}
+
+export async function removeApprovedLocation(locationId) {
+    const response = await fetch(apiUrl('remove_approved_location.php'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ location_id: locationId }),
+    });
+    return { status: response.status, ...(await readJson(response)) };
+}
+
 export async function logout() {
     await fetch(apiUrl('logout.php'), { method: 'POST', credentials: 'same-origin' });
 }
