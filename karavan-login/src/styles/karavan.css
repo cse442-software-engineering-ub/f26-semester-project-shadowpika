@@ -5,7 +5,6 @@
     --kv-gold: #c9a15b;
     --kv-gold-hover: #b88f4a;
     --kv-navy: #1f3a5f;
-    --kv-sso: #2e4e78;
     --kv-ink: #1e2a3b;
     --kv-muted: #6b7a90;
     --kv-line: #a9a498;
@@ -218,23 +217,10 @@
     background: var(--kv-gold-hover);
 }
 
-.kv-button--navy {
-    background: var(--kv-sso);
-    color: var(--kv-white);
-    border-radius: 6px;
-    font-family: var(--kv-body);
-    font-size: 13px;
-    padding: 11px 16px;
-}
-
 .kv-button--outline {
     background: transparent;
     color: var(--kv-ink);
     border: 1.5px solid var(--kv-line);
-}
-
-.kv-button--block {
-    width: 100%;
 }
 
 .kv-button--submit {
@@ -248,13 +234,6 @@
     font-size: 14px;
 }
 
-.kv-sso-dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #f4d58d, var(--kv-gold));
-}
-
 .kv-link-button {
     background: none;
     border: 0;
@@ -264,30 +243,6 @@
     font-size: 13px;
     text-decoration: underline;
     cursor: pointer;
-}
-
-.kv-notice {
-    margin: 10px 0 0;
-    font-size: 13px;
-    color: var(--kv-muted);
-    text-align: center;
-}
-
-.kv-divider {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 20px 0;
-    color: var(--kv-muted);
-    font-size: 12px;
-}
-
-.kv-divider::before,
-.kv-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: rgba(31, 58, 95, 0.2);
 }
 
 /* Form */
