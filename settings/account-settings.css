@@ -140,7 +140,7 @@
             height: 29px;
             border: none;
             border-radius: 6px;
-            background: #e60505;
+            background: #24364f;
             color: white;
             font-size: 9px;
             font-weight: bold;
@@ -459,3 +459,5 @@
             text-decoration: none;
             color: inherit;
         }
+/* =========================
+   MOBILE RESPONSIVE

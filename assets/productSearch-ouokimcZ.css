@@ -1,1 +1,782 @@
-.nav{--nav-navy:#1f2d44;--nav-cream:#f6f1ea;--nav-white:#fff;background:var(--nav-cream);color:var(--nav-navy);-webkit-font-smoothing:antialiased;font-family:DM Sans,system-ui,Segoe UI,Roboto,sans-serif;position:relative}.nav *,.nav :before,.nav :after{box-sizing:border-box}.nav a{color:inherit;text-decoration:none}.nav-bar{justify-content:space-between;align-items:center;height:72px;padding:0 14px 0 18px;display:flex}.nav-logo{border-radius:6px;align-items:center;gap:12px;display:flex}.nav-logo-icon{flex:none;width:50px;height:35px}.nav-logo-text{letter-spacing:1px;padding-top:6px;font-family:League Spartan,DM Sans,sans-serif;font-size:48px;font-weight:400;line-height:1}.nav-right{align-items:center;gap:60px;display:flex}.nav-links{align-items:center;gap:60px;margin:0;padding:0;list-style:none;display:flex}.nav-link{border-radius:4px;font-size:18px;font-weight:400;line-height:24px}.nav-link:hover{text-underline-offset:4px;text-decoration:underline}.nav-icons{align-items:center;gap:38px;display:flex}.nav .nav-icon-btn{width:28px;height:28px;color:var(--nav-navy);cursor:pointer;background:0 0;border:none;border-radius:6px;justify-content:center;align-items:center;padding:0;display:flex}.nav-search svg{width:19px;height:19px}.nav-bell svg{width:16px;height:16px}.nav-icon-btn:hover{background:#1f2d4414}.nav .nav-profile{background:var(--nav-navy);height:32px;color:var(--nav-white);border-radius:6px;align-items:center;padding:0 12px;font-size:13px;font-weight:700;display:flex}.nav .nav-profile:hover{background:#2c3d5a}.nav .nav-menu-btn{display:none}.nav a:focus-visible,.nav button:focus-visible{outline:2px solid var(--nav-navy);outline-offset:3px}.nav-mobile-menu{display:none}@media (width<=768px){.nav-bar{height:88px;padding:0 18px}.nav-logo{gap:10px}.nav-logo-icon{width:40px;height:28px}.nav-logo-text{padding-top:4px;font-size:30px}.nav-links,.nav .nav-profile{display:none}.nav-icons{gap:22px}.nav .nav-menu-btn{display:flex}.nav-search svg{width:22px;height:22px}.nav-bell svg,.nav-menu-btn svg{width:20px;height:20px}.nav-mobile-menu{z-index:10;background:var(--nav-cream);border-top:1px solid #1f2d441a;flex-direction:column;margin:0;padding:4px 18px 12px;list-style:none;display:flex;position:absolute;top:100%;left:0;right:0;box-shadow:0 8px 16px #1f2d441a}.nav-mobile-link{border-bottom:1px solid #1f2d4414;padding:12px 0;font-size:18px;display:block}.nav-mobile-menu li:last-child .nav-mobile-link{border-bottom:none}}.ps-page{--ps-navy:#1f2d44;--ps-cream:#f8f1e7;--ps-gold:#c9a15e;--ps-muted:#8a94a6;--ps-canvas:#f4f4f4;--ps-white:#fff;background:var(--ps-canvas);min-height:100vh;color:var(--ps-navy);-webkit-font-smoothing:antialiased;font-family:DM Sans,system-ui,Segoe UI,Roboto,sans-serif}.ps-page *,.ps-page :before,.ps-page :after{box-sizing:border-box}.ps-page button{font:inherit;color:inherit;cursor:pointer;background:0 0;border:none;padding:0}.ps-page>.nav{background:var(--ps-cream);max-width:1440px;margin:0 auto}.ps-frame{background:var(--ps-cream);width:100%;max-width:1440px;min-height:1025px;margin:0 auto;padding:23px 16px 48px}.ps-title{letter-spacing:0;color:var(--ps-navy);margin:0;font-family:League Spartan,DM Sans,sans-serif;font-size:32px;font-weight:700;line-height:40px}.ps-subtitle{color:var(--ps-muted);margin:4px 0 0;font-size:13px;line-height:18px}.ps-search{background:var(--ps-white);border-radius:12px 26px 26px 12px;align-items:center;width:356px;max-width:100%;height:52px;margin-top:12px;padding:2px 16px 2px 2px;display:flex}.ps-page .ps-filter-btn{background:var(--ps-gold);width:48px;height:48px;color:var(--ps-navy);border-radius:10px 0 0 10px;flex:none;justify-content:center;align-items:center;display:flex}.ps-search-input{min-width:0;height:100%;font:inherit;color:var(--ps-navy);background:0 0;border:none;outline:none;flex:1;padding:0 8px 0 4px;font-size:14px}.ps-search-input::placeholder{color:var(--ps-navy);opacity:1}.ps-page .ps-search-btn{color:var(--ps-navy);flex:none;display:flex}.ps-search-help{justify-content:space-between;width:356px;max-width:100%;min-height:18px;margin-top:6px;padding:0 4px;font-size:12px;line-height:18px;display:flex}.ps-search-notice{color:#b4532a}.ps-search-count{color:var(--ps-muted);margin-left:auto}.ps-results{margin-top:18px}.ps-results-header{align-items:baseline;gap:10px;display:flex}.ps-results-label{letter-spacing:0;color:var(--ps-navy);margin:0;font-size:13px;font-weight:700;line-height:18px}.ps-results-count{color:var(--ps-muted);font-size:12px}.ps-results-message{color:var(--ps-muted);margin:12px 0 0;font-size:13px}.ps-results-error{color:#b4532a}.ps-book-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-top:12px;display:grid}.ps-book-card{background:var(--ps-white);border-radius:12px;flex-direction:column;transition:box-shadow .2s,transform .2s;display:flex;overflow:hidden;box-shadow:0 1px 3px #1f2d440f}.ps-book-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px #1f2d441f}.ps-book-cover{aspect-ratio:4/5;background:#efe6d8;justify-content:center;align-items:center;padding:18px 28px;display:flex}.ps-book-img{object-fit:cover;border-radius:4px;width:100%;height:100%;box-shadow:0 6px 14px #1f2d4440}.ps-book-placeholder{border-radius:3px 6px 6px 3px;width:100%;height:100%;display:flex;overflow:hidden;box-shadow:0 6px 14px #1f2d4440}.ps-book-spine{background:#16213a;flex:none;width:10%}.ps-book-face{background:var(--ps-navy);text-align:center;flex-direction:column;flex:1;justify-content:center;align-items:center;gap:10px;padding:12px;display:flex}.ps-book-band{background:var(--ps-gold);width:70%;height:2px}.ps-book-title{-webkit-line-clamp:4;color:var(--ps-cream);-webkit-box-orient:vertical;font-family:League Spartan,DM Sans,sans-serif;font-size:14px;font-weight:700;line-height:1.2;display:-webkit-box;overflow:hidden}.ps-book-body{flex-direction:column;gap:8px;padding:12px 14px 14px;display:flex}.ps-book-name{white-space:nowrap;text-overflow:ellipsis;letter-spacing:0;color:var(--ps-navy);margin:0;font-size:13px;font-weight:700;line-height:18px;overflow:hidden}.ps-book-meta{justify-content:space-between;align-items:center;gap:8px;display:flex}.ps-book-price{color:var(--ps-navy);font-size:15px;font-weight:700}.ps-book-condition{color:#8a6a2f;white-space:nowrap;background:#c9a15e2e;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:600;line-height:16px}
+/* =========================
+   NAVIGATION
+========================= */
+
+.nav {
+    --nav-navy: #1f2d44;
+    --nav-cream: #f6f1ea;
+    --nav-white: #fff;
+
+    background: var(--nav-cream);
+    color: var(--nav-navy);
+
+    -webkit-font-smoothing: antialiased;
+
+    font-family:
+        DM Sans,
+        system-ui,
+        Segoe UI,
+        Roboto,
+        sans-serif;
+
+    position: relative;
+}
+
+.nav *,
+.nav :before,
+.nav :after {
+    box-sizing: border-box;
+}
+
+.nav a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* Navigation bar */
+
+.nav-bar {
+    justify-content: space-between;
+    align-items: center;
+
+    height: 72px;
+
+    padding: 0 14px 0 18px;
+
+    display: flex;
+}
+
+/* Logo */
+
+.nav-logo {
+    border-radius: 6px;
+
+    align-items: center;
+    gap: 12px;
+
+    display: flex;
+}
+
+.nav-logo-icon {
+    flex: none;
+
+    width: 50px;
+    height: 35px;
+}
+
+.nav-logo-text {
+    letter-spacing: 1px;
+
+    padding-top: 6px;
+
+    font-family:
+        League Spartan,
+        DM Sans,
+        sans-serif;
+
+    font-size: 48px;
+    font-weight: 400;
+    line-height: 1;
+}
+
+/* Right side of navigation */
+
+.nav-right {
+    align-items: center;
+    gap: 60px;
+
+    display: flex;
+}
+
+/* Navigation links */
+
+.nav-links {
+    align-items: center;
+    gap: 60px;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+
+    display: flex;
+}
+
+.nav-link {
+    border-radius: 4px;
+
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 24px;
+}
+
+.nav-link:hover {
+    text-underline-offset: 4px;
+    text-decoration: underline;
+}
+
+/* Search / notification / profile icons */
+
+.nav-icons {
+    align-items: center;
+    gap: 38px;
+
+    display: flex;
+}
+
+.nav .nav-icon-btn {
+    width: 28px;
+    height: 28px;
+
+    color: var(--nav-navy);
+
+    cursor: pointer;
+
+    background: 0 0;
+
+    border: none;
+    border-radius: 6px;
+
+    justify-content: center;
+    align-items: center;
+
+    padding: 0;
+
+    display: flex;
+}
+
+.nav-search svg {
+    width: 19px;
+    height: 19px;
+}
+
+.nav-bell svg {
+    width: 16px;
+    height: 16px;
+}
+
+.nav-icon-btn:hover {
+    background: #1f2d4414;
+}
+
+/* Profile button */
+
+.nav .nav-profile {
+    background: var(--nav-navy);
+
+    height: 32px;
+
+    color: var(--nav-white);
+
+    border-radius: 6px;
+
+    align-items: center;
+
+    padding: 0 12px;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    display: flex;
+}
+
+.nav .nav-profile:hover {
+    background: #2c3d5a;
+}
+
+/* Mobile menu button */
+
+.nav .nav-menu-btn {
+    display: none;
+}
+
+/* Keyboard focus */
+
+.nav a:focus-visible,
+.nav button:focus-visible {
+    outline: 2px solid var(--nav-navy);
+    outline-offset: 3px;
+}
+
+/* Mobile menu */
+
+.nav-mobile-menu {
+    display: none;
+}
+
+
+/* =========================
+   NAVIGATION — MOBILE
+========================= */
+
+@media (width <= 768px) {
+
+    .nav-bar {
+        height: 88px;
+
+        padding: 0 18px;
+    }
+
+    .nav-logo {
+        gap: 10px;
+    }
+
+    .nav-logo-icon {
+        width: 40px;
+        height: 28px;
+    }
+
+    .nav-logo-text {
+        padding-top: 4px;
+
+        font-size: 30px;
+    }
+
+    /* Hide desktop navigation links */
+
+    .nav-links,
+    .nav .nav-profile {
+        display: none;
+    }
+
+    /* Mobile icons */
+
+    .nav-icons {
+        gap: 22px;
+    }
+
+    .nav .nav-menu-btn {
+        display: flex;
+    }
+
+    .nav-search svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .nav-bell svg,
+    .nav-menu-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* Mobile dropdown menu */
+
+    .nav-mobile-menu {
+        z-index: 10;
+
+        background: var(--nav-cream);
+
+        border-top: 1px solid #1f2d441a;
+
+        flex-direction: column;
+
+        margin: 0;
+        padding: 4px 18px 12px;
+
+        list-style: none;
+
+        display: flex;
+
+        position: absolute;
+
+        top: 100%;
+        left: 0;
+        right: 0;
+
+        box-shadow: 0 8px 16px #1f2d441a;
+    }
+
+    .nav-mobile-link {
+        border-bottom: 1px solid #1f2d4414;
+
+        padding: 12px 0;
+
+        font-size: 18px;
+
+        display: block;
+    }
+
+    .nav-mobile-menu li:last-child .nav-mobile-link {
+        border-bottom: none;
+    }
+}
+
+
+/* =========================
+   MARKETPLACE PAGE
+========================= */
+
+.ps-page {
+    --ps-navy: #1f2d44;
+    --ps-cream: #f8f1e7;
+    --ps-gold: #c9a15e;
+    --ps-muted: #8a94a6;
+    --ps-canvas: #f4f4f4;
+    --ps-white: #fff;
+
+    background: var(--ps-canvas);
+
+    min-height: 100vh;
+
+    color: var(--ps-navy);
+
+    -webkit-font-smoothing: antialiased;
+
+    font-family:
+        DM Sans,
+        system-ui,
+        Segoe UI,
+        Roboto,
+        sans-serif;
+}
+
+.ps-page *,
+.ps-page :before,
+.ps-page :after {
+    box-sizing: border-box;
+}
+
+.ps-page button {
+    font: inherit;
+
+    color: inherit;
+
+    cursor: pointer;
+
+    background: 0 0;
+
+    border: none;
+
+    padding: 0;
+}
+
+
+/* =========================
+   PAGE SEARCH / HEADER
+========================= */
+
+.ps-page > .nav {
+    background: var(--ps-cream);
+
+    max-width: 1440px;
+
+    margin: 0 auto;
+}
+
+.ps-frame {
+    background: var(--ps-cream);
+
+    width: 100%;
+    max-width: 1440px;
+
+    min-height: 1025px;
+
+    margin: 0 auto;
+
+    padding: 23px 16px 48px;
+}
+
+.ps-title {
+    letter-spacing: 0;
+
+    color: var(--ps-navy);
+
+    margin: 0;
+
+    font-family:
+        League Spartan,
+        DM Sans,
+        sans-serif;
+
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 40px;
+}
+
+.ps-subtitle {
+    color: var(--ps-muted);
+
+    margin: 4px 0 0;
+
+    font-size: 13px;
+    line-height: 18px;
+}
+
+
+/* =========================
+   SEARCH BAR
+========================= */
+
+.ps-search {
+    background: var(--ps-white);
+
+    border-radius: 12px 26px 26px 12px;
+
+    align-items: center;
+
+    width: 356px;
+    max-width: 100%;
+
+    height: 52px;
+
+    margin-top: 12px;
+
+    padding: 2px 16px 2px 2px;
+
+    display: flex;
+}
+
+.ps-page .ps-filter-btn {
+    background: var(--ps-gold);
+
+    width: 48px;
+    height: 48px;
+
+    color: var(--ps-navy);
+
+    border-radius: 10px 0 0 10px;
+
+    flex: none;
+
+    justify-content: center;
+    align-items: center;
+
+    display: flex;
+}
+
+.ps-search-input {
+    min-width: 0;
+
+    height: 100%;
+
+    font: inherit;
+
+    color: var(--ps-navy);
+
+    background: 0 0;
+
+    border: none;
+
+    outline: none;
+
+    flex: 1;
+
+    padding: 0 8px 0 4px;
+
+    font-size: 14px;
+}
+
+.ps-search-input::placeholder {
+    color: var(--ps-navy);
+
+    opacity: 1;
+}
+
+.ps-page .ps-search-btn {
+    color: var(--ps-navy);
+
+    flex: none;
+
+    display: flex;
+}
+
+
+/* =========================
+   SEARCH HELP
+========================= */
+
+.ps-search-help {
+    justify-content: space-between;
+
+    width: 356px;
+    max-width: 100%;
+
+    min-height: 18px;
+
+    margin-top: 6px;
+
+    padding: 0 4px;
+
+    font-size: 12px;
+    line-height: 18px;
+
+    display: flex;
+}
+
+.ps-search-notice {
+    color: #b4532a;
+}
+
+.ps-search-count {
+    color: var(--ps-muted);
+
+    margin-left: auto;
+}
+
+
+/* =========================
+   RESULTS
+========================= */
+
+.ps-results {
+    margin-top: 18px;
+}
+
+.ps-results-header {
+    align-items: baseline;
+
+    gap: 10px;
+
+    display: flex;
+}
+
+.ps-results-label {
+    letter-spacing: 0;
+
+    color: var(--ps-navy);
+
+    margin: 0;
+
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 18px;
+}
+
+.ps-results-count {
+    color: var(--ps-muted);
+
+    font-size: 12px;
+}
+
+.ps-results-message {
+    color: var(--ps-muted);
+
+    margin: 12px 0 0;
+
+    font-size: 13px;
+}
+
+.ps-results-error {
+    color: #b4532a;
+}
+
+
+/* =========================
+   BOOK GRID
+========================= */
+
+.ps-book-grid {
+    grid-template-columns:
+        repeat(
+            auto-fill,
+            minmax(180px, 1fr)
+        );
+
+    gap: 16px;
+
+    margin-top: 12px;
+
+    display: grid;
+}
+
+
+/* =========================
+   BOOK CARD
+========================= */
+
+.ps-book-card {
+    background: var(--ps-white);
+
+    border-radius: 12px;
+
+    flex-direction: column;
+
+    transition:
+        box-shadow 0.2s,
+        transform 0.2s;
+
+    display: flex;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 1px 3px #1f2d440f;
+}
+
+.ps-book-card:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 20px #1f2d441f;
+}
+
+
+/* =========================
+   BOOK COVER
+========================= */
+
+.ps-book-cover {
+    aspect-ratio: 4 / 5;
+
+    background: #efe6d8;
+
+    justify-content: center;
+    align-items: center;
+
+    padding: 18px 28px;
+
+    display: flex;
+}
+
+.ps-book-img {
+    object-fit: cover;
+
+    border-radius: 4px;
+
+    width: 100%;
+    height: 100%;
+
+    box-shadow:
+        0 6px 14px #1f2d4440;
+}
+
+
+/* Placeholder book */
+
+.ps-book-placeholder {
+    border-radius: 3px 6px 6px 3px;
+
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 6px 14px #1f2d4440;
+}
+
+.ps-book-spine {
+    background: #16213a;
+
+    flex: none;
+
+    width: 10%;
+}
+
+.ps-book-face {
+    background: var(--ps-navy);
+
+    text-align: center;
+
+    flex-direction: column;
+
+    flex: 1;
+
+    justify-content: center;
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 12px;
+
+    display: flex;
+}
+
+.ps-book-band {
+    background: var(--ps-gold);
+
+    width: 70%;
+    height: 2px;
+}
+
+.ps-book-title {
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+
+    color: var(--ps-cream);
+
+    -webkit-box-orient: vertical;
+
+    font-family:
+        League Spartan,
+        DM Sans,
+        sans-serif;
+
+    font-size: 14px;
+    font-weight: 700;
+
+    line-height: 1.2;
+
+    display: -webkit-box;
+
+    overflow: hidden;
+}
+
+
+/* =========================
+   BOOK INFORMATION
+========================= */
+
+.ps-book-body {
+    flex-direction: column;
+
+    gap: 8px;
+
+    padding: 12px 14px 14px;
+
+    display: flex;
+}
+
+.ps-book-name {
+    white-space: nowrap;
+
+    text-overflow: ellipsis;
+
+    letter-spacing: 0;
+
+    color: var(--ps-navy);
+
+    margin: 0;
+
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 18px;
+
+    overflow: hidden;
+}
+
+.ps-book-meta {
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 8px;
+
+    display: flex;
+}
+
+.ps-book-price {
+    color: var(--ps-navy);
+
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.ps-book-condition {
+    color: #8a6a2f;
+
+    white-space: nowrap;
+
+    background: #c9a15e2e;
+
+    border-radius: 10px;
+
+    padding: 2px 8px;
+
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+}

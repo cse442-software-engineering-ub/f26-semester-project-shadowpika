@@ -137,12 +137,12 @@
             border-radius: 2px;
         }
 
-        .profile-button {
+        .profile-buttoned {
             width: 45px;
             height: 29px;
             border: none;
             border-radius: 6px;
-            background: #24364f;
+            background: #e43a0a;
             color: white;
             font-size: 9px;
             font-weight: bold;
@@ -715,3 +715,304 @@
                 display: none;
             }
         }
+
+/* =========================================
+   MOBILE RESPONSIVE
+========================================= */
+
+@media (max-width: 768px) {
+
+    /* ---------- BODY ---------- */
+
+    body {
+        min-width: 0;
+        width: 100%;
+        overflow-x: hidden;
+    }
+
+
+    /* ---------- NAVIGATION ---------- */
+
+    .navbar {
+        height: 65px;
+        padding: 0 15px;
+    }
+
+    .brand {
+        width: auto;
+    }
+
+    .brand-name {
+        font-size: 20px;
+        letter-spacing: 1px;
+    }
+
+    .nav-links {
+        display: none;
+    }
+
+    .nav-right {
+        margin-left: auto;
+        gap: 15px;
+    }
+
+    .search-icon {
+        display: none;
+    }
+
+    .profile-buttoned {
+        width: 50px;
+        height: 30px;
+    }
+
+
+    /* ---------- MAIN ---------- */
+
+    .main {
+        width: 100%;
+        padding: 20px 15px 30px;
+    }
+
+
+    /* ---------- PROFILE HEADER ---------- */
+
+    .profile-header {
+        height: auto;
+        min-height: 300px;
+    }
+
+    .cover {
+        height: 100px;
+    }
+
+    .cover::after {
+        left: 45%;
+    }
+
+    .profile-info {
+        height: auto;
+        min-height: 200px;
+        padding: 60px 20px 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .avatar {
+        left: 20px;
+        top: -45px;
+    }
+
+    .profile-details {
+        width: 100%;
+    }
+
+    .username {
+        font-size: 20px;
+    }
+
+    .username-line {
+        flex-wrap: wrap;
+    }
+
+    .profile-meta {
+        font-size: 9px;
+        line-height: 1.5;
+    }
+
+    .profile-stats {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .profile-actions {
+        display: flex;
+        width: 100%;
+        margin-left: 0;
+        margin-top: 15px;
+    }
+
+    .outline-button,
+    .dark-button {
+        flex: 1;
+        height: 36px;
+    }
+
+
+    /* ---------- DASHBOARD ---------- */
+
+    .dashboard {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+
+    /* ---------- SIDEBAR ---------- */
+
+    .sidebar {
+        width: 100%;
+    }
+
+    .about-card {
+        height: auto;
+        min-height: 300px;
+    }
+
+    .reputation-card {
+        height: auto;
+        min-height: 250px;
+    }
+
+    .create-card {
+        height: auto;
+        min-height: 160px;
+    }
+
+
+    /* ---------- RIGHT CONTENT ---------- */
+
+    .content {
+        width: 100%;
+    }
+
+    .active-card {
+        height: auto;
+        min-height: 100px;
+        padding: 18px;
+        gap: 15px;
+    }
+
+    .active-title {
+        font-size: 17px;
+    }
+
+    .active-description {
+        line-height: 1.5;
+    }
+
+    .view-all {
+        flex-shrink: 0;
+    }
+
+
+    /* ---------- RECENT ACTIVITY ---------- */
+
+    .activity-card {
+        min-height: 0;
+        padding: 18px;
+    }
+
+    .activity-header {
+        gap: 10px;
+    }
+
+    .activity-title {
+        font-size: 15px;
+    }
+
+    .activity-row {
+        min-height: 75px;
+        padding: 10px 0;
+    }
+
+    .activity-icon {
+        width: 34px;
+        height: 34px;
+        flex-shrink: 0;
+        margin-right: 10px;
+    }
+
+    .activity-info {
+        min-width: 0;
+    }
+
+    .activity-row-title {
+        font-size: 8px;
+        line-height: 1.4;
+    }
+
+    .activity-row-description {
+        line-height: 1.4;
+    }
+
+    .activity-date {
+        margin-left: 8px;
+        white-space: nowrap;
+    }
+
+
+    /* ---------- CONTACT INFORMATION ---------- */
+
+    .contact-value {
+        overflow-wrap: anywhere;
+    }
+
+
+    /* ---------- REPUTATION ---------- */
+
+    .reputation-stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+
+/* =========================================
+   VERY SMALL PHONES
+========================================= */
+
+@media (max-width: 400px) {
+
+    .navbar {
+        padding: 0 10px;
+    }
+
+    .brand-name {
+        font-size: 18px;
+    }
+
+    .nav-right {
+        gap: 10px;
+    }
+
+    .main {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .profile-info {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+
+    .avatar {
+        left: 15px;
+    }
+
+    .profile-actions {
+        flex-direction: column;
+    }
+
+    .outline-button,
+    .dark-button {
+        width: 100%;
+    }
+
+    .active-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .view-all {
+        width: 100%;
+    }
+
+    .activity-date {
+        display: none;
+    }
+
+    .reputation-stats {
+        gap: 5px;
+    }
+}
