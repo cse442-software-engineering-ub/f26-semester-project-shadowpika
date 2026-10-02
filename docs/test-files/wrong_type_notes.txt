@@ -1,1 +1,0 @@
-Karavan test: plain .txt files must be rejected as an invalid file type.

@@ -1,8 +1,0 @@
-Options -Indexes
-
-# Uploaded files are served only after validation by ../api/image.php.
-# Blocking direct HTTP access also prevents an uploaded file from being
-# interpreted as executable content by Apache.
-<FilesMatch ".*">
-    Require all denied
-</FilesMatch>
