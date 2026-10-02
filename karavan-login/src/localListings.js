@@ -1,7 +1,7 @@
 // LOCAL PREVIEW MODE data: mirrors the seed rows in database/listings.sql so search can be
 // tried with `npm run dev` (which can't run PHP). Production always calls api/search_listings.php.
 const LOCAL_LISTINGS = [
-    { listing_id: 91001, name: 'Calculus Textbook', price: '35.00', condition: 'Good', image_url: 'uploads/calculus-textbook.jpg', category: 'Books', status: 'active' },
+    { listing_id: 91001, name: 'Calculus Textbook', price: '35.00', condition: 'Good', image_url: 'uploads/calculus-textbook.jpg', category: 'Books', status: 'active', description: 'Used for one semester. No writing or highlighting.' },
     { listing_id: 91002, name: 'Calculus Workbook', price: '20.00', condition: 'Like New', image_url: 'uploads/calculus-workbook.jpg', category: 'Books', status: 'active' },
     { listing_id: 91003, name: 'Desk Lamp', price: '15.00', condition: 'Good', image_url: 'uploads/desk-lamp.jpg', category: 'Dorm Living', status: 'active' },
     { listing_id: 91004, name: 'Calculus Notes', price: '5.00', condition: 'Fair', image_url: 'uploads/calculus-notes.jpg', category: 'Books', status: 'sold' },
@@ -29,6 +29,18 @@ export function buildSearchUrl(query, categories) {
     if (categories.length > 0) parameters.set('categories', categories.join(','));
     const queryString = parameters.toString();
     return `./api/search_listings.php${queryString ? `?${queryString}` : ''}`;
+}
+
+export const itemPageUrl = (listingId) => `./item.html?listing_id=${encodeURIComponent(listingId)}`;
+
+export const buildItemDetailsUrl = (listingId) => `./api/get_item_details.php?listing_id=${encodeURIComponent(listingId)}`;
+
+// Same shape as api/get_item_details.php returns for one active listing, or null when it doesn't exist.
+export function findLocalListing(listingId) {
+    const listing = LOCAL_LISTINGS.find((l) => String(l.listing_id) === String(listingId) && l.status === 'active');
+    if (!listing) return null;
+    const { listing_id, name, price, condition, category, description = null } = listing;
+    return { listing_id, name, price, condition, category: canonicalCategory(category), description };
 }
 
 // Same rules as the PHP endpoint: active only, optional case-insensitive keyword matching,

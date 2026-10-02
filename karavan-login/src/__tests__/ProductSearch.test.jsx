@@ -119,6 +119,58 @@ describe('ProductSearch category filtering', () => {
     });
 });
 
+describe('ProductSearch item links and Back button (#151)', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        window.history.replaceState({}, '', '/product-search.html');
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('links each card to its item-detail page', async () => {
+        render(<ProductSearch />);
+        fireEvent.change(screen.getByRole('textbox', { name: 'Search products' }), { target: { value: 'Calculus' } });
+        await finishSearch();
+
+        expect(screen.getByRole('link', { name: 'Calculus Textbook' })).toHaveAttribute('href', './item.html?listing_id=91001');
+        expect(screen.getByRole('link', { name: 'Calculus Workbook' })).toHaveAttribute('href', './item.html?listing_id=91002');
+    });
+
+    it('keeps the search and categories in the address', async () => {
+        render(<ProductSearch />);
+        fireEvent.change(screen.getByRole('textbox', { name: 'Search products' }), { target: { value: 'Calculus' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Open filters' }));
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Tech & Electronics' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Apply Filters' }));
+        await finishSearch();
+
+        const params = new URLSearchParams(window.location.search);
+        expect(params.get('q')).toBe('Calculus');
+        expect(params.get('categories')).toBe('Tech & Electronics');
+    });
+
+    it('restores the search from the address when returning with Back', async () => {
+        window.history.replaceState({}, '', '/product-search.html?q=Calculus');
+        render(<ProductSearch />);
+        await finishSearch();
+
+        expect(screen.getByRole('textbox', { name: 'Search products' })).toHaveValue('Calculus');
+        expect(screen.getByText('Calculus Textbook')).toBeInTheDocument();
+        expect(screen.getByText('Calculus Workbook')).toBeInTheDocument();
+        expect(screen.queryByText('Desk Lamp')).not.toBeInTheDocument();
+    });
+
+    it('ignores unknown categories in the address', async () => {
+        window.history.replaceState({}, '', '/product-search.html?categories=Textbooks,Weapons');
+        render(<ProductSearch />);
+        await finishSearch();
+
+        expect(screen.getByText('Categories: Textbooks')).toBeInTheDocument();
+    });
+});
+
 describe('listing search helpers', () => {
     it('builds the category API request without losing the product-name query', () => {
         const url = buildSearchUrl('Calculus', ['Textbooks', 'Dorm Living']);

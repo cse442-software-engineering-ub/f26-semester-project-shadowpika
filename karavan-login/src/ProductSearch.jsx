@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import NavBar from './NavBar.jsx';
 import './ProductSearch.css';
-import { buildSearchUrl, searchLocalListings } from './localListings.js';
+import { buildSearchUrl, itemPageUrl, searchLocalListings } from './localListings.js';
 
 const MAX_QUERY_LENGTH = 50;
 const SEARCH_DELAY_MS = 300;
@@ -19,6 +19,39 @@ const CATEGORY_OPTIONS = [
 const EMOJI_PATTERN = /[\u{1F000}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{E0020}-\u{E007F}\u{3030}\u{303D}\u{3297}\u{3299}]|\u{FE0F}|\u{200D}|\u{20E3}/gu;
 
 const isLocalPreview = () => window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+// Strips emoji and caps the length, returning the notice to show when anything was removed.
+function cleanQuery(typed) {
+    let cleaned = typed.replace(EMOJI_PATTERN, '');
+    let notice = cleaned !== typed ? 'Emoji are not allowed in search.' : '';
+
+    const chars = Array.from(cleaned);
+    if (chars.length > MAX_QUERY_LENGTH) {
+        cleaned = chars.slice(0, MAX_QUERY_LENGTH).join('');
+        notice = `Search is limited to ${MAX_QUERY_LENGTH} characters.`;
+    }
+    return { cleaned, notice };
+}
+
+// The search lives in the address (?q=...&categories=...) so the browser's Back button
+// returns from an item page to the same results.
+const searchParams = () => new URLSearchParams(window.location.search);
+const initialQuery = () => cleanQuery(searchParams().get('q') ?? '').cleaned;
+const initialCategories = () => (searchParams().get('categories') ?? '')
+    .split(',')
+    .filter((category) => CATEGORY_OPTIONS.includes(category));
+
+function saveSearchInAddress(query, categories) {
+    const params = searchParams();
+    if (query.trim()) params.set('q', query);
+    else params.delete('q');
+    if (categories.length > 0) params.set('categories', categories.join(','));
+    else params.delete('categories');
+
+    const queryString = params.toString();
+    const url = `${window.location.pathname}${queryString ? `?${queryString}` : ''}${window.location.hash}`;
+    window.history.replaceState(window.history.state, '', url);
+}
 
 function FilterIcon() {
     return (
@@ -80,7 +113,10 @@ function BookCard({ book, isOwner = false }) {
                 {isOwner && (
                     <span className="ps-owner-label">YOUR LISTING · {book.category || 'MARKETPLACE'}</span>
                 )}
-                <h3 className="ps-book-name" title={book.name}>{book.name}</h3>
+                <h3 className="ps-book-name" title={book.name}>
+                    {/* Stretched over the whole card, so clicking anywhere on it opens the item */}
+                    <a className="ps-book-link" href={itemPageUrl(book.listing_id)}>{book.name}</a>
+                </h3>
                 <div className="ps-book-meta">
                     <span className="ps-book-price">${book.price}</span>
                     <span className="ps-book-condition">{book.condition}</span>
@@ -101,14 +137,14 @@ function BookCard({ book, isOwner = false }) {
 }
 
 function ProductSearch() {
-    const [query, setQuery] = useState('');
+    const [query, setQuery] = useState(initialQuery);
     const [results, setResults] = useState([]);
     const [status, setStatus] = useState('loading'); // loading | done | error
     const [error, setError] = useState('');
     const [inputNotice, setInputNotice] = useState('');
     const [filtersOpen, setFiltersOpen] = useState(false);
-    const [draftCategories, setDraftCategories] = useState([]);
-    const [appliedCategories, setAppliedCategories] = useState([]);
+    const [draftCategories, setDraftCategories] = useState(initialCategories);
+    const [appliedCategories, setAppliedCategories] = useState(initialCategories);
     const [publishedListing, setPublishedListing] = useState(null);
     const [publishedStatus, setPublishedStatus] = useState('idle');
     const requestId = useRef(0);
@@ -193,17 +229,12 @@ function ProductSearch() {
         return () => clearTimeout(timer);
     }, [query, appliedCategories, runSearch]);
 
+    useEffect(() => {
+        saveSearchInAddress(query, appliedCategories);
+    }, [query, appliedCategories]);
+
     const handleChange = (e) => {
-        const typed = e.target.value;
-        let cleaned = typed.replace(EMOJI_PATTERN, '');
-        let notice = cleaned !== typed ? 'Emoji are not allowed in search.' : '';
-
-        const chars = Array.from(cleaned);
-        if (chars.length > MAX_QUERY_LENGTH) {
-            cleaned = chars.slice(0, MAX_QUERY_LENGTH).join('');
-            notice = `Search is limited to ${MAX_QUERY_LENGTH} characters.`;
-        }
-
+        const { cleaned, notice } = cleanQuery(e.target.value);
         setInputNotice(notice);
         setQuery(cleaned);
     };
