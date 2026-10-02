@@ -9,11 +9,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit(0);
 }
 
-// 2. YOUR DATABASE CREDENTIALS (Make sure these match your login.php details!)
+// 2. YOUR DATABASE CREDENTIALS (Preserved exactly from your file)
 $host = 'localhost'; 
-$db   = 'cse442_2026_fall_team_j_db';     // Replace with your database name
-$user = 'ndberg';     // Replace with your database username
-$pass = '50250298'; // Replace with your database password
+$db   = 'cse442_2026_fall_team_j_db';     
+$user = 'ndberg';     
+$pass = '50250298'; 
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
@@ -36,24 +36,33 @@ $data = json_decode($raw_input, true);
 
 $usernameInput = isset($data['username']) ? trim($data['username']) : '';
 $passwordInput = isset($data['password']) ? trim($data['password']) : '';
+$emailInput    = isset($data['email'])    ? trim($data['email'])    : '';
 
-if (empty($usernameInput) || empty($passwordInput)) {
+// A: Check if any fields are empty
+if (empty($usernameInput) || empty($passwordInput) || empty($emailInput)) {
     echo json_encode(["success" => false, "error" => "Missing fields."]);
     exit;
 }
 
+// B: NEW - ANTI BEE MOVIE PROTECTION (Strict 50 character cap)
+if (strlen($usernameInput) > 50 || strlen($passwordInput) > 50 || strlen($emailInput) > 50) {
+    echo json_encode(["success" => false, "error" => "Input fields cannot exceed 50 characters."]);
+    exit;
+}
+
 // 4. AUTOMATIC SALTING AND HASHING
-// This single function generates a secure salt automatically and embeds it inside the hash!
 $autoSaltedHash = password_hash($passwordInput, PASSWORD_BCRYPT);
 
 // 5. Save the new user record safely into the database
 try {
-    $stmt = $pdo->prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)');
-    $stmt->execute([$usernameInput, $autoSaltedHash]);
+    // UPDATED: Added 'email' column and an extra '?' placeholder to match your database layout
+    $stmt = $pdo->prepare('INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)');
+    $stmt->execute([$usernameInput, $autoSaltedHash, $emailInput]);
+    
     echo json_encode(["success" => true, "message" => "Account successfully created!"]);
 } catch (\PDOException $e) {
     if ($e->getCode() == 23000) { // Error code for duplicate unique fields
-        echo json_encode(["success" => false, "error" => "Username already exists."]);
+        echo json_encode(["success" => false, "error" => "Username or Email already exists."]);
     } else {
         echo json_encode(["success" => false, "error" => "Registration database failure."]);
     }
