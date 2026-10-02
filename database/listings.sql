@@ -14,16 +14,28 @@ CREATE TABLE IF NOT EXISTS listings (
     KEY idx_listings_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Normalize category names left by earlier search/filter prototypes. These are the same values
+-- accepted by the Create Listing flow and this statement is safe to run repeatedly.
+UPDATE listings
+   SET category = CASE category
+       WHEN 'Books' THEN 'Textbooks'
+       WHEN 'Electronics' THEN 'Tech & Electronics'
+       WHEN 'Furniture' THEN 'Dorm Living'
+       WHEN 'Clothing' THEN 'Clothing & Gear'
+       ELSE category
+   END
+ WHERE category IN ('Books', 'Electronics', 'Furniture', 'Clothing');
+
 INSERT INTO listings (listing_id, name, price, `condition`, image_url, category, status) VALUES
-    (91001, 'Calculus Textbook',               35.00, 'Good',       'uploads/calculus-textbook.jpg',   'Books',       'active'),
-    (91002, 'Calculus Workbook',               20.00, 'Like New',   'uploads/calculus-workbook.jpg',   'Books',       'active'),
+    (91001, 'Calculus Textbook',               35.00, 'Good',       'uploads/calculus-textbook.jpg',   'Textbooks',   'active'),
+    (91002, 'Calculus Workbook',               20.00, 'Like New',   'uploads/calculus-workbook.jpg',   'Textbooks',   'active'),
     (91003, 'Desk Lamp',                       15.00, 'Good',       'uploads/desk-lamp.jpg',           'Dorm Living', 'active'),
-    (91004, 'Calculus Notes',                   5.00, 'Fair',       'uploads/calculus-notes.jpg',      'Books',       'sold'),
-    (91005, 'Physical Chemistry',              60.00, 'Good',       'uploads/physical-chemistry.jpg',  'Books',       'active'),
-    (91006, 'Genetics: A Conceptual Approach', 45.00, 'Like New',   'uploads/genetics.jpg',            'Books',       'active'),
-    (91007, 'Campbell Biology',                55.00, 'Acceptable', 'uploads/campbell-biology.jpg',    'Books',       'active'),
-    (91008, 'Organic Chemistry Textbook',      50.00, 'Good',       'uploads/organic-chemistry.jpg',   'Books',       'active'),
-    (91009, 'Introduction to Algorithms',      40.00, 'Like New',   'uploads/intro-algorithms.jpg',    'Books',       'active'),
+    (91004, 'Calculus Notes',                   5.00, 'Fair',       'uploads/calculus-notes.jpg',      'Textbooks',   'sold'),
+    (91005, 'Physical Chemistry',              60.00, 'Good',       'uploads/physical-chemistry.jpg',  'Textbooks',   'active'),
+    (91006, 'Genetics: A Conceptual Approach', 45.00, 'Like New',   'uploads/genetics.jpg',            'Textbooks',   'active'),
+    (91007, 'Campbell Biology',                55.00, 'Acceptable', 'uploads/campbell-biology.jpg',    'Textbooks',   'active'),
+    (91008, 'Organic Chemistry Textbook',      50.00, 'Good',       'uploads/organic-chemistry.jpg',   'Textbooks',   'active'),
+    (91009, 'Introduction to Algorithms',      40.00, 'Like New',   'uploads/intro-algorithms.jpg',    'Textbooks',   'active'),
     (91010, 'Dorm Fridge',                     80.00, 'Good',       'uploads/dorm-fridge.jpg',         'Dorm Living', 'active')
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
