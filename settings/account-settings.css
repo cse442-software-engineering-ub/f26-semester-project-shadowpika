@@ -1,0 +1,794 @@
+* {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #ffffff;
+            color: #1f3048;
+            min-width: 1000px;
+        }
+
+        /* =========================
+           NAVIGATION
+        ========================= */
+
+        .navbar {
+            width: 100%;
+            height: 79px;
+            background: #f7f4ec;
+            display: flex;
+            align-items: center;
+            padding: 0 25px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            width: 500px;
+        }
+
+        .brand-icon {
+            width: 31px;
+            height: 31px;
+            border: 2px solid #263c57;
+            border-radius: 6px;
+            position: relative;
+        }
+
+        .brand-icon::before {
+            content: "";
+            position: absolute;
+            left: 5px;
+            top: 7px;
+            width: 11px;
+            height: 8px;
+            border: 2px solid #263c57;
+            border-radius: 2px;
+        }
+
+        .brand-icon::after {
+            content: "";
+            position: absolute;
+            right: -5px;
+            bottom: 4px;
+            width: 7px;
+            height: 7px;
+            border: 2px solid #263c57;
+            border-radius: 50%;
+            background: #f7f4ec;
+        }
+
+        .brand-name {
+            font-size: 29px;
+            letter-spacing: 2px;
+            font-weight: 400;
+            color: #263c57;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 44px;
+            height: 100%;
+            flex: 1;
+        }
+
+        .nav-link {
+            font-size: 14px;
+            color: #263c57;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 60px;
+        }
+
+        .search-icon,
+        .bell-icon {
+            width: 17px;
+            height: 17px;
+            position: relative;
+        }
+
+        .search-icon {
+            border: 2px solid #333333;
+            border-radius: 50%;
+        }
+
+        .search-icon::after {
+            content: "";
+            position: absolute;
+            width: 6px;
+            height: 2px;
+            background: #333333;
+            right: -5px;
+            bottom: -2px;
+            transform: rotate(45deg);
+        }
+
+        .bell-icon::before {
+            content: "";
+            position: absolute;
+            width: 10px;
+            height: 11px;
+            left: 3px;
+            top: 2px;
+            border: 1.7px solid #333333;
+            border-radius: 7px 7px 3px 3px;
+        }
+
+        .bell-icon::after {
+            content: "";
+            position: absolute;
+            width: 14px;
+            height: 2px;
+            background: #333333;
+            left: 1px;
+            bottom: 2px;
+            border-radius: 2px;
+        }
+
+        .profile-button {
+            width: 45px;
+            height: 29px;
+            border: none;
+            border-radius: 6px;
+            background: #24364f;
+            color: white;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        /* =========================
+           MAIN CONTENT
+        ========================= */
+
+        .main {
+            width: 1000px;
+            margin: 0 auto;
+            padding-top: 42px;
+        }
+
+        .page-title {
+            margin-left: 0;
+            font-size: 25px;
+            font-weight: 700;
+            color: #24364f;
+            margin-bottom: 6px;
+        }
+
+        .page-description {
+            font-size: 9px;
+            color: #68788d;
+            margin-bottom: 29px;
+        }
+
+        /* =========================
+           SETTINGS CARD
+        ========================= */
+
+        .settings-card {
+            width: 1000px;
+            min-height: 689px;
+            border: 1px solid #e3e0d9;
+            border-radius: 11px;
+            margin-left: 0;
+            overflow: hidden;
+            background: white;
+        }
+
+        /* =========================
+           TABS
+        ========================= */
+
+        .tabs {
+            height: 48px;
+            display: flex;
+            align-items: flex-end;
+            padding-left: 16px;
+            border-bottom: 1px solid #e9e6df;
+            gap: 0;
+        }
+
+        .tab {
+            height: 48px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            font-size: 9px;
+            color: #52647b;
+            position: relative;
+        }
+
+        .tab.active {
+            color: #24364f;
+            font-weight: 700;
+        }
+
+        .tab.active::after {
+            content: "";
+            position: absolute;
+            bottom: -1px;
+            left: 16px;
+            right: 16px;
+            height: 2px;
+            background: #24364f;
+        }
+
+        /* =========================
+           CONTENT
+        ========================= */
+
+        .settings-content {
+            padding: 25px 28px 18px 28px;
+        }
+
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #24364f;
+            margin-bottom: 20px;
+        }
+
+        .profile-section {
+            padding-bottom: 17px;
+            border-bottom: 1px solid #e9e6df;
+        }
+
+        .field {
+            display: flex;
+            align-items: center;
+            margin-bottom: 11px;
+        }
+
+        .field-label {
+            width: 132px;
+            font-size: 8px;
+            color: #607188;
+        }
+
+        .field-input {
+            width: 202px;
+            height: 28px;
+            background: #f6f3eb;
+            border: 1px solid #e7e2d7;
+            border-radius: 6px;
+            padding: 0 10px;
+            color: #334258;
+            font-size: 9px;
+            outline: none;
+        }
+
+        .field-input:focus {
+            border-color: #9ba8b8;
+        }
+
+        /* =========================
+           PHOTO UPLOAD
+        ========================= */
+
+        .photo-field {
+            align-items: flex-start;
+            margin-top: 9px;
+        }
+
+        .photo-label {
+            padding-top: 34px;
+        }
+
+        .upload-box {
+            width: 202px;
+            height: 68px;
+            background: #f6f3eb;
+            border: 1px solid #eee9df;
+            border-radius: 7px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .camera-icon {
+            width: 15px;
+            height: 12px;
+            border: 1.5px solid #65788d;
+            border-radius: 3px;
+            position: relative;
+            margin-bottom: 7px;
+        }
+
+        .camera-icon::before {
+            content: "";
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border: 1.3px solid #65788d;
+            border-radius: 50%;
+            left: 3px;
+            top: 2px;
+        }
+
+        .camera-icon::after {
+            content: "";
+            position: absolute;
+            width: 5px;
+            height: 3px;
+            background: #65788d;
+            top: -4px;
+            left: 4px;
+            border-radius: 2px 2px 0 0;
+        }
+
+        .upload-text {
+            font-size: 8px;
+            color: #718197;
+        }
+
+        /* =========================
+           PASSWORD
+        ========================= */
+
+        .password-section {
+            padding: 23px 0 18px;
+            border-bottom: 1px solid #e9e6df;
+        }
+
+        .password-row {
+            display: flex;
+            align-items: center;
+        }
+
+        .password-label {
+            width: 132px;
+            font-size: 8px;
+            color: #607188;
+        }
+
+        .change-password {
+            height: 29px;
+            padding: 0 12px;
+            border: none;
+            border-radius: 5px;
+            background: #24364f;
+            color: white;
+            font-size: 9px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .password-description {
+            margin-left: 9px;
+            font-size: 8px;
+            color: #718197;
+        }
+
+        /* =========================
+           DANGER ZONE
+        ========================= */
+
+        .danger-section {
+            padding-top: 22px;
+        }
+
+        .danger-section .section-title {
+            margin-bottom: 19px;
+        }
+
+        .delete-row {
+            display: flex;
+            align-items: center;
+        }
+
+        .delete-label {
+            width: 132px;
+            font-size: 8px;
+            color: #607188;
+        }
+
+        .delete-button {
+            height: 29px;
+            padding: 0 12px;
+            border: none;
+            border-radius: 5px;
+            background: #e32d25;
+            color: white;
+            font-size: 9px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .delete-description {
+            margin-left: 9px;
+            font-size: 8px;
+            color: #718197;
+        }
+
+        /* =========================
+           SAVE BUTTON
+        ========================= */
+
+        .save-area {
+            margin-top: 23px;
+            display: flex;
+            align-items: center;
+        }
+
+        .save-button {
+            height: 30px;
+            padding: 0 13px;
+            border: none;
+            border-radius: 5px;
+            background: #24364f;
+            color: white;
+            font-size: 9px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .save-description {
+            margin-left: 9px;
+            font-size: 8px;
+            color: #718197;
+        }
+
+        /* =========================
+           HOVER STATES
+        ========================= */
+
+        .nav-link:hover {
+            color: #526982;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .upload-box:hover {
+            border-color: #c9c4b9;
+        }
+
+        .tab_group {
+            text-decoration: none;
+            color: inherit;
+        }
+/* =========================
+   MOBILE RESPONSIVE
+========================= */
+
+@media (max-width: 768px) {
+
+    /* =========================
+       GENERAL
+    ========================= */
+
+    body {
+        min-width: 0;
+        width: 100%;
+    }
+
+    /* =========================
+       NAVIGATION
+    ========================= */
+
+    .navbar {
+        padding: 12px 15px;
+    }
+
+    .brand {
+        width: auto;
+        flex: 1;
+    }
+
+    .brand-name {
+        font-size: 20px;
+    }
+
+    .nav-links {
+        display: none;
+    }
+
+    .nav-right {
+        margin-left: auto;
+        gap: 15px;
+    }
+
+    /* =========================
+       MAIN CONTENT
+    ========================= */
+
+    .main {
+        width: 100%;
+        margin: 0;
+        padding: 25px 15px;
+    }
+
+    /* =========================
+       SETTINGS CARD
+    ========================= */
+
+    .settings-card {
+        width: 100%;
+        min-height: 0;
+    }
+
+    /* =========================
+       SETTINGS CONTENT
+    ========================= */
+
+    .settings-content {
+        padding: 22px 18px;
+    }
+
+    /* =========================
+       TABS
+    ========================= */
+
+    .tabs {
+        height: auto;
+        min-height: 48px;
+        width: 100%;
+        padding-left: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        display: flex;
+    }
+
+    .tab {
+        flex: 1;
+        flex-shrink: 0;
+        min-width: 75px;
+        height: 48px;
+        padding: 0 8px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        font-size: 10px;
+        white-space: nowrap;
+    }
+
+    .tab.active::after {
+        left: 8px;
+        right: 8px;
+    }
+
+    /* =========================
+       GENERAL SETTINGS ROWS
+    ========================= */
+
+    .setting-row {
+        display: flex;
+        flex-wrap: wrap;
+        height: auto;
+        gap: 8px;
+    }
+
+    .setting-label {
+        width: 100%;
+        margin-bottom: 2px;
+        font-size: 11px;
+    }
+
+    .setting-description {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 0;
+        font-size: 10px;
+        line-height: 1.4;
+    }
+
+    /* =========================
+       NOTIFICATION ROWS
+    ========================= */
+
+    .notification-row {
+        display: grid;
+
+        grid-template-columns: minmax(0, 1fr) auto;
+
+        grid-template-areas:
+            "label toggle"
+            "description description";
+
+        column-gap: 12px;
+        row-gap: 6px;
+
+        width: 100%;
+        height: auto;
+
+        align-items: center;
+
+        margin-bottom: 18px;
+    }
+
+    .notification-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .notification-label {
+        grid-area: label;
+
+        width: auto;
+        min-width: 0;
+
+        margin: 0;
+
+        font-size: 11px;
+        line-height: 16px;
+    }
+
+    .notification-description {
+        grid-area: description;
+
+        width: 100%;
+        min-width: 0;
+
+        margin: 0;
+
+        font-size: 10px;
+        line-height: 1.5;
+    }
+
+    /* =========================
+       TOGGLE
+    ========================= */
+
+    .toggle {
+        grid-area: toggle;
+
+        width: 35px;
+        height: 19px;
+
+        flex-shrink: 0;
+    }
+
+    .toggle::after {
+        width: 17px;
+        height: 17px;
+    }
+
+    .toggle.active::after {
+        left: 17px;
+    }
+
+    /* =========================
+       SAVE AREA
+    ========================= */
+
+    .save-area {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+
+        margin-top: 22px;
+    }
+
+    .save-description {
+        margin-left: 0;
+        margin-top: 0;
+    }
+}
+
+
+/* =========================
+   SMALL PHONES
+========================= */
+
+@media (max-width: 480px) {
+
+    /* =========================
+       NAVIGATION
+    ========================= */
+
+    .navbar {
+        padding: 10px 12px;
+    }
+
+    .brand-name {
+        font-size: 19px;
+        letter-spacing: 1px;
+    }
+
+    .nav-right {
+        gap: 10px;
+    }
+
+    /* =========================
+       MAIN CONTENT
+    ========================= */
+
+    .main {
+        padding: 20px 12px;
+    }
+
+    /* =========================
+       SETTINGS CONTENT
+    ========================= */
+
+    .settings-content {
+        padding: 20px 14px;
+    }
+
+    /* =========================
+       TABS
+    ========================= */
+
+    .tabs {
+        display: flex;
+        width: 100%;
+        min-height: 48px;
+        padding-left: 0;
+        overflow-x: auto;
+    }
+
+    .tab {
+        flex: 1 1 0;
+        min-width: 75px;
+        height: 48px;
+        padding: 0 8px;
+        justify-content: center;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+    .tab.active::after {
+        left: 8px;
+        right: 8px;
+    }
+
+    /* =========================
+       NOTIFICATIONS
+    ========================= */
+
+    .notification-row {
+        column-gap: 10px;
+        row-gap: 5px;
+        margin-bottom: 20px;
+    }
+
+    .notification-label {
+        font-size: 11px;
+        line-height: 16px;
+    }
+
+    .notification-description {
+        font-size: 10px;
+        line-height: 1.5;
+    }
+
+    .toggle {
+        width: 35px;
+        height: 19px;
+    }
+
+    .toggle::after {
+        width: 17px;
+        height: 17px;
+    }
+
+    .toggle.active::after {
+        left: 17px;
+    }
+
+    /* =========================
+       SAVE AREA
+    ========================= */
+
+    .save-area {
+        gap: 8px;
+    }
+
+    .save-description {
+        font-size: 10px;
+        line-height: 1.4;
+    }
+}

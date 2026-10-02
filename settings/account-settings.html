@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karavan - Settings</title>
+    <link rel="stylesheet" href="account-settings.css" type="text/css">
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <header class="navbar">
+
+        <div class="brand">
+            <a href="../home.html"><img src="logo.webp" width="50" height="50" id="logo"></a>
+            <div class="brand-name">KARAVAN</div>
+        </div>
+
+        <nav class="nav-links">
+            <a href="#" class="nav-link">Meeting Request</a>
+            <a href="#" class="nav-link">Settings</a>
+            <a href="#" class="nav-link">Sell</a>
+        </nav>
+
+        <div class="nav-right">
+            <div class="search-icon"></div>
+            <img src="bell.svg" width="25" height="25" id="bell">
+            <a href="../profile.html"><button class="profile-button">Profile</button></a>
+        </div>
+
+    </header>
+
+
+    <!-- Main Content -->
+    <main class="main">
+
+        <h1 class="page-title">Settings</h1>
+
+        <p class="page-description">
+            Manage your preferences, account details, and app behavior.
+        </p>
+
+
+        <!-- Settings Card -->
+        <section class="settings-card">
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <a href="general-settings.html" class="tab_group"><div class="tab">General</div></a>
+                <div class="tab active">Account</div>
+                <div class="tab">Customization</div>
+                <div class="tab">Admin</div>
+            </div>
+
+
+            <div class="settings-content">
+
+                <!-- Profile -->
+                <section class="profile-section">
+                    <h2 class="section-title">Profile</h2>
+
+                    <form name="user_info">
+                    <div class="field">
+                        <label class="field-label">Username</label>
+                        <input
+                            class="field-input"
+                            type="text"
+                            value="Shadowpika"
+                            id="name"
+                            name="input_username"
+                        >
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Email address</label>
+                        <input
+                            class="field-input"
+                            type="email"
+                            placeholder="shadow.pika@example.com"
+                            id="email"
+                            name="input_email"
+                        >
+                    </div>
+
+                    <div class="field photo-field">
+                        <label class="field-label photo-label">
+                            Profile photo
+                        </label>
+
+                        <!-- <div class="upload-box" id="pfp">
+                            <div class="camera-icon"></div>
+                            <span class="upload-text">
+                                Upload new photo
+                            </span>
+                        </div> -->
+                    </div>
+                    </form>
+                </section>
+
+
+                <!-- Password -->
+                <section class="password-section">
+
+                    <h2 class="section-title">Password</h2>
+
+                    <div class="password-row">
+                        <label class="password-label">Password</label>
+
+                        <!-- <button class="change-password">
+                            Change password
+                        </button> -->
+
+                        <span class="password-description">
+                            Update your password to keep your account secure.
+                        </span>
+                    </div>
+
+                </section>
+
+
+                <!-- Danger Zone -->
+                <section class="danger-section">
+
+                    <h2 class="section-title">Danger Zone</h2>
+
+                    <div class="delete-row">
+                        <label class="delete-label">
+                            Delete account
+                        </label>
+
+                        <button class="delete-button" type="submit" onClick="deleteAccount()">Delete account</button>
+
+                        <span class="delete-description">
+                            Permanently delete your account and all associated data.
+                        </span>
+                    </div>
+
+                </section>
+
+
+                <!-- Save -->
+                <div class="save-area">
+                    <button class="save-button" onClick="submitData()">
+                        Save changes
+                    </button>
+
+                    <span class="save-description">
+                        Changes will apply across all devices.
+                    </span>
+                </div>
+
+            </div>
+
+        </section>
+        <script>
+            // function submitData() {
+            // let username = document.user_info.input_username.value;
+            // let address = document.user_info.input_email.value;
+            // fetch("account.php", {
+            //     method: "POST",
+            //     headers: {
+            //         "Content-Type": "application/json"
+            //     },
+            //     body: JSON.stringify({
+            //         name: username,
+            //         email: address
+            //     })
+            // })
+            // .then(response => response.json())
+            // .then(data => {
+            //     console.log(data);
+            // });
+            // }
+
+        //     function submitData() {
+        //     var pass = prompt("Please enter your password to make these changes:")
+        //     let name = document.user_info.input_username.value;
+        //     let address = document.user_info.input_email.value;
+
+        //     fetch("account.php", {
+        //         method: "POST",
+        //         headers: {
+        //             "Content-Type": "application/json"
+        //         },
+        //         body: JSON.stringify({
+        //             current_username: "Shadowpika",
+        //             username: name,
+        //             email: address,
+        //             password: pass
+        //         })
+        //     })
+        //     .then(response => {
+        //         console.log("HTTP status:", response.status);
+        //         return response.text();
+        //     })
+        //     .then(data => {
+        //         console.log("PHP response:", data);
+        //     })
+        //     .catch(error => {
+        //         console.error("Fetch error:", error);
+        //     });
+        //     .then(data => {
+        //         console.log("PHP response:", data);
+
+        //         if (data.success) {
+        //             document.getElementById("name").value = data.username;
+        //             document.getElementById("email").value = data.email;
+        //         }
+        //     })
+        // }
+
+        function getCookies(cookieName){
+            const cookies = document.cookie.split("; ")
+
+            for (const cookie of cookies) {
+                const [name, value] = cookie.split('=');
+                
+                // 3. If the name matches, decode and return the value
+                if (name === cookieName) {
+                    return decodeURIComponent(value);
+                }
+            }
+            return null; // Return null if the cookie doesn't exist
+        }
+
+        function deleteAccount(){
+            var pass = prompt("Please enter your password to delete your account");
+            var confirmation = prompt("Are you sure you want to delete your account? You can't go back after this!");
+
+            if (confirmation == null) { 
+                alert("Account deletion cancelled."); 
+                return; 
+            }
+
+            fetch("delete.php", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    current_username: getCookies("karavan_auth_cookie"),
+                    password: pass
+                })
+            })
+            .then(response => {
+                console.log("HTTP status:", response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log("PHP response:", data);
+                
+                if (data.success) {
+                    window.location.replace("../index.html");
+                } else {
+                    alert(data.error);
+        }
+            })
+            .catch(error => {
+                console.error("Fetch error:", error);
+            });
+        }
+
+        function submitData() {
+            var pass = prompt("Please enter your password to make these changes:");
+
+            let name = document.user_info.input_username.value;
+            let address = document.user_info.input_email.value;
+
+            fetch("account.php", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    current_username: getCookies("karavan_auth_cookie"),
+                    username: name,
+                    email: address,
+                    password: pass
+                })
+            })
+            .then(response => {
+                console.log("HTTP status:", response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log("PHP response:", data);
+
+                if (data.success) {
+                    document.getElementById("name").value = data.username;
+                    document.getElementById("email").value = data.email;
+                } else {
+                    document.getElementById("name").value = "Shadowpika";
+                    document.getElementById("email").value = "";
+                    console.log("Error:", data.error);
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error("Fetch error:", error);
+            });
+        }
+
+        const intervalId = setInterval(() => {
+            if (!getCookies("karavan_auth_cookie")){
+                window.location.replace("../404.html");
+            }
+        }, 1000);
+
+        </script>
+
+    </main>
+
+</body>
+</html>
