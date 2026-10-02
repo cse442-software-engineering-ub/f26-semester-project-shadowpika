@@ -71,7 +71,7 @@ function karavan_admin_register(PDO $pdo, array $post, array $files, string $upl
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return [400, ['success' => false, 'error' => 'Please enter a valid email address.']];
     }
-    // Approval copies the email into users.username, which is VARCHAR(50).
+    // Approval copies the email into users.username, which is VARCHAR(50), and login.php caps input at 50.
     if (strlen($email) > 50) {
         return [400, ['success' => false, 'error' => 'Email must be 50 characters or fewer.']];
     }
@@ -79,8 +79,8 @@ function karavan_admin_register(PDO $pdo, array $post, array $files, string $upl
         return [400, ['success' => false, 'error' => 'Password must be at least 8 characters.']];
     }
 
-    $existing = $pdo->prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)');
-    $existing->execute([$email]);
+    $existing = $pdo->prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)');
+    $existing->execute([$email, $email]);
     if ($existing->fetch()) {
         return [409, ['success' => false, 'error' => 'An account with this email already exists.']];
     }
@@ -230,8 +230,9 @@ function karavan_decide_request(PDO $pdo, ?int $userId, $input, string $uploadDi
         }
 
         if ($newStatus === 'approved') {
-            $createUser = $pdo->prepare("INSERT INTO users (username, password_hash, role) VALUES (?, ?, 'admin')");
-            $createUser->execute([$request['email'], $request['password_hash']]);
+            // login.php looks accounts up by email, so the applicant's email fills both columns.
+            $createUser = $pdo->prepare("INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'admin')");
+            $createUser->execute([$request['email'], $request['email'], $request['password_hash']]);
             $link = $pdo->prepare('UPDATE admin_requests SET user_id = ? WHERE id = ?');
             $link->execute([(int) $pdo->lastInsertId(), $requestId]);
         }

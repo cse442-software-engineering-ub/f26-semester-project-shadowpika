@@ -361,14 +361,14 @@ final class EndpointsHttpTest extends TestCase
     }
 
     /** Logs in through the real login.php and returns [responseJson, sessionIdOrNull]. */
-    private function login(string $username, string $password): array
+    private function login(string $email, string $password): array
     {
         $ch = curl_init(self::$baseUrl . '/login.php');
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HEADER         => true,
             CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => json_encode(['username' => $username, 'password' => $password]),
+            CURLOPT_POSTFIELDS     => json_encode(['email' => $email, 'password' => $password]),
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
         ]);
         $raw = curl_exec($ch);
@@ -405,6 +405,56 @@ final class EndpointsHttpTest extends TestCase
         $this->assertSame('admin', $login['role']);
         [$status] = $this->request('POST', 'moderator_approve.php', '{"request_id":5002,"action":"approve"}', $session);
         $this->assertSame(403, $status);
+    }
+
+    public function testApprovedAdminAccountStoresTheApplicantEmail(): void
+    {
+        $modSession = $this->sessionFor(TestDatabase::addUser($this->pdo, 'moderator@test.com', 'moderator'));
+        $this->seedTwoPendingRequests();
+        $this->request('POST', 'moderator_approve.php', '{"request_id":5001,"action":"approve"}', $modSession);
+
+        $email = $this->pdo->query("SELECT email FROM users WHERE role = 'admin'")->fetchColumn();
+        $this->assertSame('alex.landlord@test.com', $email);
+    }
+
+    public function testSignedUpUserLogsInByEmailAndGetsASession(): void
+    {
+        [$status, $registered] = $this->postJson(
+            'register.php', json_encode(['username' => 'testuser1', 'email' => 'testuser1@test.com', 'password' => 'TestUser123!']), null
+        );
+        $this->assertSame(200, $status);
+        $this->assertTrue($registered['success']);
+        $this->assertSame('testuser1@test.com', $this->pdo->query("SELECT email FROM users WHERE username = 'testuser1'")->fetchColumn());
+
+        [$login, $session] = $this->login('TestUser1@test.com', 'TestUser123!');
+
+        $this->assertTrue($login['success']);
+        $this->assertSame('user', $login['role']);
+        $this->assertNotNull($session);
+        [$locationsStatus] = $this->request('GET', 'get_approved_locations.php', null, $session);
+        $this->assertSame(403, $locationsStatus);
+    }
+
+    public function testSignUpRejectsADuplicateEmail(): void
+    {
+        $body = json_encode(['username' => 'testuser1', 'email' => 'testuser1@test.com', 'password' => 'TestUser123!']);
+        $this->postJson('register.php', $body, null);
+
+        [, $json] = $this->postJson('register.php', json_encode(['username' => 'other', 'email' => 'testuser1@test.com', 'password' => 'TestUser123!']), null);
+
+        $this->assertFalse($json['success']);
+        $this->assertSame('Username or Email already exists.', $json['error']);
+    }
+
+    public function testWrongPasswordIsRejectedWithoutASession(): void
+    {
+        TestDatabase::addUser($this->pdo, 'moderator@test.com', 'moderator');
+
+        [$login, $session] = $this->login('moderator@test.com', 'WrongPassword1!');
+
+        $this->assertFalse($login['success']);
+        $this->assertSame('Invalid username or password.', $login['error']);
+        $this->assertNull($session);
     }
 
     public function testPendingApplicantCannotLogInYet(): void
