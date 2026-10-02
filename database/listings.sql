@@ -14,19 +14,9 @@ CREATE TABLE IF NOT EXISTS listings (
     KEY idx_listings_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Normalize category names left by earlier search/filter prototypes. These are the same values
--- accepted by the Create Listing flow and this statement is safe to run repeatedly.
-UPDATE listings
-   SET category = CASE category
-       WHEN 'Books' THEN 'Textbooks'
-       WHEN 'Electronics' THEN 'Tech & Electronics'
-       WHEN 'Furniture' THEN 'Dorm Living'
-       WHEN 'Clothing' THEN 'Clothing & Gear'
-       ELSE category
-   END
- WHERE category IN ('Books', 'Electronics', 'Furniture', 'Clothing');
-
-INSERT INTO listings (listing_id, name, price, `condition`, image_url, category, status) VALUES
+-- Add only missing fixtures. Existing rows are deliberately left unchanged because the shared
+-- development database can contain listings created by other task cards and testers.
+INSERT IGNORE INTO listings (listing_id, name, price, `condition`, image_url, category, status) VALUES
     (91001, 'Calculus Textbook',               35.00, 'Good',       'uploads/calculus-textbook.jpg',   'Textbooks',   'active'),
     (91002, 'Calculus Workbook',               20.00, 'Like New',   'uploads/calculus-workbook.jpg',   'Textbooks',   'active'),
     (91003, 'Desk Lamp',                       15.00, 'Good',       'uploads/desk-lamp.jpg',           'Dorm Living', 'active'),
@@ -36,11 +26,4 @@ INSERT INTO listings (listing_id, name, price, `condition`, image_url, category,
     (91007, 'Campbell Biology',                55.00, 'Acceptable', 'uploads/campbell-biology.jpg',    'Textbooks',   'active'),
     (91008, 'Organic Chemistry Textbook',      50.00, 'Good',       'uploads/organic-chemistry.jpg',   'Textbooks',   'active'),
     (91009, 'Introduction to Algorithms',      40.00, 'Like New',   'uploads/intro-algorithms.jpg',    'Textbooks',   'active'),
-    (91010, 'Dorm Fridge',                     80.00, 'Good',       'uploads/dorm-fridge.jpg',         'Dorm Living', 'active')
-ON DUPLICATE KEY UPDATE
-    name = VALUES(name),
-    price = VALUES(price),
-    `condition` = VALUES(`condition`),
-    image_url = VALUES(image_url),
-    category = VALUES(category),
-    status = VALUES(status);
+    (91010, 'Dorm Fridge',                     80.00, 'Good',       'uploads/dorm-fridge.jpg',         'Dorm Living', 'active');

@@ -17,6 +17,16 @@ const MAX_QUERY_LENGTH = 50;
 
 require_once __DIR__ . '/../listing/lib/listing_validation.php';
 
+// Earlier marketplace prototypes stored shorter labels. Keep those rows searchable without
+// rewriting shared development data; API clients always receive the canonical Create Listing label.
+const CATEGORY_STORAGE_ALIASES = [
+    'Textbooks' => ['Textbooks', 'Books'],
+    'Tech & Electronics' => ['Tech & Electronics', 'Electronics'],
+    'Dorm Living' => ['Dorm Living', 'Furniture'],
+    'Clothing & Gear' => ['Clothing & Gear', 'Clothing'],
+    'Other' => ['Other'],
+];
+
 function respond(int $status, array $payload) {
     http_response_code($status);
     echo json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -30,6 +40,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 // --- INPUT VALIDATION ---
 if (isset($_GET['q']) && !is_string($_GET['q'])) {
     respond(400, ["success" => false, "error" => "Search query must be text."]);
+}
+
+function canonical_category(string $storedCategory): string {
+    foreach (CATEGORY_STORAGE_ALIASES as $canonical => $aliases) {
+        if (in_array($storedCategory, $aliases, true)) {
+            return $canonical;
+        }
+    }
+    return $storedCategory;
 }
 $query = isset($_GET['q']) ? trim($_GET['q']) : '';
 
@@ -72,6 +91,15 @@ if ($categoryInput !== '') {
     }
 }
 
+$storedCategories = [];
+foreach ($categories as $category) {
+    foreach (CATEGORY_STORAGE_ALIASES[$category] as $storedCategory) {
+        if (!in_array($storedCategory, $storedCategories, true)) {
+            $storedCategories[] = $storedCategory;
+        }
+    }
+}
+
 // --- DATABASE CONNECTION CONFIGURATION ---
 $db_host = 'localhost';
 $db_name = 'cse442_2026_fall_team_j_db';
@@ -103,11 +131,11 @@ try {
         array_push($parameters, $startsWith, $wordStartsWith, $startsWith);
     }
 
-    if (count($categories) > 0) {
-        $placeholders = implode(', ', array_fill(0, count($categories), '?'));
+    if (count($storedCategories) > 0) {
+        $placeholders = implode(', ', array_fill(0, count($storedCategories), '?'));
         $sql .= " AND category IN ($placeholders)";
-        $types .= str_repeat('s', count($categories));
-        array_push($parameters, ...$categories);
+        $types .= str_repeat('s', count($storedCategories));
+        array_push($parameters, ...$storedCategories);
     }
 
     $sql .= ' ORDER BY listing_id';
@@ -129,7 +157,7 @@ try {
             "price"      => number_format((float) $row['price'], 2, '.', ''),
             "condition"  => $row['condition'],
             "image_url"  => $row['image_url'],
-            "category"   => $row['category'],
+            "category"   => canonical_category($row['category']),
         ];
     }
 
