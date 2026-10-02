@@ -1,0 +1,451 @@
+/* Responsive create-listing screen shared by the Karavan web entry point. */
+.create-listing-page {
+  --listing-navy: #1f2f46;
+  --listing-cream: #f7f3ea;
+  --listing-blue: #6e87a0;
+  --listing-border: #d1d9e0;
+  --listing-error: #c72e30;
+  --listing-error-bg: #fceded;
+  --listing-white: #ffffff;
+
+  min-height: 100vh;
+  background: var(--listing-cream);
+  color: var(--listing-navy);
+  font-family: 'DM Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* sell.html doesn't load index.css, so drop the browser's default 8px body margin */
+body:has(.create-listing-page) {
+  margin: 0;
+}
+
+.create-listing-page *,
+.create-listing-page *::before,
+.create-listing-page *::after {
+  box-sizing: border-box;
+}
+
+.create-listing-page > .nav {
+  max-width: 1440px;
+  margin: 0 auto;
+  background: var(--listing-cream);
+}
+
+.create-listing-content {
+  width: 100%;
+  max-width: 1440px;
+  min-height: calc(100vh - 72px);
+  margin: 0 auto;
+  padding: 20px 40px 40px;
+  background: var(--listing-cream);
+}
+
+.create-listing-content h1 {
+  margin: 8px 0 0;
+  color: var(--listing-navy);
+  font: 700 30px/42px 'DM Sans', system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
+.listing-intro {
+  margin: 0 0 8px;
+  color: var(--listing-blue);
+  font-size: 15px;
+  line-height: 21px;
+}
+
+.listing-secondary-button,
+.listing-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font: 700 16px/normal 'DM Sans', system-ui, sans-serif;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.listing-secondary-button {
+  border: 1px solid var(--listing-navy);
+  background: var(--listing-white);
+  color: var(--listing-navy);
+}
+
+.listing-secondary-button:hover:not(:disabled) {
+  background: #f0ece4;
+}
+
+.manage-listings-button {
+  width: 180px;
+  min-height: 44px;
+  padding-block: 8px;
+}
+
+.manage-listings-button:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.listing-primary-button {
+  width: 210px;
+  border: 1px solid var(--listing-navy);
+  background: var(--listing-navy);
+  color: var(--listing-cream);
+}
+
+.listing-primary-button:hover:not(:disabled) {
+  background: #2b3d59;
+}
+
+.listing-primary-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.listing-validation-summary {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  margin: 8px 0;
+  padding: 10px 16px;
+  border: 1px solid var(--listing-error);
+  border-radius: 10px;
+  background: var(--listing-error-bg);
+  color: var(--listing-error);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.listing-form-card {
+  display: grid;
+  grid-template-columns: 350px minmax(0, 1fr);
+  gap: 32px;
+  min-height: 744px;
+  padding: 32px;
+  border: 1px solid var(--listing-border);
+  border-radius: 18px;
+  background: var(--listing-white);
+}
+
+.listing-photo-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.listing-label {
+  display: block;
+  color: var(--listing-navy);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.listing-photo-section > .listing-label {
+  color: var(--listing-blue);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.listing-photo-upload {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 500px;
+  padding: 20px;
+  border: 2px dashed var(--listing-border);
+  border-radius: 14px;
+  background: var(--listing-cream);
+  color: var(--listing-navy);
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.listing-photo-upload:hover {
+  border-color: var(--listing-blue);
+  background: #f1ede4;
+}
+
+.listing-photo-upload:focus-visible {
+  outline: none;
+  border-color: var(--listing-navy);
+  box-shadow: 0 0 0 3px rgba(31, 47, 70, 0.16);
+}
+
+.listing-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.listing-photo-upload-selected {
+  padding: 0;
+  border-style: solid;
+  background: #e9e4d9;
+}
+
+.listing-photo-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #e9e4d9;
+}
+
+.listing-photo-change {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(31, 47, 70, 0.92);
+  color: var(--listing-white);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.listing-photo-filename {
+  position: absolute;
+  right: 12px;
+  bottom: 55px;
+  left: 12px;
+  overflow: hidden;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--listing-navy);
+  font-size: 12px;
+  line-height: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listing-photo-plus {
+  font-size: 36px;
+  line-height: 50px;
+  font-weight: 400;
+}
+
+.listing-photo-title {
+  font-size: 18px;
+  line-height: 25px;
+  font-weight: 700;
+}
+
+.listing-photo-format,
+.listing-photo-help {
+  color: var(--listing-blue);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.listing-photo-help {
+  margin: 0;
+}
+
+.listing-photo-error {
+  margin: 0;
+  color: var(--listing-error);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+
+.listing-photo-section-error > .listing-label {
+  color: var(--listing-error);
+}
+
+.listing-photo-section-error .listing-photo-upload {
+  border-color: var(--listing-error);
+  background: var(--listing-error-bg);
+}
+
+.listing-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.listing-field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.listing-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.listing-control {
+  width: 100%;
+  height: 50px;
+  padding: 14px;
+  border: 1px solid var(--listing-border);
+  border-radius: 10px;
+  outline: none;
+  background: var(--listing-white);
+  color: var(--listing-navy);
+  font: 400 15px/21px 'DM Sans', system-ui, sans-serif;
+}
+
+.listing-control::placeholder {
+  color: var(--listing-blue);
+  opacity: 1;
+}
+
+select.listing-control:invalid {
+  color: var(--listing-blue);
+}
+
+select.listing-control option {
+  color: var(--listing-navy);
+}
+
+textarea.listing-control {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.listing-control:focus-visible {
+  border-color: var(--listing-navy);
+  box-shadow: 0 0 0 2px rgba(31, 47, 70, 0.14);
+}
+
+.listing-field-message {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.listing-field-error .listing-label {
+  color: var(--listing-error);
+}
+
+.listing-field-error .listing-control {
+  border: 2px solid var(--listing-error);
+  padding: 13px;
+}
+
+.listing-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.listing-actions .listing-secondary-button {
+  width: 160px;
+}
+
+@media (max-width: 768px) {
+  .create-listing-page {
+    background: var(--listing-white);
+  }
+
+  .create-listing-content {
+    min-height: calc(100vh - 88px);
+    padding: 20px 15px 24px;
+    background: var(--listing-white);
+  }
+
+  .manage-listings-button {
+    width: 100%;
+  }
+
+  .create-listing-content h1 {
+    margin-top: 4px;
+    font-size: 28px;
+    line-height: 39px;
+  }
+
+  .listing-intro {
+    margin-bottom: 0;
+  }
+
+  .listing-validation-summary {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .listing-form-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+  }
+
+  .listing-photo-upload {
+    height: 220px;
+    gap: 8px;
+  }
+
+  .listing-photo-plus {
+    font-size: 34px;
+    line-height: 48px;
+  }
+
+  .listing-photo-title {
+    font-size: 17px;
+    line-height: 24px;
+  }
+
+  .listing-photo-format,
+  .listing-photo-help,
+  .listing-label {
+    font-size: 12px;
+    line-height: 17px;
+  }
+
+  .listing-field-row {
+    display: contents;
+  }
+
+  .listing-fields {
+    gap: 10px;
+  }
+
+  .listing-actions {
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+
+  .listing-actions .listing-secondary-button,
+  .listing-primary-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 390px) {
+  .create-listing-content {
+    padding-inline: 12px;
+  }
+}
