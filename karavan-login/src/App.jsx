@@ -9,6 +9,13 @@ function App() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
+    const [isRegistering, setIsRegistering] = useState(false);
+
+    const registerSuccess = () => {
+        setIsRegistering(false);
+        setPassword('');
+        setMessage('Account successfully created! Please log in.');
+    };
 
     const loginSuccess = () => {
         setMessage('Login successful!');
@@ -17,7 +24,7 @@ function App() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setMessage('Logging in...');
+        setMessage(isRegistering ? 'Creating account...' : 'Logging in...');
 
         const lowerUser = username.trim().toLowerCase();
         const isDemoAccount = lowerUser === DEMO_EMAIL && password === DEMO_PASSWORD;
@@ -34,7 +41,15 @@ function App() {
                 // Look up the user inside the simulated local storage database array
                 const existingUser = currentTable.find(u => u.username.toLowerCase() === lowerUser);
 
-                if (isDemoAccount ||
+                if (isRegistering) {
+                    if (existingUser) {
+                        setMessage('Username already exists.');
+                    } else {
+                        const newRow = { id: currentTable.length + 1, username: username.trim(), password_hash: '(local preview)' };
+                        localStorage.setItem('cse442_users_table', JSON.stringify([...currentTable, newRow]));
+                        registerSuccess();
+                    }
+                } else if (isDemoAccount ||
                     (lowerUser === 'admin' && password === 'password123') ||
                     (lowerUser === 'liveuser777' && password === 'SecretPass777')) {
                     loginSuccess();
@@ -48,6 +63,21 @@ function App() {
         }
 
         // 2. PRODUCTION MODE FOR THE PROFESSOR
+        if (isRegistering) {
+            try {
+                const response = await fetch('./register.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                });
+                const data = await response.json();
+                if (data.success) registerSuccess();
+                else setMessage(data.error || 'An error occurred.');
+            } catch (error) {
+                setMessage('Could not connect to database.');
+            }
+            return;
+        }
         if (isDemoAccount) {
             loginSuccess();
             return;
@@ -71,7 +101,7 @@ function App() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', fontFamily: 'sans-serif', margin: '20px' }}>
             <div style={{ padding: '40px', maxWidth: '350px', width: '100%', backgroundColor: '#fff', color: '#000', borderRadius: '8px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
                 <h1 style={{ textAlign: 'center', color: '#333', marginBottom: '20px', fontSize: '24px' }}>
-                    Karavan Login
+                    {isRegistering ? 'Karavan Register' : 'Karavan Login'}
                 </h1>
 
                 {message && (
@@ -89,11 +119,21 @@ function App() {
                         <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#333' }}>Password:</label>
                         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: '10px', boxSizing: 'border-box', border: '1px solid #ccc', borderRadius: '4px' }} required />
                     </div>
-                    <button type="submit" style={{ padding: '12px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px' }}>
-                        Login
+                    <button type="submit" style={{ padding: '12px', backgroundColor: isRegistering ? '#28a745' : '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px' }}>
+                        {isRegistering ? 'Register' : 'Login'}
                     </button>
                 </form>
                 <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#666' }}>
+                    {isRegistering ? 'Already have an account?' : "Don't have an account?"}{' '}
+                    <button
+                        type="button"
+                        onClick={() => { setIsRegistering(!isRegistering); setMessage(''); }}
+                        style={{ background: 'none', border: 0, padding: 0, font: 'inherit', color: '#007bff', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}
+                    >
+                        {isRegistering ? 'Login here' : 'Register here'}
+                    </button>
+                </p>
+                <p style={{ textAlign: 'center', marginTop: '10px', fontSize: '14px', color: '#666' }}>
                     Property manager or community business?{' '}
                     <a href={pathFor('admin-register')} style={{ color: '#007bff', fontWeight: 'bold' }}>Apply as a Community Partner</a>
                 </p>
