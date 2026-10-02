@@ -426,4 +426,135 @@ final class EndpointsHttpTest extends TestCase
         $this->assertSame(403, $status);
         $this->assertSame(self::FORBIDDEN, $json);
     }
+
+    private function postJson(string $path, string $json, ?string $sessionId): array
+    {
+        return $this->request('POST', $path, $json, $sessionId, ['Content-Type: application/json']);
+    }
+
+    private function locationCount(): int
+    {
+        return (int) $this->pdo->query('SELECT COUNT(*) FROM approved_locations')->fetchColumn();
+    }
+
+    // Approved locations backend, Tests 1-3: an admin who signed in on the normal login page
+    public function testAdminCanListAddAndRemoveLocationsAfterLoggingIn(): void
+    {
+        TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin');
+        [$login, $session] = $this->login('alex.landlord@test.com', 'Password123!');
+        $this->assertSame('admin', $login['role']);
+
+        [$addStatus, $added, $addRaw] = $this->postJson(
+            'add_approved_location.php', '{"lat":42.9612,"lng":-78.8328,"label":"Capen Hall Main Entrance"}', $session
+        );
+        $this->assertSame(201, $addStatus);
+        $locationId = $added['location_id'];
+        $this->assertSame('{"success":true,"location_id":' . $locationId . '}', $addRaw);
+        $row = $this->pdo->query("SELECT * FROM approved_locations WHERE id = $locationId")->fetch();
+        $this->assertSame('Capen Hall Main Entrance', $row['label']);
+        $this->assertEqualsWithDelta(42.9612, (float) $row['lat'], 1e-9);
+        $this->assertEqualsWithDelta(-78.8328, (float) $row['lng'], 1e-9);
+
+        [$listStatus, , $listRaw, $listType] = $this->request('GET', 'get_approved_locations.php', null, $session);
+        $this->assertSame(200, $listStatus);
+        $this->assertSame('application/json', $listType);
+        $this->assertSame(
+            '{"success":true,"locations":[{"location_id":' . $locationId . ',"lat":42.9612,"lng":-78.8328,"label":"Capen Hall Main Entrance"}]}',
+            $listRaw
+        );
+
+        [$removeStatus, , $removeRaw] = $this->postJson('remove_approved_location.php', '{"location_id":' . $locationId . '}', $session);
+        $this->assertSame(200, $removeStatus);
+        $this->assertSame('{"success":true,"location_id":' . $locationId . '}', $removeRaw);
+        $this->assertSame(0, $this->locationCount());
+
+        [, $after] = $this->request('GET', 'get_approved_locations.php', null, $session);
+        $this->assertSame([], $after['locations']);
+    }
+
+    public function testApprovedApplicantCanManageLocationsButPendingApplicantCannotLogIn(): void
+    {
+        $modSession = $this->sessionFor(TestDatabase::addUser($this->pdo, 'moderator@test.com', 'moderator'));
+        $this->seedTwoPendingRequests();
+        $this->assertNull($this->login('alex.landlord@test.com', 'Landlord123!')[1]);
+
+        $this->postJson('moderator_approve.php', '{"request_id":5001,"action":"approve"}', $modSession);
+        [$login, $session] = $this->login('alex.landlord@test.com', 'Landlord123!');
+
+        $this->assertSame('admin', $login['role']);
+        [$listStatus, $list] = $this->request('GET', 'get_approved_locations.php', null, $session);
+        $this->assertSame([200, ['success' => true, 'locations' => []]], [$listStatus, $list]);
+        [$addStatus] = $this->postJson('add_approved_location.php', '{"lat":43.0012,"lng":-78.7861,"label":"Student Union Lobby"}', $session);
+        $this->assertSame(201, $addStatus);
+        [$modStatus] = $this->request('GET', 'get_approved_locations.php', null, $modSession);
+        $this->assertSame(403, $modStatus, 'Moderators approve admins but do not manage locations.');
+    }
+
+    public static function nonAdminRoles(): array
+    {
+        return ['regular user' => ['user'], 'moderator' => ['moderator']];
+    }
+
+    // Approved locations backend, Test 4
+    #[\PHPUnit\Framework\Attributes\DataProvider('nonAdminRoles')]
+    public function testNonAdminGets403FromEveryLocationEndpoint(string $role): void
+    {
+        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'testuser@test.com', $role));
+        $locationId = TestDatabase::addLocation($this->pdo, 42.9612, -78.8328, 'Capen Hall Main Entrance');
+        $forbidden = '{"success":false,"error":"You do not have permission to perform this action."}';
+
+        [$getStatus, , $getRaw] = $this->request('GET', 'get_approved_locations.php', null, $session);
+        [$addStatus, , $addRaw] = $this->postJson('add_approved_location.php', '{"lat":42.9612,"lng":-78.8328,"label":"Test"}', $session);
+        [$removeStatus, , $removeRaw] = $this->postJson('remove_approved_location.php', '{"location_id":' . $locationId . '}', $session);
+
+        $this->assertSame([403, $forbidden], [$getStatus, $getRaw]);
+        $this->assertSame([403, $forbidden], [$addStatus, $addRaw]);
+        $this->assertSame([403, $forbidden], [$removeStatus, $removeRaw]);
+        $this->assertSame(1, $this->locationCount(), 'Nothing is added or removed.');
+    }
+
+    public function testLocationEndpointsReturn403WhenNotLoggedIn(): void
+    {
+        [$getStatus, $getJson] = $this->request('GET', 'get_approved_locations.php');
+        [$addStatus, $addJson] = $this->postJson('add_approved_location.php', '{"lat":42.9612,"lng":-78.8328,"label":"Test"}', null);
+        [$removeStatus, $removeJson] = $this->postJson('remove_approved_location.php', '{"location_id":1}', null);
+
+        $this->assertSame([403, self::FORBIDDEN], [$getStatus, $getJson]);
+        $this->assertSame([403, self::FORBIDDEN], [$addStatus, $addJson]);
+        $this->assertSame([403, self::FORBIDDEN], [$removeStatus, $removeJson]);
+        $this->assertSame(0, $this->locationCount());
+    }
+
+    // Approved locations backend, Test 5
+    public function testInvalidCoordinatesReturn400AndCreateNoRow(): void
+    {
+        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin'));
+
+        [$status, , $raw] = $this->postJson('add_approved_location.php', '{"lat":999,"lng":-78.8328,"label":"InvalidSpot"}', $session);
+
+        $this->assertSame(400, $status);
+        $this->assertSame('{"success":false,"error":"Invalid location coordinates."}', $raw);
+        $this->assertSame(0, $this->locationCount());
+    }
+
+    public function testRemovingAMissingLocationReturns404(): void
+    {
+        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin'));
+
+        [$status, $json] = $this->postJson('remove_approved_location.php', '{"location_id":424242}', $session);
+
+        $this->assertSame(404, $status);
+        $this->assertSame(['success' => false, 'error' => 'Location not found.'], $json);
+    }
+
+    public function testLocationEndpointsRejectTheWrongMethod(): void
+    {
+        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin'));
+
+        [$getStatus] = $this->postJson('get_approved_locations.php', '{}', $session);
+        [$addStatus] = $this->request('GET', 'add_approved_location.php', null, $session);
+        [$removeStatus] = $this->request('GET', 'remove_approved_location.php', null, $session);
+
+        $this->assertSame([405, 405, 405], [$getStatus, $addStatus, $removeStatus]);
+    }
 }

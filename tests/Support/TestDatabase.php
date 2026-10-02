@@ -41,8 +41,27 @@ final class TestDatabase
         );
         // Mirrors AUTO_INCREMENT=5001 in the MySQL migration.
         $pdo->exec("INSERT INTO sqlite_sequence (name, seq) VALUES ('admin_requests', 5000)");
+        // Mirrors sql/002_approved_locations.sql.
+        $pdo->exec('PRAGMA foreign_keys = ON');
+        $pdo->exec(
+            "CREATE TABLE approved_locations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                lat REAL NOT NULL,
+                lng REAL NOT NULL,
+                label TEXT NOT NULL,
+                created_by INTEGER NULL REFERENCES users (id) ON DELETE SET NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )"
+        );
 
         return $pdo;
+    }
+
+    public static function addLocation(PDO $pdo, float $lat, float $lng, string $label, ?int $createdBy = null): int
+    {
+        $stmt = $pdo->prepare('INSERT INTO approved_locations (lat, lng, label, created_by) VALUES (?, ?, ?, ?)');
+        $stmt->execute([$lat, $lng, $label, $createdBy]);
+        return (int) $pdo->lastInsertId();
     }
 
     public static function addUser(PDO $pdo, string $username, string $role = 'user'): int

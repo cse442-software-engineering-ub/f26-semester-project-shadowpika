@@ -11,7 +11,7 @@ export function currentRoute(location = window.location) {
 }
 
 export function appBase(location = window.location) {
-    let path = location.pathname.replace(/index\.html$/, '');
+    let path = location.pathname.replace(/[^/]+\.html$/, '');
     for (const route of ROUTES) {
         path = path.replace(new RegExp(`/${route}/?$`), '/');
     }

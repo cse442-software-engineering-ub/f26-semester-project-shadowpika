@@ -1,11 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import NavBar from './NavBar.jsx';
 import './ProductSearch.css';
-import { searchLocalListings } from './localListings.js';
+import { buildSearchUrl, searchLocalListings } from './localListings.js';
 
 const MAX_QUERY_LENGTH = 50;
 const SEARCH_DELAY_MS = 300;
 const LOCAL_LISTING_KEY = 'karavan:last-created-listing';
+const CATEGORY_OPTIONS = [
+    'Textbooks',
+    'Tech & Electronics',
+    'Dorm Living',
+    'Clothing & Gear',
+    'Other',
+];
 
 // Emoji, pictographs, flags, and the joiners/variation selectors used to build them.
 // Kept in sync with the pattern in api/search_listings.php.
@@ -96,9 +103,12 @@ function BookCard({ book, isOwner = false }) {
 function ProductSearch() {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
-    const [status, setStatus] = useState('idle'); // idle | loading | done | error
+    const [status, setStatus] = useState('loading'); // loading | done | error
     const [error, setError] = useState('');
     const [inputNotice, setInputNotice] = useState('');
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [draftCategories, setDraftCategories] = useState([]);
+    const [appliedCategories, setAppliedCategories] = useState([]);
     const [publishedListing, setPublishedListing] = useState(null);
     const [publishedStatus, setPublishedStatus] = useState('idle');
     const requestId = useRef(0);
@@ -142,33 +152,26 @@ function ProductSearch() {
         };
     }, []);
 
-    const runSearch = async (rawTerm) => {
+    const runSearch = useCallback(async (rawTerm, categories) => {
         const term = rawTerm.trim();
         const id = ++requestId.current;
-
-        if (!term) {
-            setResults([]);
-            setStatus('idle');
-            setError('');
-            return;
-        }
 
         setStatus('loading');
         setError('');
 
         // 1. LOCAL PREVIEW MODE
         if (isLocalPreview()) {
-            setResults(searchLocalListings(term));
+            setResults(searchLocalListings(term, categories));
             setStatus('done');
             return;
         }
 
         // 2. PRODUCTION MODE
         try {
-            const response = await fetch(`./api/search_listings.php?q=${encodeURIComponent(term)}`);
+            const response = await fetch(buildSearchUrl(term, categories));
             const data = await response.json();
             if (id !== requestId.current) return; // a newer search has started
-            if (data.success) {
+            if (response.ok && data.success) {
                 setResults(data.results);
                 setStatus('done');
             } else {
@@ -182,13 +185,13 @@ function ProductSearch() {
             setError('Could not connect to the server.');
             setStatus('error');
         }
-    };
+    }, []);
 
-    // Search as the user types, once they pause.
+    // Load active listings on entry and refresh after the user pauses typing or applies categories.
     useEffect(() => {
-        const timer = setTimeout(() => runSearch(query), SEARCH_DELAY_MS);
+        const timer = setTimeout(() => runSearch(query, appliedCategories), SEARCH_DELAY_MS);
         return () => clearTimeout(timer);
-    }, [query]);
+    }, [query, appliedCategories, runSearch]);
 
     const handleChange = (e) => {
         const typed = e.target.value;
@@ -207,97 +210,198 @@ function ProductSearch() {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        runSearch(query);
+        runSearch(query, appliedCategories);
+    };
+
+    const toggleFilters = () => {
+        setFiltersOpen((isOpen) => {
+            if (!isOpen) setDraftCategories(appliedCategories);
+            return !isOpen;
+        });
+    };
+
+    const toggleDraftCategory = (category) => {
+        setDraftCategories((current) => current.includes(category)
+            ? current.filter((selected) => selected !== category)
+            : [...current, category]);
+    };
+
+    const applyFilters = () => {
+        setAppliedCategories([...draftCategories]);
+    };
+
+    const clearFilters = () => {
+        setDraftCategories([]);
+        setAppliedCategories([]);
     };
 
     const term = query.trim();
     const charCount = Array.from(query).length;
+    const filterStatus = appliedCategories.length === 0
+        ? 'No Filters Active'
+        : `Categories: ${appliedCategories.join(', ')}`;
+    const publishedResultVisible = publishedListing
+        && results.some((listing) => String(listing.listing_id) === String(publishedListing.listing_id));
+    const marketplaceResults = publishedResultVisible
+        ? results.filter((listing) => String(listing.listing_id) !== String(publishedListing.listing_id))
+        : results;
 
     return (
         <div className="ps-page">
             <NavBar />
             <main className="ps-frame">
-                <h1 className="ps-title">Find what you need</h1>
-                <p className="ps-subtitle">Buy, sell, and support classmates directly on campus.</p>
-
-                <form className="ps-search" onSubmit={handleSearch} role="search">
-                    <button type="button" className="ps-filter-btn" aria-label="Filters">
-                        <FilterIcon />
-                    </button>
-                    <input
-                        type="text"
-                        className="ps-search-input"
-                        placeholder="Search textbooks, tech, dorm gear..."
-                        value={query}
-                        onChange={handleChange}
-                        maxLength={MAX_QUERY_LENGTH * 2}
-                        aria-label="Search products"
-                        aria-describedby="ps-search-help"
-                    />
-                    <button type="submit" className="ps-search-btn" aria-label="Search">
-                        <SearchIcon />
-                    </button>
-                </form>
-                <div id="ps-search-help" className="ps-search-help" aria-live="polite">
-                    <span className="ps-search-notice">{inputNotice}</span>
-                    {charCount > 0 && <span className="ps-search-count">{charCount}/{MAX_QUERY_LENGTH}</span>}
-                </div>
-
-                {publishedStatus !== 'idle' && (
-                    <section className="ps-published-section" aria-live="polite">
-                        {publishedStatus === 'loading' && (
-                            <div className="ps-published-banner">Loading your newly published listing…</div>
-                        )}
-                        {publishedStatus === 'error' && (
-                            <div className="ps-published-banner ps-published-error">
-                                Your listing was published, but its marketplace card could not be loaded.
+                <div className={`ps-marketplace-layout${filtersOpen ? ' filters-open' : ''}`}>
+                    <div className="ps-marketplace-main">
+                        <div className="ps-search-row">
+                            <form className="ps-search" onSubmit={handleSearch} role="search">
+                                <button
+                                    type="button"
+                                    className={`ps-filter-btn${filtersOpen ? ' is-active' : ''}`}
+                                    aria-label={filtersOpen ? 'Close filters' : 'Open filters'}
+                                    aria-expanded={filtersOpen}
+                                    aria-controls="ps-filters-panel"
+                                    onClick={toggleFilters}
+                                >
+                                    <FilterIcon />
+                                </button>
+                                <input
+                                    type="text"
+                                    className="ps-search-input"
+                                    placeholder="Search textbooks, tech, dorm gear..."
+                                    value={query}
+                                    onChange={handleChange}
+                                    maxLength={MAX_QUERY_LENGTH * 2}
+                                    aria-label="Search products"
+                                    aria-describedby="ps-search-help"
+                                />
+                                <button type="submit" className="ps-search-btn" aria-label="Search">
+                                    <SearchIcon />
+                                </button>
+                            </form>
+                            <div className={`ps-filter-status${appliedCategories.length > 0 ? ' is-active' : ''}`} aria-live="polite">
+                                {filterStatus}
                             </div>
-                        )}
-                        {publishedStatus === 'done' && publishedListing && (
-                            <>
-                                <div className="ps-published-banner">
-                                    <span aria-hidden="true">✓</span> Your listing was published.
-                                </div>
-                                <div className="ps-published-header">
-                                    <div>
-                                        <h2>Active listings</h2>
-                                        <p>Newest campus listings, including your newly published item.</p>
-                                    </div>
-                                    <span>1 item</span>
-                                </div>
-                                <div className="ps-book-grid ps-published-grid">
-                                    <BookCard book={publishedListing} isOwner />
-                                </div>
-                            </>
-                        )}
-                    </section>
-                )}
-
-                {status !== 'idle' && (
-                    <section className="ps-results" aria-live="polite">
-                        <div className="ps-results-header">
-                            <h2 className="ps-results-label">Books</h2>
-                            {status === 'done' && (
-                                <span className="ps-results-count">
-                                    {results.length} {results.length === 1 ? 'result' : 'results'} for &ldquo;{term}&rdquo;
-                                </span>
-                            )}
+                        </div>
+                        <div id="ps-search-help" className="ps-search-help" aria-live="polite">
+                            <span className="ps-search-notice">{inputNotice}</span>
+                            {charCount > 0 && <span className="ps-search-count">{charCount}/{MAX_QUERY_LENGTH}</span>}
                         </div>
 
-                        {status === 'loading' && <p className="ps-results-message">Searching...</p>}
-                        {status === 'error' && <p className="ps-results-message ps-results-error">{error}</p>}
-                        {status === 'done' && results.length === 0 && (
-                            <p className="ps-results-message">No books found for &ldquo;{term}&rdquo;. Try another title or subject.</p>
+                        {publishedStatus !== 'idle' && (
+                            <section className="ps-published-section" aria-live="polite">
+                                {publishedStatus === 'loading' && (
+                                    <div className="ps-published-banner">Loading your newly published listing…</div>
+                                )}
+                                {publishedStatus === 'error' && (
+                                    <div className="ps-published-banner ps-published-error">
+                                        Your listing was published, but its marketplace card could not be loaded.
+                                    </div>
+                                )}
+                                {publishedStatus === 'done' && publishedListing && (
+                                    <>
+                                        <div className="ps-published-banner">
+                                            <span aria-hidden="true">✓</span> Your listing was published.
+                                        </div>
+                                        {publishedResultVisible && (
+                                            <div className="ps-book-grid ps-published-grid">
+                                                <BookCard book={publishedListing} isOwner />
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </section>
                         )}
-                        {status === 'done' && results.length > 0 && (
-                            <div className="ps-book-grid">
-                                {results.map((book) => (
-                                    <BookCard key={book.listing_id} book={book} />
-                                ))}
+
+                        <section className="ps-results" aria-live="polite" aria-busy={status === 'loading'}>
+                            <div className="ps-results-header">
+                                <div>
+                                    <h2 className="ps-results-label">Active Listings</h2>
+                                    <p className="ps-results-context">
+                                        {term ? `Matches for “${term}”` : 'Showing active items on campus'}
+                                    </p>
+                                </div>
+                                {status === 'done' && (
+                                    <span className="ps-results-count">
+                                        {results.length} {results.length === 1 ? 'item' : 'items'} found
+                                    </span>
+                                )}
                             </div>
-                        )}
-                    </section>
-                )}
+
+                            {status === 'loading' && <p className="ps-results-message">Loading active listings...</p>}
+                            {status === 'error' && <p className="ps-results-message ps-results-error">{error}</p>}
+                            {status === 'done' && results.length === 0 && (
+                                <div className="ps-empty-state">
+                                    <h3>No Active Listings</h3>
+                                    <p>Showing no matches on campus</p>
+                                </div>
+                            )}
+                            {status === 'done' && results.length > 0 && marketplaceResults.length > 0 && (
+                                <div className="ps-book-grid">
+                                    {marketplaceResults.map((book) => (
+                                        <BookCard key={book.listing_id} book={book} />
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+                    </div>
+
+                    {filtersOpen && (
+                        <aside id="ps-filters-panel" className="ps-filters-panel" aria-label="Filters">
+                            <div className="ps-filters-header">
+                                <h2><FilterIcon /> Filters</h2>
+                                <div className="ps-filter-header-actions">
+                                    <button type="button" className="ps-clear-filters" onClick={clearFilters}>Clear All</button>
+                                    <button
+                                        type="button"
+                                        className="ps-close-filters"
+                                        aria-label="Close filters panel"
+                                        onClick={() => setFiltersOpen(false)}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            </div>
+
+                            <fieldset className="ps-filter-group">
+                                <legend>Category</legend>
+                                {CATEGORY_OPTIONS.map((category) => (
+                                    <label className="ps-category-option" key={category}>
+                                        <input
+                                            type="checkbox"
+                                            checked={draftCategories.includes(category)}
+                                            onChange={() => toggleDraftCategory(category)}
+                                        />
+                                        <span>{category}</span>
+                                    </label>
+                                ))}
+                            </fieldset>
+
+                            <fieldset className="ps-filter-group ps-placeholder-filter" disabled>
+                                <legend>Price Range</legend>
+                                <input type="range" min="0" max="100" value="50" readOnly aria-label="Price range" />
+                                <div className="ps-price-values"><span>$10.00</span><span>to</span><span>$75.00</span></div>
+                            </fieldset>
+
+                            <fieldset className="ps-filter-group ps-placeholder-filter" disabled>
+                                <legend>Condition</legend>
+                                <div className="ps-condition-options">
+                                    <button type="button" disabled>New</button>
+                                    <button type="button" className="is-selected" disabled>Like New</button>
+                                    <button type="button" disabled>Used</button>
+                                </div>
+                            </fieldset>
+
+                            <fieldset className="ps-filter-group ps-placeholder-filter" disabled>
+                                <legend>Sort By</legend>
+                                <label><input type="radio" name="sort-placeholder" checked readOnly /> Newest Listings</label>
+                                <label><input type="radio" name="sort-placeholder" readOnly /> Price: Low to High</label>
+                                <label><input type="radio" name="sort-placeholder" readOnly /> Price: High to Low</label>
+                            </fieldset>
+
+                            <button type="button" className="ps-apply-filters" onClick={applyFilters}>Apply Filters</button>
+                        </aside>
+                    )}
+                </div>
             </main>
         </div>
     );
