@@ -31,7 +31,7 @@ describe('AdminRegister page', () => {
 
         expect(screen.getAllByTestId('karavan-logo')).toHaveLength(1);
         expect(screen.getAllByRole('heading', { name: 'Register as a Community Partner' })).toHaveLength(1);
-        expect(screen.getAllByRole('button', { name: /continue with university sso/i })).toHaveLength(1);
+        expect(screen.queryByRole('button', { name: /sso/i })).not.toBeInTheDocument();
         for (const label of ['Full Name', 'Business / Community Name', 'Email Address', 'Phone Number', 'Password', 'Confirm Password']) {
             expect(screen.getAllByLabelText(label, { exact: true })).toHaveLength(1);
         }

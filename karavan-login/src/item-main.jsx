@@ -1,9 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import Settings from './pages/Settings.jsx'
+import ItemDetails from './ItemDetails.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <Settings />
+    <ItemDetails />
   </StrictMode>,
 )

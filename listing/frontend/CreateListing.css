@@ -15,6 +15,11 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* sell.html doesn't load index.css, so drop the browser's default 8px body margin */
+body:has(.create-listing-page) {
+  margin: 0;
+}
+
 .create-listing-page *,
 .create-listing-page *::before,
 .create-listing-page *::after {
@@ -24,6 +29,7 @@
 .create-listing-page > .nav {
   max-width: 1440px;
   margin: 0 auto;
+  background: var(--listing-cream);
 }
 
 .create-listing-content {
