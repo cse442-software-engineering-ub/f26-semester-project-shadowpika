@@ -83,7 +83,7 @@ if ($categoryInput !== '') {
             continue;
         }
         if (!in_array($category, LISTING_ALLOWED_CATEGORIES, true)) {
-            respond(400, ["success" => false, "error" => "Unsupported category: " . $category . "."]);
+            respond(400, ["success" => false, "error" => "One or more selected categories are invalid."]);
         }
         if (!in_array($category, $categories, true)) {
             $categories[] = $category;

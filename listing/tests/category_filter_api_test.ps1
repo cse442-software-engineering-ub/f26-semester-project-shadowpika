@@ -125,7 +125,8 @@ Write-Host 'PASS'
 Write-Host 'Test 6: unsupported categories are rejected'
 $invalid = Invoke-SearchRequest -Url "${endpoint}?categories=$(Encode-QueryValue 'Vehicles')" -ExpectedStatus 400
 Assert-True -Condition (-not [bool] $invalid.success) -Message 'The invalid category request unexpectedly succeeded.'
-Assert-True -Condition ([string] $invalid.error -match 'Unsupported category') -Message 'The invalid category error was not user-safe.'
+Assert-Equal -Expected 'One or more selected categories are invalid.' -Actual ([string] $invalid.error) `
+    -Message 'The invalid category error is incorrect.'
 Write-Host 'PASS'
 
 Write-Host 'Test 7: existing query validation is preserved'
