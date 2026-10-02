@@ -1,0 +1,1 @@
+import{r as e,t}from"./jsx-runtime-aUCHvG4-.js";import{t as n}from"./NavBar-CO2aEYeg.js";/* empty css                      */e();var r=t();function i({title:e}){return(0,r.jsxs)(`div`,{className:`ps-page`,children:[(0,r.jsx)(n,{}),(0,r.jsx)(`main`,{className:`ps-frame`,children:(0,r.jsx)(`h1`,{className:`ps-title`,children:e})})]})}export{i as t};

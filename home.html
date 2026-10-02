@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=League+Spartan:wght@400;600;700&display=swap" rel="stylesheet" />
+    <title>Karavan - Home</title>
+    <script type="module" crossorigin src="./assets/home-DlLakfip.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/jsx-runtime-aUCHvG4-.js">
+    <link rel="modulepreload" crossorigin href="./assets/NavBar-CO2aEYeg.js">
+    <link rel="modulepreload" crossorigin href="./assets/PlaceholderPage-DF6IhdKg.js">
+    <link rel="stylesheet" crossorigin href="./assets/NavBar-pP62phn7.css">
+    <link rel="stylesheet" crossorigin href="./assets/ProductSearch-Bh527n_9.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      function getCookies(cookieName){
+            const cookies = document.cookie.split("; ")
+
+            for (const cookie of cookies) {
+                const [name, value] = cookie.split('=');
+                
+                // 3. If the name matches, decode and return the value
+                if (name === cookieName) {
+                    return decodeURIComponent(value);
+                }
+            }
+            return null; // Return null if the cookie doesn't exist
+      }
+
+
+      const intervalId = setInterval(() => {
+        if (!getCookies("karavan_auth_cookie")){
+            window.location.replace("../404.html");
+        }
+      }, 1000);
+    </script>
+  </body>
+</html>
