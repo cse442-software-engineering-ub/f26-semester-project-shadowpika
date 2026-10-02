@@ -17,6 +17,7 @@ final class TestDatabase
             "CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL UNIQUE,
+                email TEXT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'moderator'))
             )"

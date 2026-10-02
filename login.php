@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/includes/http.php';
+require_once __DIR__ . '/includes/db.php';
+
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST");
@@ -32,44 +35,45 @@ if (strlen($input_username) > 50 || strlen($input_password) > 50) {
     exit;
 }
 
-// --- DATABASE CONNECTION CONFIGURATION ---
-$db_host = 'localhost'; 
-$db_name   = 'cse442_2026_fall_team_j_db';     
-$db_user = 'ndberg';     
-$db_pass = '50250298'; 
-
-// 2. Wrap database connection in a try/catch block to prevent crash output
+// --- DATABASE CONNECTION (credentials live in config.local.php, see includes/config.php) ---
 try {
-    $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
-    
-    if ($conn->connect_error) {
-        echo json_encode(["success" => false, "error" => "Database connection failure."]);
-        exit;
-    }
+    $pdo = karavan_pdo();
+} catch (Throwable $e) {
+    echo json_encode(["success" => false, "error" => "Database connection failure."]);
+    exit;
+}
 
-    // --- FIXED DYNAMIC LOOKUP BY EMAIL ---
-    $stmt = $conn->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?)");
-    $stmt->bind_param("s", $input_username);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $db_user_row = $result->fetch_assoc();
+// 2. Wrap the lookup in a try/catch block to prevent crash output
+try {
+    // --- DYNAMIC LOOKUP BY EMAIL ---
+    // Accounts created before the email column existed only have their email in username.
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?) ORDER BY LOWER(email) = LOWER(?) DESC LIMIT 1");
+    $stmt->execute([$input_username, $input_username, $input_username]);
+    $db_user_row = $stmt->fetch();
 
     // --- SECURE BCRYPT VERIFICATION ---
     if ($db_user_row && password_verify($input_password, $db_user_row['password_hash'])) {
-	// --- SET FIGMA-COMPATIBLE SECURE COOKIE ---
-	$cookie_options = [
-	    'expires' => time() + (86400 * 30), // 30 Days expiration
-	    'path' => '/',
-	    'domain' => 'aptitude.cse.buffalo.edu', // Must match your UB server host
-	    'secure' => true,     // CRITICAL: Must be true for iframes to read it
-	    'httponly' => false,  // Must be false so React frontend can check if it exists
-	    'samesite' => 'None'  // CRITICAL: Tells browsers it's safe to send inside Figma
-	];
-	setcookie("karavan_auth_cookie", $input_username, $cookie_options);
-       echo json_encode([
+        // Moderator, admin and location endpoints identify the user from the PHP session.
+        karavan_start_session();
+        session_regenerate_id(true);
+        $_SESSION['user_id'] = (int) $db_user_row['id'];
+
+        // --- SET FIGMA-COMPATIBLE SECURE COOKIE ---
+        $cookie_options = [
+            'expires' => time() + (86400 * 30), // 30 Days expiration
+            'path' => '/',
+            'domain' => 'aptitude.cse.buffalo.edu', // Must match your UB server host
+            'secure' => true,     // CRITICAL: Must be true for iframes to read it
+            'httponly' => false,  // Must be false so React frontend can check if it exists
+            'samesite' => 'None'  // CRITICAL: Tells browsers it's safe to send inside Figma
+        ];
+        setcookie("karavan_auth_cookie", $input_username, $cookie_options);
+
+        echo json_encode([
             "success" => true,
             "status" => "success",
-            "authenticated" => true
+            "authenticated" => true,
+            "role" => $db_user_row['role'] ?? 'user'
         ]);
     } else {
         echo json_encode([
@@ -80,10 +84,8 @@ try {
         ]);
     }
 
-    $stmt->close();
-    $conn->close();
-
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    // Details stay out of the response so database internals aren't shown to users.
     echo json_encode(["success" => false, "error" => "An internal server error occurred."]);
 }
 exit;
