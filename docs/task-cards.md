@@ -45,7 +45,7 @@ If an email/Discord upload blocks `wrong_type_setup.exe`, use `wrong_type_notes.
 ### Test 1 — Detects failure to render required registration form controls
 1. Open `[APTITUDE_BASE_URL]/#/admin-register`.
 2. Set the browser window to 1440 × 900.
-3. Verify the page contains exactly one of each: Karavan van logo, "Register as a Community Partner" heading, "Continue with University SSO" button, Full Name, Business / Community Name, Email Address, Phone Number, Password, Confirm Password, the proof-of-ownership upload control, and the "Submit for Approval" button.
+3. Verify the page contains exactly one of each: Karavan van logo, "Register as a Community Partner" heading, Full Name, Business / Community Name, Email Address, Phone Number, Password, Confirm Password, the proof-of-ownership upload control, and the "Submit for Approval" button.
 4. Verify there is no horizontal scrolling.
 
 ### Test 2 — Detects failure to submit a complete, valid registration

@@ -63,7 +63,6 @@ export default function AdminRegister() {
     const [file, setFile] = useState(null);
     const [fileError, setFileError] = useState(null);
     const [formError, setFormError] = useState('');
-    const [notice, setNotice] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [submittedBusiness, setSubmittedBusiness] = useState(null);
 
@@ -128,20 +127,6 @@ export default function AdminRegister() {
                                 Register as a Community Partner
                             </h1>
                             <p className="kv-card__subtitle">Platform Admin &amp; Property Management Portal</p>
-
-                            <button
-                                type="button"
-                                className="kv-button kv-button--navy kv-button--block"
-                                onClick={() => setNotice('University SSO is not available yet. Please register with the form below.')}
-                            >
-                                <span className="kv-sso-dot" aria-hidden="true" />
-                                Continue with University SSO
-                            </button>
-                            {notice && <p className="kv-notice">{notice}</p>}
-
-                            <div className="kv-divider" role="separator">
-                                <span>or</span>
-                            </div>
 
                             <form className="kv-form" onSubmit={handleSubmit} noValidate>
                                 {FIELDS.map((field) => (

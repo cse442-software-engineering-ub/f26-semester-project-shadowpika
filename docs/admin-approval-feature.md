@@ -96,7 +96,7 @@ Destroys the session.
   - **Validation before sending:** all fields required, email format, password ≥ 8, passwords match, file present/type/size. If there's no file, the upload box gets a red outline (`kv-dropzone--error`) and **no request is sent**.
   - **Success:** shows "Your request is pending review".
   - **Server file errors:** shown on the upload box; other errors in a red banner.
-  - **Other details:** exactly one van logo on the page. The SSO button only shows a "not available yet" note.
+  - **Other details:** exactly one van logo on the page. There is no SSO option; partners register with the form only.
 - `/moderator`: `pages/ModeratorDashboard.jsx` with `components/PendingRequestCard.jsx`.
   - **Each card:** name, business, email, phone, date applied, "View proof of ownership" link (new tab), Approve and Deny.
   - **After a decision:** the card is removed and a green confirmation appears ("Approved <name>'s request for <business>.").
