@@ -7,7 +7,7 @@
         body {
             font-family: Arial, Helvetica, sans-serif;
             background: #ffffff;
-            color: #1f3048;
+            color: #24364f;
             min-width: 1000px;
         }
 
@@ -28,7 +28,7 @@
             display: flex;
             align-items: center;
             gap: 13px;
-            width: 500px;
+            width: 295px;
         }
 
         .brand-icon {
@@ -87,19 +87,15 @@
         .nav-right {
             display: flex;
             align-items: center;
-            gap: 60px;
-        }
-
-        .search-icon,
-        .bell-icon {
-            width: 17px;
-            height: 17px;
-            position: relative;
+            gap: 27px;
         }
 
         .search-icon {
+            width: 17px;
+            height: 17px;
             border: 2px solid #333333;
             border-radius: 50%;
+            position: relative;
         }
 
         .search-icon::after {
@@ -111,6 +107,12 @@
             right: -5px;
             bottom: -2px;
             transform: rotate(45deg);
+        }
+
+        .bell-icon {
+            width: 17px;
+            height: 17px;
+            position: relative;
         }
 
         .bell-icon::before {
@@ -140,7 +142,7 @@
             height: 29px;
             border: none;
             border-radius: 6px;
-            background: #e60505;
+            background: #24364f;
             color: white;
             font-size: 9px;
             font-weight: bold;
@@ -151,13 +153,12 @@
         ========================= */
 
         .main {
-            width: 1000px;
+            width: 1310px;
             margin: 0 auto;
             padding-top: 42px;
         }
 
         .page-title {
-            margin-left: 0;
             font-size: 25px;
             font-weight: 700;
             color: #24364f;
@@ -175,11 +176,10 @@
         ========================= */
 
         .settings-card {
-            width: 1000px;
+            width: 1078px;
             min-height: 689px;
             border: 1px solid #e3e0d9;
             border-radius: 11px;
-            margin-left: 0;
             overflow: hidden;
             background: white;
         }
@@ -194,7 +194,6 @@
             align-items: flex-end;
             padding-left: 16px;
             border-bottom: 1px solid #e9e6df;
-            gap: 0;
         }
 
         .tab {
@@ -230,6 +229,15 @@
             padding: 25px 28px 18px 28px;
         }
 
+        .section {
+            padding-bottom: 18px;
+            border-bottom: 1px solid #e9e6df;
+        }
+
+        .section + .section {
+            padding-top: 22px;
+        }
+
         .section-title {
             font-size: 10px;
             font-weight: 700;
@@ -237,178 +245,122 @@
             margin-bottom: 20px;
         }
 
-        .profile-section {
-            padding-bottom: 17px;
-            border-bottom: 1px solid #e9e6df;
-        }
+        /* =========================
+           GENERAL FORM ROW
+        ========================= */
 
-        .field {
+        .setting-row {
             display: flex;
             align-items: center;
-            margin-bottom: 11px;
         }
 
-        .field-label {
-            width: 132px;
+        .setting-label {
+            width: 121px;
             font-size: 8px;
             color: #607188;
         }
 
-        .field-input {
+        .setting-description {
+            margin-left: 9px;
+            font-size: 8px;
+            color: #718197;
+        }
+
+        /* =========================
+           SELECT
+        ========================= */
+
+        .select-wrapper {
+            position: relative;
+            width: 202px;
+        }
+
+        .select-input {
             width: 202px;
             height: 28px;
+            appearance: none;
             background: #f6f3eb;
             border: 1px solid #e7e2d7;
             border-radius: 6px;
-            padding: 0 10px;
+            padding: 0 28px 0 10px;
             color: #334258;
-            font-size: 9px;
+            font-size: 8px;
             outline: none;
         }
 
-        .field-input:focus {
-            border-color: #9ba8b8;
-        }
-
-        /* =========================
-           PHOTO UPLOAD
-        ========================= */
-
-        .photo-field {
-            align-items: flex-start;
-            margin-top: 9px;
-        }
-
-        .photo-label {
-            padding-top: 34px;
-        }
-
-        .upload-box {
-            width: 202px;
-            height: 68px;
-            background: #f6f3eb;
-            border: 1px solid #eee9df;
-            border-radius: 7px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-        }
-
-        .camera-icon {
-            width: 15px;
-            height: 12px;
-            border: 1.5px solid #65788d;
-            border-radius: 3px;
-            position: relative;
-            margin-bottom: 7px;
-        }
-
-        .camera-icon::before {
-            content: "";
+        .select-arrow {
             position: absolute;
+            right: 10px;
+            top: 10px;
             width: 5px;
             height: 5px;
-            border: 1.3px solid #65788d;
-            border-radius: 50%;
-            left: 3px;
-            top: 2px;
+            border-right: 1px solid #66778b;
+            border-bottom: 1px solid #66778b;
+            transform: rotate(45deg);
+            pointer-events: none;
         }
 
-        .camera-icon::after {
+        /* =========================
+           NOTIFICATIONS
+        ========================= */
+
+        .notification-row {
+            display: flex;
+            align-items: center;
+            height: 25px;
+        }
+
+        .notification-label {
+            width: 121px;
+            font-size: 8px;
+            color: #607188;
+        }
+
+        /* Toggle */
+
+        .toggle {
+            width: 23px;
+            height: 13px;
+            border-radius: 10px;
+            background: #ddd9d1;
+            position: relative;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .toggle::after {
             content: "";
             position: absolute;
-            width: 5px;
-            height: 3px;
-            background: #65788d;
-            top: -4px;
-            left: 4px;
-            border-radius: 2px 2px 0 0;
+            width: 11px;
+            height: 11px;
+            background: white;
+            border-radius: 50%;
+            top: 1px;
+            left: 1px;
+            box-shadow: 0 0 1px rgba(0, 0, 0, 0.3);
         }
 
-        .upload-text {
-            font-size: 8px;
-            color: #718197;
-        }
-
-        /* =========================
-           PASSWORD
-        ========================= */
-
-        .password-section {
-            padding: 23px 0 18px;
-            border-bottom: 1px solid #e9e6df;
-        }
-
-        .password-row {
-            display: flex;
-            align-items: center;
-        }
-
-        .password-label {
-            width: 132px;
-            font-size: 8px;
-            color: #607188;
-        }
-
-        .change-password {
-            height: 29px;
-            padding: 0 12px;
-            border: none;
-            border-radius: 5px;
+        .toggle.active {
             background: #24364f;
-            color: white;
-            font-size: 9px;
-            font-weight: 600;
-            cursor: pointer;
         }
 
-        .password-description {
+        .toggle.active::after {
+            left: 11px;
+        }
+
+        .notification-description {
             margin-left: 9px;
             font-size: 8px;
             color: #718197;
         }
 
         /* =========================
-           DANGER ZONE
+           APPEARANCE
         ========================= */
 
-        .danger-section {
-            padding-top: 22px;
-        }
-
-        .danger-section .section-title {
-            margin-bottom: 19px;
-        }
-
-        .delete-row {
-            display: flex;
-            align-items: center;
-        }
-
-        .delete-label {
-            width: 132px;
-            font-size: 8px;
-            color: #607188;
-        }
-
-        .delete-button {
-            height: 29px;
-            padding: 0 12px;
-            border: none;
-            border-radius: 5px;
-            background: #e32d25;
-            color: white;
-            font-size: 9px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .delete-description {
-            margin-left: 9px;
-            font-size: 8px;
-            color: #718197;
+        .appearance-section {
+            border-bottom: none;
+            padding-bottom: 0;
         }
 
         /* =========================
@@ -416,7 +368,7 @@
         ========================= */
 
         .save-area {
-            margin-top: 23px;
+            margin-top: 18px;
             display: flex;
             align-items: center;
         }
@@ -440,7 +392,7 @@
         }
 
         /* =========================
-           HOVER STATES
+           HOVER / FOCUS
         ========================= */
 
         .nav-link:hover {
@@ -451,8 +403,8 @@
             opacity: 0.9;
         }
 
-        .upload-box:hover {
-            border-color: #c9c4b9;
+        .select-input:focus {
+            border-color: #9ba8b8;
         }
 
         .tab_group {

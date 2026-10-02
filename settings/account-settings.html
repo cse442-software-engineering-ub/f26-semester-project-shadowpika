@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Karavan - Settings</title>
-
     <link rel="stylesheet" href="account-settings.css" type="text/css">
 </head>
 
@@ -14,7 +13,7 @@
     <header class="navbar">
 
         <div class="brand">
-            <a href="../index.html"><img src="logo.webp" width="50" height="50" id="logo"></a>
+            <a href="../home.html"><img src="logo.webp" width="50" height="50" id="logo"></a>
             <div class="brand-name">KARAVAN</div>
         </div>
 
@@ -27,7 +26,7 @@
         <div class="nav-right">
             <div class="search-icon"></div>
             <img src="bell.svg" width="25" height="25" id="bell">
-            <button class="profile-button">Profile</button>
+            <a href="../profile.html"><button class="profile-button">Profile</button></a>
         </div>
 
     </header>
@@ -48,7 +47,7 @@
 
             <!-- Tabs -->
             <div class="tabs">
-                <div class="tab">General</div>
+                <a href="general-settings.html" class="tab_group"><div class="tab">General</div></a>
                 <div class="tab active">Account</div>
                 <div class="tab">Customization</div>
                 <div class="tab">Admin</div>
@@ -130,9 +129,7 @@
                             Delete account
                         </label>
 
-                        <form action="../index.html" method="get">
-                            <button class="delete-button" type="submit">Delete account</button>
-                        </form>
+                        <button class="delete-button" type="submit" onClick="deleteAccount()">Delete account</button>
 
                         <span class="delete-description">
                             Permanently delete your account and all associated data.
@@ -213,6 +210,57 @@
         //     })
         // }
 
+        function getCookies(cookieName){
+            const cookies = document.cookie.split("; ")
+
+            for (const cookie of cookies) {
+                const [name, value] = cookie.split('=');
+                
+                // 3. If the name matches, decode and return the value
+                if (name === cookieName) {
+                    return decodeURIComponent(value);
+                }
+            }
+            return null; // Return null if the cookie doesn't exist
+        }
+
+        function deleteAccount(){
+            var pass = prompt("Please enter your password to delete your account");
+            var confirmation = prompt("Are you sure you want to delete your account? You can't go back after this!");
+
+            if (confirmation == null) { 
+                alert("Account deletion cancelled."); 
+                return; 
+            }
+
+            fetch("delete.php", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    current_username: getCookies("karavan_auth_cookie"),
+                    password: pass
+                })
+            })
+            .then(response => {
+                console.log("HTTP status:", response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log("PHP response:", data);
+                
+                if (data.success) {
+                    window.location.replace("../index.html");
+                } else {
+                    alert(data.error);
+        }
+            })
+            .catch(error => {
+                console.error("Fetch error:", error);
+            });
+        }
+
         function submitData() {
             var pass = prompt("Please enter your password to make these changes:");
 
@@ -225,7 +273,7 @@
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    current_username: "Shadowpika",
+                    current_username: getCookies("karavan_auth_cookie"),
                     username: name,
                     email: address,
                     password: pass
@@ -252,6 +300,12 @@
                 console.error("Fetch error:", error);
             });
         }
+
+        const intervalId = setInterval(() => {
+            if (!getCookies("karavan_auth_cookie")){
+                window.location.replace("../404.html");
+            }
+        }, 1000);
 
         </script>
 
