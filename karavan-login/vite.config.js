@@ -16,6 +16,7 @@ export default defineConfig({
             input: {
                 main: 'index.html',
                 productSearch: 'product-search.html',
+                item: 'item.html',
                 home: 'home.html',
                 settings: 'settings.html',
                 sell: 'sell.html',
