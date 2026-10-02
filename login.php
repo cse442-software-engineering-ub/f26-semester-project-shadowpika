@@ -12,19 +12,31 @@ error_reporting(0);
 $raw_input = file_get_contents("php://input");
 $data = json_decode($raw_input, true);
 
-$input_username = isset($data['username']) ? trim($data['username']) : '';
+$input_username = isset($data['email']) ? trim($data['email']) : '';
 $input_password = isset($data['password']) ? trim($data['password']) : '';
 
+// Check for empty fields first
 if (empty($input_username) || empty($input_password)) {
     echo json_encode(["success" => false, "error" => "Please fill in all fields."]);
     exit;
 }
 
+// NEW: Strict 50-character protection to intercept overly long strings immediately
+if (strlen($input_username) > 50 || strlen($input_password) > 50) {
+    echo json_encode([
+        "success" => false, 
+        "status" => "error",
+        "authenticated" => false,
+        "error" => "Invalid input format. Fields cannot exceed 50 characters."
+    ]);
+    exit;
+}
+
 // --- DATABASE CONNECTION CONFIGURATION ---
 $db_host = 'localhost'; 
-$db_name   = 'cse442_2026_fall_team_j_db';     // Replace with your database name
-$db_user = 'ndberg';     // Replace with your database username
-$db_pass = '50250298'; // Replace with your database password
+$db_name   = 'cse442_2026_fall_team_j_db';     
+$db_user = 'ndberg';     
+$db_pass = '50250298'; 
 
 // 2. Wrap database connection in a try/catch block to prevent crash output
 try {
@@ -35,8 +47,8 @@ try {
         exit;
     }
 
-    // --- FIXED DYNAMIC LOOKUP ---
-    $stmt = $conn->prepare("SELECT * FROM users WHERE LOWER(username) = LOWER(?)");
+    // --- FIXED DYNAMIC LOOKUP BY EMAIL ---
+    $stmt = $conn->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?)");
     $stmt->bind_param("s", $input_username);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -44,7 +56,17 @@ try {
 
     // --- SECURE BCRYPT VERIFICATION ---
     if ($db_user_row && password_verify($input_password, $db_user_row['password_hash'])) {
-        echo json_encode([
+	// --- SET FIGMA-COMPATIBLE SECURE COOKIE ---
+	$cookie_options = [
+	    'expires' => time() + (86400 * 30), // 30 Days expiration
+	    'path' => '/',
+	    'domain' => 'aptitude.cse.buffalo.edu', // Must match your UB server host
+	    'secure' => true,     // CRITICAL: Must be true for iframes to read it
+	    'httponly' => false,  // Must be false so React frontend can check if it exists
+	    'samesite' => 'None'  // CRITICAL: Tells browsers it's safe to send inside Figma
+	];
+	setcookie("karavan_auth_cookie", $input_username, $cookie_options);
+       echo json_encode([
             "success" => true,
             "status" => "success",
             "authenticated" => true
@@ -61,12 +83,8 @@ try {
     $stmt->close();
     $conn->close();
 
-} catch (Throwable $e) {
-    // This intercepts low-level engine errors and prints them right onto the page
-    echo json_encode([
-        "success" => false, 
-        "error" => "Server Error: " . $e->getMessage() . " on line " . $e->getLine()
-    ]);
+} catch (Exception $e) {
+    echo json_encode(["success" => false, "error" => "An internal server error occurred."]);
 }
 exit;
 ?>
