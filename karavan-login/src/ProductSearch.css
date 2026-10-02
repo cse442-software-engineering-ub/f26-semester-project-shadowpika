@@ -6,14 +6,19 @@
   --ps-cream: #f8f1e7;
   --ps-gold: #c9a15e;
   --ps-muted: #8a94a6;
-  --ps-canvas: #f4f4f4;
   --ps-white: #ffffff;
 
   min-height: 100vh;
-  background: var(--ps-canvas);
+  /* Cream to the window edges so wide screens don't show a gray canvas around the 1440px frame */
+  background: var(--ps-cream);
   font-family: 'DM Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
   color: var(--ps-navy);
   -webkit-font-smoothing: antialiased;
+}
+
+/* These pages don't load index.css, so drop the browser's default 8px body margin */
+body:has(.ps-page) {
+  margin: 0;
 }
 
 .ps-page *,
