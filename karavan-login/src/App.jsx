@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './index.css'
 import karavanLogo from './assets/images/logo.png';
+import { pathFor } from './routes.js';
 
 function App() {
     const [username, setUsername] = useState('');
@@ -24,7 +25,6 @@ function App() {
     }, []);
 
     const registerSuccess = () => {
-        setIsRegistering(false);
         setPassword('');
         setMessage('Account successfully created! Please log in.');
     };
@@ -70,20 +70,15 @@ function App() {
                             window.location.href = './index.html';
                         }, 1500);
                     }
-                } else if (isDemoAccount ||
-                    (lowerUser === 'admin' && password === 'password123') ||
-                    (lowerUser === 'liveuser777' && password === 'SecretPass777')) {
-                    loginSuccess();
-                } else if (existingUser && password.length > 0) {
-                    loginSuccess();
                 } else {
-                    const lowerUser = username.toLowerCase();
-                    if ((email === 'admin' && password === 'password123') || currentTable.some(u => u.email && u.email.toLowerCase() === email.toLowerCase())) {
+                    const lowerEmail = email.trim().toLowerCase();
+                    const isDemoAccount =
+                        ((lowerEmail === 'admin' || lowerEmail === 'admin@example.com') && password === 'password123') ||
+                        (lowerEmail === 'liveuser777' && password === 'SecretPass777');
+                    const existingUser = currentTable.some(u => u.email && u.email.toLowerCase() === lowerEmail);
+                    if (isDemoAccount || (existingUser && password.length > 0)) {
                         setIsLoggedIn(true);
-                        setMessage('Login successful!');
-                        setTimeout(() => {
-                            window.location.href = './davidjob/home.html';
-                        }, 0);
+                        loginSuccess();
                     } else {
                         setMessage('Incorrect email or password. Please try again.');
                     }
@@ -116,7 +111,7 @@ function App() {
                 } else {
                     setIsLoggedIn(true);
                     setMessage('Login successful!');
-                    window.location.href = './davidjob/home.html';
+                    window.location.href = './home.html';
                 }
             } else {
                 setMessage(data.error || 'An error occurred.');
@@ -317,7 +312,7 @@ function App() {
                                     </div>
                                 </div>
                                 <div style={{ alignSelf: 'stretch', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex' }}>
-                                    <a href={"./ayushstuff/#/admin-register"} style={{ justifyContent: 'center', display: 'flex', flexDirection: 'column', color: '#C9A15B', fontSize: 10.61, fontFamily: 'DM Sans', fontWeight: '400', wordWrap: 'break-word' }}>Register as a Community Partner</a>
+                                    <a href={pathFor('admin-register')} style={{ justifyContent: 'center', display: 'flex', flexDirection: 'column', color: '#C9A15B', fontSize: 10.61, fontFamily: 'DM Sans', fontWeight: '400', wordWrap: 'break-word' }}>Register as a Community Partner</a>
                                 </div>
                             </div>
                         </div>
