@@ -1,7 +1,4 @@
 <?php
-require_once __DIR__ . '/includes/http.php';
-require_once __DIR__ . '/includes/db.php';
-
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST");
@@ -15,40 +12,64 @@ error_reporting(0);
 $raw_input = file_get_contents("php://input");
 $data = json_decode($raw_input, true);
 
-$input_username = isset($data['username']) ? trim($data['username']) : '';
+$input_username = isset($data['email']) ? trim($data['email']) : '';
 $input_password = isset($data['password']) ? trim($data['password']) : '';
 
+// Check for empty fields first
 if (empty($input_username) || empty($input_password)) {
     echo json_encode(["success" => false, "error" => "Please fill in all fields."]);
     exit;
 }
 
-// --- DATABASE CONNECTION (credentials live in config.local.php, see includes/config.php) ---
-try {
-    $pdo = karavan_pdo();
-} catch (Throwable $e) {
-    echo json_encode(["success" => false, "error" => "Database connection failure."]);
+// NEW: Strict 50-character protection to intercept overly long strings immediately
+if (strlen($input_username) > 50 || strlen($input_password) > 50) {
+    echo json_encode([
+        "success" => false, 
+        "status" => "error",
+        "authenticated" => false,
+        "error" => "Invalid input format. Fields cannot exceed 50 characters."
+    ]);
     exit;
 }
 
-// 2. Wrap the lookup in a try/catch block to prevent crash output
+// --- DATABASE CONNECTION CONFIGURATION ---
+$db_host = 'localhost'; 
+$db_name   = 'cse442_2026_fall_team_j_db';     
+$db_user = 'ndberg';     
+$db_pass = '50250298'; 
+
+// 2. Wrap database connection in a try/catch block to prevent crash output
 try {
-    // --- FIXED DYNAMIC LOOKUP ---
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(username) = LOWER(?)");
-    $stmt->execute([$input_username]);
-    $db_user_row = $stmt->fetch();
+    $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+    
+    if ($conn->connect_error) {
+        echo json_encode(["success" => false, "error" => "Database connection failure."]);
+        exit;
+    }
+
+    // --- FIXED DYNAMIC LOOKUP BY EMAIL ---
+    $stmt = $conn->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?)");
+    $stmt->bind_param("s", $input_username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $db_user_row = $result->fetch_assoc();
 
     // --- SECURE BCRYPT VERIFICATION ---
     if ($db_user_row && password_verify($input_password, $db_user_row['password_hash'])) {
-        karavan_start_session();
-        session_regenerate_id(true);
-        $_SESSION['user_id'] = (int) $db_user_row['id'];
-
-        echo json_encode([
+	// --- SET FIGMA-COMPATIBLE SECURE COOKIE ---
+	$cookie_options = [
+	    'expires' => time() + (86400 * 30), // 30 Days expiration
+	    'path' => '/',
+	    'domain' => 'aptitude.cse.buffalo.edu', // Must match your UB server host
+	    'secure' => true,     // CRITICAL: Must be true for iframes to read it
+	    'httponly' => false,  // Must be false so React frontend can check if it exists
+	    'samesite' => 'None'  // CRITICAL: Tells browsers it's safe to send inside Figma
+	];
+	setcookie("karavan_auth_cookie", $input_username, $cookie_options);
+       echo json_encode([
             "success" => true,
             "status" => "success",
-            "authenticated" => true,
-            "role" => $db_user_row['role'] ?? 'user'
+            "authenticated" => true
         ]);
     } else {
         echo json_encode([
@@ -59,12 +80,11 @@ try {
         ]);
     }
 
-} catch (Throwable $e) {
-    // Details stay out of the response so database internals aren't shown to users.
-    echo json_encode([
-        "success" => false,
-        "error" => "Server error. Please try again."
-    ]);
+    $stmt->close();
+    $conn->close();
+
+} catch (Exception $e) {
+    echo json_encode(["success" => false, "error" => "An internal server error occurred."]);
 }
 exit;
 ?>
