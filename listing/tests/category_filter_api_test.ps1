@@ -89,7 +89,7 @@ Assert-True -Condition (-not (@($allActive.results.listing_id) -contains 91004))
 Write-Host 'PASS'
 
 Write-Host 'Test 2: one category returns only exact active matches'
-$textbooks = Invoke-SearchRequest -Url "$endpoint?categories=$(Encode-QueryValue 'Textbooks')" -ExpectedStatus 200
+$textbooks = Invoke-SearchRequest -Url "${endpoint}?categories=$(Encode-QueryValue 'Textbooks')" -ExpectedStatus 200
 Assert-True -Condition ([bool] $textbooks.success) -Message 'The Textbooks request was not successful.'
 Assert-True -Condition (@($textbooks.results).Count -gt 0) -Message 'Expected at least one Textbooks listing.'
 Assert-OnlyCategories -Results $textbooks.results -AllowedCategories @('Textbooks')
@@ -98,7 +98,7 @@ Write-Host 'PASS'
 
 Write-Host 'Test 3: multiple categories use OR and remove duplicates'
 $multipleValue = Encode-QueryValue 'Textbooks, Dorm Living, Textbooks'
-$multiple = Invoke-SearchRequest -Url "$endpoint?categories=$multipleValue" -ExpectedStatus 200
+$multiple = Invoke-SearchRequest -Url "${endpoint}?categories=$multipleValue" -ExpectedStatus 200
 Assert-True -Condition ([bool] $multiple.success) -Message 'The multi-category request was not successful.'
 Assert-OnlyCategories -Results $multiple.results -AllowedCategories @('Textbooks', 'Dorm Living')
 Assert-True -Condition (@($multiple.results.category) -contains 'Textbooks') -Message 'No Textbooks listing was returned.'
@@ -106,7 +106,7 @@ Assert-True -Condition (@($multiple.results.category) -contains 'Dorm Living') -
 Write-Host 'PASS'
 
 Write-Host 'Test 4: keyword and categories use AND'
-$intersection = Invoke-SearchRequest -Url "$endpoint?q=Calculus&categories=$(Encode-QueryValue 'Textbooks')" -ExpectedStatus 200
+$intersection = Invoke-SearchRequest -Url "${endpoint}?q=Calculus&categories=$(Encode-QueryValue 'Textbooks')" -ExpectedStatus 200
 Assert-True -Condition ([bool] $intersection.success) -Message 'The combined request was not successful.'
 Assert-True -Condition (@($intersection.results).Count -gt 0) -Message 'Expected active Calculus Textbooks listings.'
 Assert-OnlyCategories -Results $intersection.results -AllowedCategories @('Textbooks')
@@ -117,27 +117,27 @@ Assert-True -Condition (-not (@($intersection.results.listing_id) -contains 9100
 Write-Host 'PASS'
 
 Write-Host 'Test 5: a valid category and unmatched query return an empty array'
-$empty = Invoke-SearchRequest -Url "$endpoint?q=DefinitelyNoListingExists&categories=$(Encode-QueryValue 'Textbooks')" -ExpectedStatus 200
+$empty = Invoke-SearchRequest -Url "${endpoint}?q=DefinitelyNoListingExists&categories=$(Encode-QueryValue 'Textbooks')" -ExpectedStatus 200
 Assert-True -Condition ([bool] $empty.success) -Message 'The empty-result request was not successful.'
 Assert-Equal -Expected 0 -Actual @($empty.results).Count -Message 'The valid no-match request should return no listings.'
 Write-Host 'PASS'
 
 Write-Host 'Test 6: unsupported categories are rejected'
-$invalid = Invoke-SearchRequest -Url "$endpoint?categories=$(Encode-QueryValue 'Vehicles')" -ExpectedStatus 400
+$invalid = Invoke-SearchRequest -Url "${endpoint}?categories=$(Encode-QueryValue 'Vehicles')" -ExpectedStatus 400
 Assert-True -Condition (-not [bool] $invalid.success) -Message 'The invalid category request unexpectedly succeeded.'
 Assert-True -Condition ([string] $invalid.error -match 'Unsupported category') -Message 'The invalid category error was not user-safe.'
 Write-Host 'PASS'
 
 Write-Host 'Test 7: existing query validation is preserved'
-$keyword = Invoke-SearchRequest -Url "$endpoint?q=Calculus" -ExpectedStatus 200
+$keyword = Invoke-SearchRequest -Url "${endpoint}?q=Calculus" -ExpectedStatus 200
 Assert-True -Condition ([bool] $keyword.success) -Message 'The existing keyword search failed.'
 Assert-True -Condition (@($keyword.results).Count -gt 0) -Message 'The keyword search returned no active Calculus listings.'
 
-$emoji = Invoke-SearchRequest -Url "$endpoint?q=$(Encode-QueryValue ([char]::ConvertFromUtf32(0x1F4DA)))" -ExpectedStatus 400
+$emoji = Invoke-SearchRequest -Url "${endpoint}?q=$(Encode-QueryValue ([char]::ConvertFromUtf32(0x1F4DA)))" -ExpectedStatus 400
 Assert-True -Condition (-not [bool] $emoji.success) -Message 'An emoji query unexpectedly succeeded.'
 
 $longQuery = 'a' * 51
-$tooLong = Invoke-SearchRequest -Url "$endpoint?q=$longQuery" -ExpectedStatus 400
+$tooLong = Invoke-SearchRequest -Url "${endpoint}?q=$longQuery" -ExpectedStatus 400
 Assert-True -Condition (-not [bool] $tooLong.success) -Message 'A query over 50 characters unexpectedly succeeded.'
 Write-Host 'PASS'
 
