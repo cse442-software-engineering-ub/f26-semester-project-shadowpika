@@ -15,6 +15,7 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 main: 'index.html',
+                register: 'register.html',
                 productSearch: 'product-search.html',
                 item: 'item.html',
                 home: 'home.html',
