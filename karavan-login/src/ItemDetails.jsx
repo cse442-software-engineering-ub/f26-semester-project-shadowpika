@@ -2,21 +2,11 @@ import React, { useEffect, useState } from 'react';
 import NavBar from './NavBar.jsx';
 import './ProductSearch.css';
 import './ItemDetails.css';
-import { buildItemDetailsUrl, findLocalListing } from './localListings.js';
+import './MeetingRequests.css';
+import ItemCover from './ItemCover.jsx';
+import { fetchListingOwnership, loadListing, meetPageUrl } from './meetingRequests.js';
 
 const SEARCH_HREF = './product-search.html';
-
-const isLocalPreview = () => window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-// LOCAL PREVIEW MODE answers from the seed rows because `npm run dev` can't run PHP.
-async function loadListing(listingId) {
-    if (isLocalPreview()) {
-        const listing = findLocalListing(listingId);
-        return listing ? { success: true, listing } : { success: false, error: 'Listing not found.' };
-    }
-    const response = await fetch(buildItemDetailsUrl(listingId));
-    return response.json();
-}
 
 // Returns to the search results the shopper came from, so the browser restores their search.
 function BackToSearch() {
@@ -33,40 +23,22 @@ function BackToSearch() {
     );
 }
 
-// Listing photo, falling back to a drawn book cover when the image is missing or won't load.
-function ItemCover({ name, imageUrl }) {
-    const [failed, setFailed] = useState(!imageUrl);
-
-    if (!failed) {
-        return (
-            <img
-                className="ps-book-img"
-                src={imageUrl}
-                alt={`${name} listing`}
-                onError={() => setFailed(true)}
-            />
-        );
-    }
-    return (
-        <div className="ps-book-placeholder" aria-hidden="true">
-            <div className="ps-book-spine" />
-            <div className="ps-book-face">
-                <span className="ps-book-band" />
-                <span className="ps-book-title">{name}</span>
-                <span className="ps-book-band" />
-            </div>
-        </div>
-    );
-}
-
 function ItemDetails() {
     const [listing, setListing] = useState(null);
     const [status, setStatus] = useState('loading'); // loading | done | error
     const [error, setError] = useState('');
+    // Buy Now only appears once the server confirms the item belongs to someone else.
+    const [canBuy, setCanBuy] = useState(false);
 
     useEffect(() => {
         const listingId = new URLSearchParams(window.location.search).get('listing_id') ?? '';
         let cancelled = false;
+
+        fetchListingOwnership(listingId)
+            .then((data) => {
+                if (!cancelled) setCanBuy(data.success === true && data.is_owner === false);
+            })
+            .catch(() => {});
 
         loadListing(listingId)
             .then((data) => {
@@ -110,6 +82,16 @@ function ItemDetails() {
                             {listing.category && <span className="id-category">{listing.category.toUpperCase()}</span>}
                             <h1 className="id-name">{listing.name}</h1>
                             <p className="id-price">${listing.price}</p>
+
+                            {canBuy && (
+                                <button
+                                    type="button"
+                                    className="id-buy"
+                                    onClick={() => window.location.assign(meetPageUrl(listing.listing_id))}
+                                >
+                                    Buy Now
+                                </button>
+                            )}
 
                             <dl className="id-facts">
                                 <div>
