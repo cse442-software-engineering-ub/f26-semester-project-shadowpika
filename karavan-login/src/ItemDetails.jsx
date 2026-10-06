@@ -33,6 +33,32 @@ function BackToSearch() {
     );
 }
 
+// Listing photo, falling back to a drawn book cover when the image is missing or won't load.
+function ItemCover({ name, imageUrl }) {
+    const [failed, setFailed] = useState(!imageUrl);
+
+    if (!failed) {
+        return (
+            <img
+                className="ps-book-img"
+                src={imageUrl}
+                alt={`${name} listing`}
+                onError={() => setFailed(true)}
+            />
+        );
+    }
+    return (
+        <div className="ps-book-placeholder" aria-hidden="true">
+            <div className="ps-book-spine" />
+            <div className="ps-book-face">
+                <span className="ps-book-band" />
+                <span className="ps-book-title">{name}</span>
+                <span className="ps-book-band" />
+            </div>
+        </div>
+    );
+}
+
 function ItemDetails() {
     const [listing, setListing] = useState(null);
     const [status, setStatus] = useState('loading'); // loading | done | error
@@ -76,15 +102,8 @@ function ItemDetails() {
 
                 {status === 'done' && listing && (
                     <article className="id-item">
-                        <div className="id-cover" aria-hidden="true">
-                            <div className="ps-book-placeholder">
-                                <div className="ps-book-spine" />
-                                <div className="ps-book-face">
-                                    <span className="ps-book-band" />
-                                    <span className="ps-book-title">{listing.name}</span>
-                                    <span className="ps-book-band" />
-                                </div>
-                            </div>
+                        <div className="id-cover">
+                            <ItemCover name={listing.name} imageUrl={listing.image_url} />
                         </div>
 
                         <div className="id-info">
