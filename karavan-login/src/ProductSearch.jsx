@@ -551,7 +551,7 @@ function ProductSearch() {
                                             max="9999.99"
                                             step="0.01"
                                             inputMode="decimal"
-                                            placeholder="No maximum"
+                                            placeholder="9999.99"
                                             value={draftMaxPrice}
                                             onChange={(event) => {
                                                 setDraftMaxPrice(event.target.value);
