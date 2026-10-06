@@ -18,6 +18,7 @@ export default defineConfig({
                 register: 'register.html',
                 productSearch: 'product-search.html',
                 item: 'item.html',
+                meet: 'meet.html',
                 home: 'home.html',
                 settings: 'settings.html',
                 sell: 'sell.html',
