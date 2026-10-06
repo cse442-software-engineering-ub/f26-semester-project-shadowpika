@@ -5,7 +5,9 @@
   --nav-cream: #f6f1ea;
   --nav-white: #ffffff;
 
+  /* Above page content (Leaflet panes use 400+) and the community picker (1100), so the nav stays clickable. */
   position: relative;
+  z-index: 1200;
   background: var(--nav-cream);
   font-family: 'DM Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
   color: var(--nav-navy);
@@ -128,6 +130,40 @@
   background: #2c3d5a;
 }
 
+.nav .nav-community {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 240px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1.5px solid var(--nav-navy);
+  border-radius: 6px;
+  background: none;
+  color: var(--nav-navy);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nav .nav-community:hover {
+  background: rgba(31, 45, 68, 0.08);
+}
+
+.nav-community svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.nav-community-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Desktop hides the hamburger (needs .nav prefix to beat .nav .nav-icon-btn) */
 .nav .nav-menu-btn {
   display: none;
@@ -167,7 +203,8 @@
   }
 
   .nav-links,
-  .nav .nav-profile {
+  .nav .nav-profile,
+  .nav .nav-community {
     display: none;
   }
 
@@ -281,6 +318,20 @@
 
   .nav-drawer-link:hover {
     background: rgba(31, 45, 68, 0.08);
+  }
+
+  /* A button, so it needs the .nav prefix to beat the global button reset. */
+  .nav .nav-drawer-community {
+    width: 100%;
+    padding: 12px 8px;
+    border: none;
+    background: none;
+    color: inherit;
+    font-family: "League Spartan", "DM Sans", sans-serif;
+    font-size: 22px;
+    line-height: 1;
+    text-align: left;
+    cursor: pointer;
   }
 
   .nav-drawer-link svg {

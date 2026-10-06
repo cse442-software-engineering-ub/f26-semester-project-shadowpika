@@ -1,5 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import './NavBar.css';
+import { fetchCommunities, joinCommunity } from './api.js';
+import { readJoinedCommunity, saveJoinedCommunity, takeCommunityPrompt } from './community.js';
+import CommunityPicker from './components/CommunityPicker.jsx';
+
+const JOIN_LABEL = 'Join a Community';
 
 const HOME_HREF = './home.html';
 
@@ -85,8 +90,97 @@ function ProfileIcon() {
     );
 }
 
+function CommunityIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="9" cy="8" r="3.2" />
+            <path d="M3 20v-.5A5.5 5.5 0 0 1 8.5 14h1A5.5 5.5 0 0 1 15 19.5v.5" />
+            <circle cx="17" cy="9" r="2.6" />
+            <path d="M16.5 14H17a4.5 4.5 0 0 1 4.5 4.5v.5" />
+        </svg>
+    );
+}
+
+// The "Join a Community" button only appears once list_communities.php confirms a login.
+function useCommunities() {
+    const [signedIn, setSignedIn] = useState(false);
+    const [communities, setCommunities] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [joined, setJoined] = useState(readJoinedCommunity);
+    const [joiningId, setJoiningId] = useState(null);
+    const [picker, setPicker] = useState(null); // null, 'first-login' or 'nav'
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        try {
+            const result = await fetchCommunities();
+            if (result.status === 200 && result.success && Array.isArray(result.communities)) {
+                setSignedIn(true);
+                setCommunities(result.communities);
+                setError('');
+                return true;
+            }
+            if (result.status === 403) {
+                setSignedIn(false);
+                setPicker(null);
+            } else {
+                setError(result.error || 'Could not load communities. Please try again.');
+            }
+        } catch {
+            setError('Could not load communities. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+        return false;
+    }, []);
+
+    useEffect(() => {
+        const showSuggestions = takeCommunityPrompt();
+        load().then((loaded) => {
+            if (loaded && showSuggestions) setPicker('first-login');
+        });
+    }, [load]);
+
+    const open = () => {
+        setError('');
+        setPicker('nav');
+        load();
+    };
+
+    const close = useCallback(() => {
+        setPicker(null);
+        setError('');
+    }, []);
+
+    const join = async (communityId) => {
+        setJoiningId(communityId);
+        setError('');
+        try {
+            const result = await joinCommunity(communityId);
+            if (result.status === 200 && result.success) {
+                const community = { community_id: result.community_id, name: result.community_name };
+                setJoined(community);
+                saveJoinedCommunity(community);
+                setPicker(null);
+            } else {
+                setError(result.error || 'Could not join that community. Please try again.');
+            }
+        } catch {
+            setError('Could not join that community. Please try again.');
+        } finally {
+            setJoiningId(null);
+        }
+    };
+
+    return { signedIn, communities, loading, error, joined, joiningId, picker, open, close, join };
+}
+
 function NavBar() {
     const [menuOpen, setMenuOpen] = useState(false);
+    const community = useCommunities();
+    const communityLabel = community.joined?.name ?? JOIN_LABEL;
+    const communityTitle = community.joined ? 'Switch community' : undefined;
 
     // While the drawer is open: lock page scroll, let Escape close it, and close it
     // if the window grows to desktop width (where the drawer is hidden).
@@ -132,6 +226,13 @@ function NavBar() {
                         <a className="nav-icon-btn nav-search" href={SEARCH_HREF} aria-label="Search">
                             <SearchIcon />
                         </a>
+                        {/* Desktop only */}
+                        {community.signedIn ? (
+                            <button type="button" className="nav-community" title={communityTitle} onClick={community.open}>
+                                <CommunityIcon />
+                                <span className="nav-community-label">{communityLabel}</span>
+                            </button>
+                        ) : null}
                         {/* Desktop only */}
                         <a className="nav-profile" href={PROFILE_HREF}>Profile</a>
                         {/* Mobile only */}
@@ -182,8 +283,37 @@ function NavBar() {
                             Profile
                         </a>
                     </li>
+                    {community.signedIn ? (
+                        <li>
+                            <button
+                                type="button"
+                                className="nav-drawer-link nav-drawer-community"
+                                title={communityTitle}
+                                onClick={() => {
+                                    setMenuOpen(false);
+                                    community.open();
+                                }}
+                            >
+                                <CommunityIcon />
+                                <span className="nav-community-label">{communityLabel}</span>
+                            </button>
+                        </li>
+                    ) : null}
                 </ul>
             </aside>
+
+            {community.picker ? (
+                <CommunityPicker
+                    communities={community.communities}
+                    loading={community.loading}
+                    error={community.error}
+                    joinedId={community.joined?.community_id ?? null}
+                    joiningId={community.joiningId}
+                    firstLogin={community.picker === 'first-login'}
+                    onJoin={community.join}
+                    onClose={community.close}
+                />
+            ) : null}
         </header>
     );
 }
