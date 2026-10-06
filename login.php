@@ -48,12 +48,21 @@ try {
 try {
     // --- DYNAMIC LOOKUP BY EMAIL ---
     // Accounts created before the email column existed only have their email in username.
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?) ORDER BY LOWER(email) = LOWER(?) DESC LIMIT 1");
+    // Older rows can share an email (the live table has no UNIQUE index on it), so the account
+    // is the oldest match whose password is correct rather than whichever row MySQL returns first.
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?) ORDER BY LOWER(email) = LOWER(?) DESC, id ASC");
     $stmt->execute([$input_username, $input_username, $input_username]);
-    $db_user_row = $stmt->fetch();
 
     // --- SECURE BCRYPT VERIFICATION ---
-    if ($db_user_row && password_verify($input_password, $db_user_row['password_hash'])) {
+    $db_user_row = null;
+    foreach ($stmt->fetchAll() as $candidate) {
+        if (password_verify($input_password, $candidate['password_hash'])) {
+            $db_user_row = $candidate;
+            break;
+        }
+    }
+
+    if ($db_user_row) {
         // Moderator, admin and location endpoints identify the user from the PHP session.
         karavan_start_session();
         session_regenerate_id(true);

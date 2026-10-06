@@ -39,6 +39,20 @@ if (strlen($usernameInput) > 50 || strlen($passwordInput) > 50 || strlen($emailI
     exit;
 }
 
+// C: The live users table has no UNIQUE index on email, so duplicates must be caught here.
+// Accounts created before the email column existed only have their email in username.
+try {
+    $existing = $pdo->prepare('SELECT 1 FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?) LIMIT 1');
+    $existing->execute([$usernameInput, $emailInput, $emailInput]);
+    if ($existing->fetchColumn()) {
+        echo json_encode(["success" => false, "error" => "Username or Email already exists."]);
+        exit;
+    }
+} catch (\PDOException $e) {
+    echo json_encode(["success" => false, "error" => "Registration database failure."]);
+    exit;
+}
+
 // 4. AUTOMATIC SALTING AND HASHING
 $autoSaltedHash = password_hash($passwordInput, PASSWORD_BCRYPT);
 
