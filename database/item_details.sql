@@ -1,6 +1,6 @@
 -- Test data for the item details task cards (#151 frontend, #152 backend).
 -- Run after database/listings.sql. It adds no listings; it only resets descriptions on the
--- existing search books. Safe to re-run.
+-- existing search books and pins the images of 91001 and 91002. Safe to re-run.
 
 -- Older databases created by listings.sql alone have no description column yet.
 SET @column_exists = (
@@ -19,3 +19,7 @@ DEALLOCATE PREPARE migration_statement;
 -- 91001 Calculus Textbook has a description; 91002 Calculus Workbook has none.
 UPDATE listings SET description = 'Used for one semester. No writing or highlighting.' WHERE listing_id = 91001;
 UPDATE listings SET description = NULL WHERE listing_id = 91002;
+
+-- Same image paths as database/listings.sql, so the item details tests always get these values.
+UPDATE listings SET image_url = 'uploads/calculus-textbook.jpg' WHERE listing_id = 91001;
+UPDATE listings SET image_url = 'uploads/calculus-workbook.jpg' WHERE listing_id = 91002;
