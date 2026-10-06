@@ -13,6 +13,38 @@ header("Content-Type: application/json");
 
 
 // -----------------------------
+// DATABASE CONNECTION
+// Credentials are loaded by includes/db.php
+// -----------------------------
+
+require_once __DIR__ . '/../includes/db.php';
+
+// try {
+//     $pdo = karavan_pdo();
+// } catch (\Throwable $e) {
+//     echo json_encode([
+//         "success" => false,
+//         "error" => "Database connection failed."
+//     ]);
+
+//     http_response_code(500);
+//     exit;
+// }
+
+try {
+    $pdo = karavan_pdo();
+} catch (\Throwable $e) {
+    echo json_encode([
+        "success" => false,
+        "error" => $e->getMessage()
+    ]);
+
+    http_response_code(500);
+    exit;
+}
+
+
+// -----------------------------
 // READ DATA FROM JAVASCRIPT
 // -----------------------------
 
@@ -24,6 +56,7 @@ if (!$data) {
         "success" => false,
         "error" => "Invalid data received."
     ]);
+
     http_response_code(400);
     exit;
 }
@@ -51,6 +84,7 @@ if (empty($current_username)) {
         "success" => false,
         "error" => "Username is required."
     ]);
+
     http_response_code(400);
     exit;
 }
@@ -60,35 +94,8 @@ if (empty($password)) {
         "success" => false,
         "error" => "Password is required."
     ]);
+
     http_response_code(400);
-    exit;
-}
-
-
-// -----------------------------
-// DATABASE CONNECTION
-// -----------------------------
-
-$db_host = 'localhost';
-$db_name = 'cse442_2026_fall_team_j_db';
-$db_user = 'ndberg';
-$db_pass = '50250298';
-
-$conn = new mysqli(
-    $db_host,
-    $db_user,
-    $db_pass,
-    $db_name
-);
-
-
-if ($conn->connect_error) {
-    echo json_encode([
-        "success" => false,
-        "error" => "Database connection failed."
-    ]);
-
-    http_response_code(500);
     exit;
 }
 
@@ -97,24 +104,31 @@ if ($conn->connect_error) {
 // FIND USER
 // -----------------------------
 
-$stmt = $conn->prepare(
-    "SELECT id, password_hash, email
-     FROM users
-     WHERE username = ? OR email = ?"
-);
+try {
 
-$stmt->bind_param(
-    "ss",
-    $current_username,
-    $current_username
-);
+    $stmt = $pdo->prepare(
+        "SELECT id, password_hash, email
+         FROM users
+         WHERE username = ? OR email = ?"
+    );
 
-$stmt->execute();
+    $stmt->execute([
+        $current_username,
+        $current_username
+    ]);
 
-$result = $stmt->get_result();
-$user = $result->fetch_assoc();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$stmt->close();
+} catch (\PDOException $e) {
+
+    echo json_encode([
+        "success" => false,
+        "error" => "Failed to find account."
+    ]);
+
+    http_response_code(500);
+    exit;
+}
 
 
 // -----------------------------
@@ -127,7 +141,6 @@ if (!$user) {
         "error" => "Invalid username or password."
     ]);
 
-    $conn->close();
     http_response_code(401);
     exit;
 }
@@ -143,7 +156,6 @@ if (!password_verify($password, $user["password_hash"])) {
         "error" => "Invalid username or password."
     ]);
 
-    $conn->close();
     http_response_code(401);
     exit;
 }
@@ -155,19 +167,19 @@ if (!password_verify($password, $user["password_hash"])) {
 
 $user_id = $user["id"];
 
-$stmt = $conn->prepare(
-    "DELETE FROM users WHERE id = ?"
-);
+try {
 
-$stmt->bind_param(
-    "i",
-    $user_id
-);
+    $stmt = $pdo->prepare(
+        "DELETE FROM users WHERE id = ?"
+    );
 
+    $stmt->execute([
+        $user_id
+    ]);
 
-if ($stmt->execute()) {
+    if ($stmt->rowCount() === 1) {
 
-    if ($stmt->affected_rows === 1) {
+        // Delete authentication cookie
         setcookie(
             "karavan_auth_cookie",
             "",
@@ -176,6 +188,7 @@ if ($stmt->execute()) {
             ".aptitude.cse.buffalo.edu"
         );
 
+        // Destroy session
         $_SESSION = [];
         session_destroy();
 
@@ -196,7 +209,7 @@ if ($stmt->execute()) {
         http_response_code(404);
     }
 
-} else {
+} catch (\PDOException $e) {
 
     echo json_encode([
         "success" => false,
@@ -205,8 +218,5 @@ if ($stmt->execute()) {
 
     http_response_code(500);
 }
-
-$stmt->close();
-$conn->close();
 
 ?>

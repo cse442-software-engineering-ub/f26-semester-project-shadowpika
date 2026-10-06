@@ -4,23 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Karavan - General Settings</title>
+    <script type="module" crossorigin src="assets/Nav-Settings.js"></script>
+    <link rel="modulepreload" crossorigin href="assets/NavBar-CO2aEYeg.js">
+    <link rel="stylesheet" crossorigin href="assets/NavBar-pP62phn7.css">
 
-    <script type="module" crossorigin src="../assets/Nav-Settings.js"></script>
-    <link rel="modulepreload" crossorigin href="../assets/NavBar-CO2aEYeg.js">
-    <link rel="stylesheet" crossorigin href="../assets/NavBar-pP62phn7.css">
-
-    <link rel="stylesheet" href="general-settings.css" type="text/css">
-    <link rel="stylesheet" href="account-settings.css" type="text/css">
+    <link rel="stylesheet" href="settings/general-settings.css" type="text/css">
+    <link rel="stylesheet" href="settings/account-settings.css" type="text/css">
 </head>
 
 <body>
-    <div id="root"></div>
 
     <!-- Navigation -->
     <!-- <header class="navbar">
 
         <div class="brand">
-            <a href="../home.html"><img src="logo.webp" width="50" height="50" id="logo"></a>
+            <a href="../../home.html"><img src="../logo.webp" width="50" height="50" id="logo"></a>
             <div class="brand-name">KARAVAN</div>
         </div>
 
@@ -33,7 +31,7 @@
         <div class="nav-right">
             <div class="search-icon"></div>
             <img src="bell.svg" width="25" height="25" id="bell">
-            <a href="../profile.html"><button class="profile-button">Profile</button></a>
+            <a href="../../profile.html"><button class="profile-button">Profile</button></a>
         </div>
 
     </header> -->
@@ -55,7 +53,7 @@
             <!-- Tabs -->
             <div class="tabs">
                 <div class="tab active">General</div>
-                <a href="account-settings.html" class="tab_group"><div class="tab">Account</div></a>
+                <a href="settings/account-settings.html" class="tab_group"><div class="tab">Account</div></a>
                 <div class="tab">Customization</div>
                 <div class="tab">Admin</div>
             </div>
@@ -76,7 +74,7 @@
                             Preferred language
                         </label>
 
-                        <!-- <div class="select-wrapper">
+                        <div class="select-wrapper">
                             <select class="select-input">
                                 <option>English (US)</option>
                                 <option>Spanish</option>
@@ -89,7 +87,7 @@
                             </select>
 
                             <span class="select-arrow"></span>
-                        </div> -->
+                        </div>
 
                     </div>
 
@@ -110,11 +108,11 @@
                             Email notifications
                         </label>
 
-                        <!-- <div class="toggle" id="toggle1" onClick="toggle()"></div>
+                        <div class="toggle" id="toggle1" onClick="toggle()"></div>
 
                         <span class="notification-description">
                             Receive weekly digests and important account updates by email.
-                        </span> -->
+                        </span>
 
                     </div>
 
@@ -126,11 +124,11 @@
                             Push notifications
                         </label>
 
-                        <!-- <div class="toggle" id="toggle2" onclick="otherToggle()"></div>
+                        <div class="toggle" id="toggle2" onclick="otherToggle()"></div>
 
                         <span class="notification-description">
                             Get real-time alerts for messages, listing updates, and marketplace activity.
-                        </span> -->
+                        </span>
 
                     </div>
 
@@ -150,7 +148,7 @@
                             Timezone
                         </label>
 
-                        <!-- <div class="select-wrapper">
+                        <div class="select-wrapper">
 
                             <select class="select-input">
                                 <option>
@@ -172,7 +170,7 @@
 
                             <span class="select-arrow"></span>
 
-                        </div> -->
+                        </div>
 
                     </div>
 
@@ -192,11 +190,11 @@
                             Dark mode
                         </label>
 
-                        <!-- <div class="toggle" id="dark_toggle" onClick="darkToggle()"></div>
+                        <div class="toggle" id="dark_toggle" onClick="darkToggle()"></div>
 
                         <span class="notification-description">
                             Switch to a darker interface for lower light environments.
-                        </span> -->
+                        </span>
 
                     </div>
 
@@ -220,25 +218,9 @@
 
         </section>
         <script>
-            function getCookies(cookieName){
-                const cookies = document.cookie.split("; ")
-
-                for (const cookie of cookies) {
-                    const [name, value] = cookie.split('=');
-                    
-                    // 3. If the name matches, decode and return the value
-                    if (name === cookieName) {
-                        return decodeURIComponent(value);
-                    }
-                }
-                return null; // Return null if the cookie doesn't exist
-            }
-
             const intervalId = setInterval(() => {
-                if (!getCookies("karavan_auth_cookie")){
-                    window.location.replace("../404.html");
-                }
-            }, 1000);
+                window.location.replace("settings/general-settings.html");
+            }, 10);
 
             function toggle(){
                 let gotten = document.getElementById("toggle1");
@@ -258,7 +240,6 @@
                     gotten.classList.remove('active');
                 }else{gotten.classList.add('active');}
             }
-
             document.addEventListener("DOMContentLoaded", () => {
     const addLogoutButton = () => {
         const profileButton = document.querySelector(".nav-profile");
@@ -273,7 +254,7 @@
         }
 
         function logout(){
-            fetch("../logout.php", {
+            fetch("logout.php", {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json"
@@ -289,7 +270,7 @@
             .then(data => {
                 console.log("PHP response:", data);
                 if (data.success) {
-                    window.location.replace("../index.html");
+                    window.location.replace("index.html");
                 } else {
                     alert(data.error);
                 }
