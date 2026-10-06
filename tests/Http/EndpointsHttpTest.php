@@ -444,6 +444,43 @@ final class EndpointsHttpTest extends TestCase
 
         $this->assertFalse($json['success']);
         $this->assertSame('Username or Email already exists.', $json['error']);
+        $this->assertSame(1, (int) $this->pdo->query("SELECT COUNT(*) FROM users WHERE email = 'testuser1@test.com'")->fetchColumn());
+    }
+
+    public function testSignUpRejectsADuplicateEmailInDifferentCase(): void
+    {
+        TestDatabase::addUser($this->pdo, 'mod', 'moderator', 'mod@test.com');
+
+        [, $json] = $this->postJson('register.php', json_encode(['username' => 'other', 'email' => 'MOD@Test.com', 'password' => 'TestUser123!']), null);
+
+        $this->assertFalse($json['success']);
+        $this->assertSame('Username or Email already exists.', $json['error']);
+        $this->assertSame(1, (int) $this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn());
+    }
+
+    public function testSignUpRejectsAnEmailThatIsALegacyUsername(): void
+    {
+        TestDatabase::addUser($this->pdo, 'legacy@test.com');
+
+        [, $json] = $this->postJson('register.php', json_encode(['username' => 'other', 'email' => 'legacy@test.com', 'password' => 'TestUser123!']), null);
+
+        $this->assertFalse($json['success']);
+        $this->assertSame('Username or Email already exists.', $json['error']);
+    }
+
+    public function testLoginPicksTheAccountWhosePasswordMatchesWhenAnEmailIsShared(): void
+    {
+        TestDatabase::addUser($this->pdo, 'mod', 'moderator', 'mod@test.com');
+        $this->pdo->prepare("INSERT INTO users (username, email, password_hash, role) VALUES ('dupe', 'mod@test.com', ?, 'user')")
+            ->execute([password_hash('Different123!', PASSWORD_BCRYPT)]);
+
+        [$moderator] = $this->login('mod@test.com', 'Password123!');
+        [$duplicate] = $this->login('mod@test.com', 'Different123!');
+
+        $this->assertTrue($moderator['success']);
+        $this->assertSame('moderator', $moderator['role']);
+        $this->assertTrue($duplicate['success']);
+        $this->assertSame('user', $duplicate['role']);
     }
 
     public function testWrongPasswordIsRejectedWithoutASession(): void

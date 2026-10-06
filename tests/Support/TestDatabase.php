@@ -17,7 +17,7 @@ final class TestDatabase
             "CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL UNIQUE,
-                email TEXT NULL UNIQUE,
+                email TEXT NULL,
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'moderator')),
                 community_id INTEGER NULL REFERENCES admin_requests (id) ON DELETE SET NULL
