@@ -1,0 +1,143 @@
+/* Community picker. Sits below .nav (z-index 1200) and above page content such as Leaflet maps. */
+
+.kv-communities-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 120px 16px 24px;
+  font-family: 'DM Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: #1f2d44;
+}
+
+.kv-communities-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 22, 34, 0.45);
+}
+
+.kv-communities-dialog {
+  position: relative;
+  width: min(440px, 100%);
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  padding: 24px 24px 18px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(15, 22, 34, 0.25);
+  outline: none;
+}
+
+.kv-communities-title {
+  margin: 0 0 6px;
+  font-family: 'League Spartan', 'DM Sans', sans-serif;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.kv-communities-intro,
+.kv-communities-note {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #4a5870;
+}
+
+.kv-communities-error {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fdecea;
+  color: #c0392b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.kv-communities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.kv-communities-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f6f1ea;
+}
+
+.kv-communities-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.kv-communities-join {
+  flex: none;
+  min-width: 76px;
+  height: 34px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: #c9a15b;
+  color: #152a47;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kv-communities-join:hover:not(:disabled) {
+  background: #b88f4a;
+}
+
+.kv-communities-join:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.kv-communities-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
+.kv-communities-dismiss {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: #1f2d44;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.kv-communities-dismiss:hover {
+  background: rgba(31, 45, 68, 0.08);
+}
+
+.kv-communities-join:focus-visible,
+.kv-communities-dismiss:focus-visible {
+  outline: 2px solid #1f2d44;
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .kv-communities-layer {
+    padding-top: 104px;
+  }
+}
