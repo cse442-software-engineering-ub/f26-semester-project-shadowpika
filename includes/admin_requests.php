@@ -48,6 +48,27 @@ function karavan_validate_proof_file(?array $file): ?string
 }
 
 /**
+ * The id of the regular ('user') account that owns $email, null when no account does,
+ * or false when it belongs to an admin or moderator, who can't apply again.
+ * Accounts made before the email column existed only have their email in username.
+ */
+function karavan_regular_account_for_email(PDO $pdo, string $email): int|null|false
+{
+    $stmt = $pdo->prepare(
+        'SELECT id, role FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)
+         ORDER BY LOWER(email) = LOWER(?) DESC, id ASC'
+    );
+    $stmt->execute([$email, $email, $email]);
+    $matches = $stmt->fetchAll();
+    foreach ($matches as $match) {
+        if ($match['role'] !== 'user') {
+            return false;
+        }
+    }
+    return $matches ? (int) $matches[0]['id'] : null;
+}
+
+/**
  * @param callable $moveFile fn(string $from, string $to): bool — move_uploaded_file in production.
  */
 function karavan_admin_register(PDO $pdo, array $post, array $files, string $uploadDir, callable $moveFile): array
@@ -79,9 +100,9 @@ function karavan_admin_register(PDO $pdo, array $post, array $files, string $upl
         return [400, ['success' => false, 'error' => 'Password must be at least 8 characters.']];
     }
 
-    $existing = $pdo->prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)');
-    $existing->execute([$email, $email]);
-    if ($existing->fetch()) {
+    // A student with a regular account can apply with the same email; approval then promotes that account.
+    $linkedUserId = karavan_regular_account_for_email($pdo, $email);
+    if ($linkedUserId === false) {
         return [409, ['success' => false, 'error' => 'An account with this email already exists.']];
     }
     $existingRequest = $pdo->prepare('SELECT id FROM admin_requests WHERE LOWER(email) = LOWER(?)');
@@ -108,16 +129,16 @@ function karavan_admin_register(PDO $pdo, array $post, array $files, string $upl
         return [500, ['success' => false, 'error' => 'Could not save the uploaded file.']];
     }
 
-    // No users row yet: the account is only created when a moderator approves the request.
+    // A new applicant's account is only created when a moderator approves the request.
     try {
         $insertRequest = $pdo->prepare(
             "INSERT INTO admin_requests
-                (full_name, business_name, email, phone, password_hash, proof_file_name, proof_original_name, proof_mime_type, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
+                (full_name, business_name, email, phone, password_hash, proof_file_name, proof_original_name, proof_mime_type, status, user_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)"
         );
         $insertRequest->execute([
             $fullName, $businessName, $email, $phone, password_hash($password, PASSWORD_BCRYPT),
-            $storedName, basename($file['name']), $mime,
+            $storedName, basename($file['name']), $mime, $linkedUserId,
         ]);
         $requestId = (int) $pdo->lastInsertId();
     } catch (PDOException $e) {
@@ -182,7 +203,8 @@ function karavan_list_pending_requests(PDO $pdo, ?int $userId): array
     return [200, ['success' => true, 'requests' => $requests]];
 }
 
-// approve: creates the applicant's users row (role 'admin') and marks the request approved.
+// approve: promotes the linked regular account to 'admin', or creates a new admin users row
+//          when the applicant had no account, and marks the request approved.
 // deny:    deletes the request row and its uploaded document; no account is ever created.
 function karavan_decide_request(PDO $pdo, ?int $userId, $input, string $uploadDir): array
 {
@@ -202,7 +224,7 @@ function karavan_decide_request(PDO $pdo, ?int $userId, $input, string $uploadDi
     try {
         $pdo->beginTransaction();
 
-        $find = $pdo->prepare('SELECT id, email, password_hash, proof_file_name, status FROM admin_requests WHERE id = ?');
+        $find = $pdo->prepare('SELECT id, email, password_hash, proof_file_name, status, user_id FROM admin_requests WHERE id = ?');
         $find->execute([$requestId]);
         $request = $find->fetch();
 
@@ -230,11 +252,30 @@ function karavan_decide_request(PDO $pdo, ?int $userId, $input, string $uploadDi
         }
 
         if ($newStatus === 'approved') {
-            // login.php looks accounts up by email, so the applicant's email fills both columns.
-            $createUser = $pdo->prepare("INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'admin')");
-            $createUser->execute([$request['email'], $request['email'], $request['password_hash']]);
-            $link = $pdo->prepare('UPDATE admin_requests SET user_id = ? WHERE id = ?');
-            $link->execute([(int) $pdo->lastInsertId(), $requestId]);
+            $linkedUser = karavan_find_user($pdo, $request['user_id'] !== null ? (int) $request['user_id'] : null);
+            if ($linkedUser === null) {
+                // The applicant may have made a regular account after applying.
+                $laterAccountId = karavan_regular_account_for_email($pdo, $request['email']);
+                if ($laterAccountId === false) {
+                    $pdo->rollBack();
+                    return [409, ['success' => false, 'error' => 'An account with this email already exists.']];
+                }
+                $linkedUser = karavan_find_user($pdo, $laterAccountId);
+            }
+
+            if ($linkedUser !== null) {
+                // The applicant keeps their existing login; a moderator is never demoted to admin.
+                $promote = $pdo->prepare("UPDATE users SET role = 'admin' WHERE id = ? AND role = 'user'");
+                $promote->execute([(int) $linkedUser['id']]);
+                $link = $pdo->prepare('UPDATE admin_requests SET user_id = ? WHERE id = ?');
+                $link->execute([(int) $linkedUser['id'], $requestId]);
+            } else {
+                // login.php looks accounts up by email, so the applicant's email fills both columns.
+                $createUser = $pdo->prepare("INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'admin')");
+                $createUser->execute([$request['email'], $request['email'], $request['password_hash']]);
+                $link = $pdo->prepare('UPDATE admin_requests SET user_id = ? WHERE id = ?');
+                $link->execute([(int) $pdo->lastInsertId(), $requestId]);
+            }
         }
 
         $pdo->commit();
