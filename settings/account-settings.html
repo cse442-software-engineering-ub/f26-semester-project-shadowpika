@@ -66,7 +66,6 @@
                         <input
                             class="field-input"
                             type="text"
-                            value="Shadowpika"
                             id="name"
                             name="input_username"
                         >
@@ -154,62 +153,8 @@
 
         </section>
         <script>
-            // function submitData() {
-            // let username = document.user_info.input_username.value;
-            // let address = document.user_info.input_email.value;
-            // fetch("account.php", {
-            //     method: "POST",
-            //     headers: {
-            //         "Content-Type": "application/json"
-            //     },
-            //     body: JSON.stringify({
-            //         name: username,
-            //         email: address
-            //     })
-            // })
-            // .then(response => response.json())
-            // .then(data => {
-            //     console.log(data);
-            // });
-            // }
-
-        //     function submitData() {
-        //     var pass = prompt("Please enter your password to make these changes:")
-        //     let name = document.user_info.input_username.value;
-        //     let address = document.user_info.input_email.value;
-
-        //     fetch("account.php", {
-        //         method: "POST",
-        //         headers: {
-        //             "Content-Type": "application/json"
-        //         },
-        //         body: JSON.stringify({
-        //             current_username: "Shadowpika",
-        //             username: name,
-        //             email: address,
-        //             password: pass
-        //         })
-        //     })
-        //     .then(response => {
-        //         console.log("HTTP status:", response.status);
-        //         return response.text();
-        //     })
-        //     .then(data => {
-        //         console.log("PHP response:", data);
-        //     })
-        //     .catch(error => {
-        //         console.error("Fetch error:", error);
-        //     });
-        //     .then(data => {
-        //         console.log("PHP response:", data);
-
-        //         if (data.success) {
-        //             document.getElementById("name").value = data.username;
-        //             document.getElementById("email").value = data.email;
-        //         }
-        //     })
-        // }
-
+            document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+            
         function getCookies(cookieName){
             const cookies = document.cookie.split("; ")
 
@@ -290,7 +235,7 @@
                     document.getElementById("name").value = data.username;
                     document.getElementById("email").value = data.email;
                 } else {
-                    document.getElementById("name").value = "Shadowpika";
+                    document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
                     document.getElementById("email").value = "";
                     console.log("Error:", data.error);
                     alert(data.error);
