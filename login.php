@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/http.php';
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/communities.php';
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
@@ -69,11 +70,16 @@ try {
         ];
         setcookie("karavan_auth_cookie", $input_username, $cookie_options);
 
+        // The nav's "Join a Community" button shows the joined community's name.
+        $community = karavan_find_community($pdo, $db_user_row['community_id'] ?? null);
+
         echo json_encode([
             "success" => true,
             "status" => "success",
             "authenticated" => true,
-            "role" => $db_user_row['role'] ?? 'user'
+            "role" => $db_user_row['role'] ?? 'user',
+            "community_id" => $community['community_id'] ?? null,
+            "community_name" => $community['community_name'] ?? null
         ]);
     } else {
         echo json_encode([
