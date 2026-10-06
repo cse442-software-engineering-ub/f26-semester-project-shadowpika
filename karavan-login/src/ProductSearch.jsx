@@ -13,6 +13,7 @@ const CATEGORY_OPTIONS = [
     'Clothing & Gear',
     'Other',
 ];
+const CONDITION_OPTIONS = ['New', 'Like New', 'Good', 'Fair', 'Acceptable'];
 
 // Emoji, pictographs, flags, and the joiners/variation selectors used to build them.
 // Kept in sync with the pattern in api/search_listings.php.
@@ -33,20 +34,25 @@ function cleanQuery(typed) {
     return { cleaned, notice };
 }
 
-// The search lives in the address (?q=...&categories=...) so the browser's Back button
+// The search lives in the address (?q=...&categories=...&conditions=...) so the browser's Back button
 // returns from an item page to the same results.
 const searchParams = () => new URLSearchParams(window.location.search);
 const initialQuery = () => cleanQuery(searchParams().get('q') ?? '').cleaned;
 const initialCategories = () => (searchParams().get('categories') ?? '')
     .split(',')
     .filter((category) => CATEGORY_OPTIONS.includes(category));
+const initialConditions = () => (searchParams().get('conditions') ?? '')
+    .split(',')
+    .filter((condition) => CONDITION_OPTIONS.includes(condition));
 
-function saveSearchInAddress(query, categories) {
+function saveSearchInAddress(query, categories, conditions) {
     const params = searchParams();
     if (query.trim()) params.set('q', query);
     else params.delete('q');
     if (categories.length > 0) params.set('categories', categories.join(','));
     else params.delete('categories');
+    if (conditions.length > 0) params.set('conditions', conditions.join(','));
+    else params.delete('conditions');
 
     const queryString = params.toString();
     const url = `${window.location.pathname}${queryString ? `?${queryString}` : ''}${window.location.hash}`;
@@ -145,6 +151,8 @@ function ProductSearch() {
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [draftCategories, setDraftCategories] = useState(initialCategories);
     const [appliedCategories, setAppliedCategories] = useState(initialCategories);
+    const [draftConditions, setDraftConditions] = useState(initialConditions);
+    const [appliedConditions, setAppliedConditions] = useState(initialConditions);
     const [publishedListing, setPublishedListing] = useState(null);
     const [publishedStatus, setPublishedStatus] = useState('idle');
     const requestId = useRef(0);
@@ -188,7 +196,7 @@ function ProductSearch() {
         };
     }, []);
 
-    const runSearch = useCallback(async (rawTerm, categories) => {
+    const runSearch = useCallback(async (rawTerm, categories, conditions) => {
         const term = rawTerm.trim();
         const id = ++requestId.current;
 
@@ -197,14 +205,14 @@ function ProductSearch() {
 
         // 1. LOCAL PREVIEW MODE
         if (isLocalPreview()) {
-            setResults(searchLocalListings(term, categories));
+            setResults(searchLocalListings(term, categories, conditions));
             setStatus('done');
             return;
         }
 
         // 2. PRODUCTION MODE
         try {
-            const response = await fetch(buildSearchUrl(term, categories));
+            const response = await fetch(buildSearchUrl(term, categories, conditions));
             const data = await response.json();
             if (id !== requestId.current) return; // a newer search has started
             if (response.ok && data.success) {
@@ -223,15 +231,15 @@ function ProductSearch() {
         }
     }, []);
 
-    // Load active listings on entry and refresh after the user pauses typing or applies categories.
+    // Load active listings on entry and refresh after the user pauses typing or applies filters.
     useEffect(() => {
-        const timer = setTimeout(() => runSearch(query, appliedCategories), SEARCH_DELAY_MS);
+        const timer = setTimeout(() => runSearch(query, appliedCategories, appliedConditions), SEARCH_DELAY_MS);
         return () => clearTimeout(timer);
-    }, [query, appliedCategories, runSearch]);
+    }, [query, appliedCategories, appliedConditions, runSearch]);
 
     useEffect(() => {
-        saveSearchInAddress(query, appliedCategories);
-    }, [query, appliedCategories]);
+        saveSearchInAddress(query, appliedCategories, appliedConditions);
+    }, [query, appliedCategories, appliedConditions]);
 
     const handleChange = (e) => {
         const { cleaned, notice } = cleanQuery(e.target.value);
@@ -241,12 +249,15 @@ function ProductSearch() {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        runSearch(query, appliedCategories);
+        runSearch(query, appliedCategories, appliedConditions);
     };
 
     const toggleFilters = () => {
         setFiltersOpen((isOpen) => {
-            if (!isOpen) setDraftCategories(appliedCategories);
+            if (!isOpen) {
+                setDraftCategories(appliedCategories);
+                setDraftConditions(appliedConditions);
+            }
             return !isOpen;
         });
     };
@@ -257,20 +268,31 @@ function ProductSearch() {
             : [...current, category]);
     };
 
+    const toggleDraftCondition = (condition) => {
+        setDraftConditions((current) => current.includes(condition)
+            ? current.filter((selected) => selected !== condition)
+            : [...current, condition]);
+    };
+
     const applyFilters = () => {
         setAppliedCategories([...draftCategories]);
+        setAppliedConditions([...draftConditions]);
     };
 
     const clearFilters = () => {
         setDraftCategories([]);
         setAppliedCategories([]);
+        setDraftConditions([]);
+        setAppliedConditions([]);
     };
 
     const term = query.trim();
     const charCount = Array.from(query).length;
-    const filterStatus = appliedCategories.length === 0
-        ? 'No Filters Active'
-        : `Categories: ${appliedCategories.join(', ')}`;
+    const activeFilterLabels = [];
+    if (appliedCategories.length > 0) activeFilterLabels.push(`Categories: ${appliedCategories.join(', ')}`);
+    if (appliedConditions.length > 0) activeFilterLabels.push(`Conditions: ${appliedConditions.join(', ')}`);
+    const filterStatus = activeFilterLabels.length === 0 ? 'No Filters Active' : activeFilterLabels.join(' · ');
+    const hasActiveFilters = activeFilterLabels.length > 0;
     const publishedResultVisible = publishedListing
         && results.some((listing) => String(listing.listing_id) === String(publishedListing.listing_id));
     const marketplaceResults = publishedResultVisible
@@ -309,7 +331,7 @@ function ProductSearch() {
                                     <SearchIcon />
                                 </button>
                             </form>
-                            <div className={`ps-filter-status${appliedCategories.length > 0 ? ' is-active' : ''}`} aria-live="polite">
+                            <div className={`ps-filter-status${hasActiveFilters ? ' is-active' : ''}`} aria-live="polite">
                                 {filterStatus}
                             </div>
                         </div>
@@ -413,12 +435,23 @@ function ProductSearch() {
                                 <div className="ps-price-values"><span>$10.00</span><span>to</span><span>$75.00</span></div>
                             </fieldset>
 
-                            <fieldset className="ps-filter-group ps-placeholder-filter" disabled>
+                            <fieldset className="ps-filter-group">
                                 <legend>Condition</legend>
                                 <div className="ps-condition-options">
-                                    <button type="button" disabled>New</button>
-                                    <button type="button" className="is-selected" disabled>Like New</button>
-                                    <button type="button" disabled>Used</button>
+                                    {CONDITION_OPTIONS.map((condition) => {
+                                        const selected = draftConditions.includes(condition);
+                                        return (
+                                            <button
+                                                type="button"
+                                                className={selected ? 'is-selected' : ''}
+                                                aria-pressed={selected}
+                                                onClick={() => toggleDraftCondition(condition)}
+                                                key={condition}
+                                            >
+                                                {condition}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </fieldset>
 

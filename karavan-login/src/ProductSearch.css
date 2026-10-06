@@ -378,13 +378,26 @@ body:has(.ps-page) {
   padding: 8px 16px;
   border: 1px solid var(--ps-navy);
   border-radius: 16px;
+  background: var(--ps-white);
+  color: var(--ps-navy);
   font-size: 11px;
   opacity: 1;
+  cursor: pointer;
 }
 
 .ps-page .ps-condition-options button.is-selected {
   background: var(--ps-navy);
   color: var(--ps-cream);
+}
+
+.ps-page .ps-condition-options button:hover,
+.ps-page .ps-condition-options button:focus-visible {
+  background: #f1ece3;
+}
+
+.ps-page .ps-condition-options button.is-selected:hover,
+.ps-page .ps-condition-options button.is-selected:focus-visible {
+  background: #17263f;
 }
 
 .ps-placeholder-filter > label {
