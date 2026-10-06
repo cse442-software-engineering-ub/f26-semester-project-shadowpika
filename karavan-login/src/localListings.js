@@ -22,11 +22,12 @@ const CATEGORY_ALIASES = {
 
 const canonicalCategory = (category) => CATEGORY_ALIASES[category] || category;
 
-export function buildSearchUrl(query, categories) {
+export function buildSearchUrl(query, categories = [], conditions = []) {
     const parameters = new URLSearchParams();
     const term = query.trim();
     if (term) parameters.set('q', term);
     if (categories.length > 0) parameters.set('categories', categories.join(','));
+    if (conditions.length > 0) parameters.set('conditions', conditions.join(','));
     const queryString = parameters.toString();
     return `./api/search_listings.php${queryString ? `?${queryString}` : ''}`;
 }
@@ -44,10 +45,11 @@ export function findLocalListing(listingId) {
 }
 
 // Same rules as the PHP endpoint: active only, optional case-insensitive keyword matching,
-// exact category filtering, OR between categories, and AND between keyword and categories.
-export function searchLocalListings(query = '', categories = []) {
+// exact category and condition filtering, OR within each filter type, and AND between filter types.
+export function searchLocalListings(query = '', categories = [], conditions = []) {
     const q = query.trim().toLowerCase();
     const selectedCategories = new Set(categories);
+    const selectedConditions = new Set(conditions);
     const matches = (l) => {
         const name = l.name.toLowerCase();
         const category = canonicalCategory(l.category);
@@ -56,7 +58,8 @@ export function searchLocalListings(query = '', categories = []) {
             || name.includes(' ' + q)
             || category.toLowerCase().startsWith(q);
         const matchesCategory = selectedCategories.size === 0 || selectedCategories.has(category);
-        return matchesQuery && matchesCategory;
+        const matchesCondition = selectedConditions.size === 0 || selectedConditions.has(l.condition);
+        return matchesQuery && matchesCategory && matchesCondition;
     };
     return LOCAL_LISTINGS
         .filter((l) => l.status === 'active' && matches(l))
