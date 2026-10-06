@@ -1,9 +1,9 @@
 <?php
-// GET /api/search_listings.php?q=<text>&categories=Textbooks,Dorm%20Living&conditions=Good,Like%20New
+// GET /api/search_listings.php?q=<text>&categories=Textbooks,Dorm%20Living&conditions=Good,Like%20New&min_price=10.00&max_price=75.00
 // Returns ACTIVE listings. The optional text query matches the start of any word in the product
 // name or the start of the category. Optional category values are exact-match and use OR with one
 // another. Optional condition values are also exact-match and use OR with one another. Different
-// filter types are combined with AND.
+// filter types are combined with AND. Optional price bounds are inclusive.
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: GET");
@@ -123,6 +123,36 @@ if (array_key_exists('conditions', $_GET)) {
     }
 }
 
+function price_bound(string $parameterName, string $label): ?float {
+    if (!array_key_exists($parameterName, $_GET)) {
+        return null;
+    }
+    if (!is_string($_GET[$parameterName])) {
+        respond(400, ["success" => false, "error" => "$label price must be a single decimal value."]);
+    }
+
+    $input = trim($_GET[$parameterName]);
+    if ($input === '') {
+        return null;
+    }
+
+    if (!preg_match('/\A(?:0|[1-9]\d{0,3})(?:\.\d{1,2})?\z/', $input)) {
+        respond(400, ["success" => false, "error" => "$label price must be between 0.00 and 9,999.99 with no more than two decimal places."]);
+    }
+
+    $price = (float) $input;
+    if (!is_finite($price) || $price < 0 || $price > 9999.99) {
+        respond(400, ["success" => false, "error" => "$label price must be between 0.00 and 9,999.99 with no more than two decimal places."]);
+    }
+    return $price;
+}
+
+$minPrice = price_bound('min_price', 'Minimum');
+$maxPrice = price_bound('max_price', 'Maximum');
+if ($minPrice !== null && $maxPrice !== null && $minPrice > $maxPrice) {
+    respond(400, ["success" => false, "error" => "Minimum price cannot be greater than maximum price."]);
+}
+
 // --- DATABASE CONNECTION CONFIGURATION ---
 $db_host = 'localhost';
 $db_name = 'cse442_2026_fall_team_j_db';
@@ -166,6 +196,18 @@ try {
         $sql .= " AND `condition` IN ($placeholders)";
         $types .= str_repeat('s', count($conditions));
         array_push($parameters, ...$conditions);
+    }
+
+    if ($minPrice !== null) {
+        $sql .= " AND price >= ?";
+        $types .= 'd';
+        $parameters[] = $minPrice;
+    }
+
+    if ($maxPrice !== null) {
+        $sql .= " AND price <= ?";
+        $types .= 'd';
+        $parameters[] = $maxPrice;
     }
 
     $sql .= ' ORDER BY listing_id';
