@@ -28,10 +28,10 @@
 
             <!-- Tabs -->
             <div class="tabs">
-                <div class="tab">General</div>
+                <!-- <div class="tab">General</div> -->
                 <div class="tab active">Account</div>
-                <div class="tab">Customization</div>
-                <a href="#" class="tab_group"><div class="tab">Admin</div></a>
+                <!-- <div class="tab">Customization</div> -->
+                <a href="admin-settings.html" class="tab_group" id="admin-tab" hidden><div class="tab">Admin</div></a>
             </div>
 
 
@@ -64,10 +64,10 @@
                         >
                     </div>
 
-                    <div class="field photo-field">
+                    <!-- <div class="field photo-field">
                         <label class="field-label photo-label">
                             Profile photo
-                        </label>
+                        </label> -->
 
                         <!-- <div class="upload-box" id="pfp">
                             <div class="camera-icon"></div>
@@ -75,7 +75,7 @@
                                 Upload new photo
                             </span>
                         </div> -->
-                    </div>
+                    <!-- </div> -->
                     </form>
                 </section>
 
@@ -235,8 +235,8 @@
         }
 
         const intervalId = setInterval(() => {
-            window.location.replace("settings/account-settings.html");
-        }, 10);
+            window.location.replace("account-settings.html");
+        }, 1);
 
         document.addEventListener("DOMContentLoaded", () => {
 
@@ -252,7 +252,7 @@
                 // Logout functionality
                 // -----------------------------
                 function logout() {
-                    fetch("logout.php", {
+                    fetch("../logout.php", {
                         method: "DELETE",
                         headers: {
                             "Content-Type": "application/json"
@@ -297,6 +297,11 @@
                     logoutButton.addEventListener("click", () => {
                         logout();
                     });
+
+                    logoutButton.style.font = "inherit";
+                    logoutButton.style.color = "inherit";
+                    logoutButton.style.cursor = "pointer";
+                    logoutButton.style.border = "none";
 
                     searchButton.insertAdjacentElement("afterend", logoutButton);
                 }
