@@ -293,7 +293,7 @@ function CreateListing() {
                 <button
                     type="button"
                     className="listing-secondary-button manage-listings-button"
-                    href="./product-search.html"
+                    href="./manage-listings.html"
                 >
                     Manage listings
                 </button>

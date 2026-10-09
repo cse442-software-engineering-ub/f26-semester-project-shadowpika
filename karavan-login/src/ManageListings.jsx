@@ -1,81 +1,11 @@
 ﻿import React, { useState, useEffect } from 'react';
 import './CreateListing.css';
 import './ManageListings.css';
+import NavBar from './NavBar.jsx';
+import './NavBar.css';
 
 const BASE_API_PATH = '/CSE442/2026-Fall/cse-442j/listing/api';
 
-function RealKaravanNavBar() {
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
-    useEffect(() => {
-        if (!isDrawerOpen) return;
-        const handleResize = () => window.matchMedia('(min-width: 769px)').matches && setIsDrawerOpen(false);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, [isDrawerOpen]);
-
-    const navLinks = [
-        { label: 'Home', href: './home.html' },
-        { label: 'Settings', href: './settings.html' },
-        { label: 'Sell', href: './sell.html' }
-    ];
-
-    return (
-        <header className="nav">
-            <nav className="nav-bar" aria-label="Main">
-                <a className="nav-logo" href="./home.html" aria-label="Karavan home">
-                    <svg className="nav-logo-icon" viewBox="0 0 52 36" fill="none" aria-hidden="true">
-                        <path d="M6 5h30c7.2 0 13 5.8 13 13v7a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3z" stroke="#1f2d44" strokeWidth="2.4" />
-                        <rect x="8" y="10" width="11" height="7" rx="1.5" stroke="#1f2d44" strokeWidth="2" />
-                        <path d="M39 10h1.5a5 5 0 0 1 5 5v2H39z" stroke="#1f2d44" strokeWidth="2" strokeLinejoin="round" />
-                        <rect x="25" y="10" width="8" height="15" rx="1" fill="#d9a441" stroke="#1f2d44" strokeWidth="1.6" />
-                        <circle cx="31" cy="18" r="0.9" fill="#1f2d44" />
-                        <circle cx="15" cy="28" r="5" fill="#3f6fa0" stroke="#1f2d44" strokeWidth="2" />
-                        <circle cx="15" cy="28" r="1.6" fill="#f6f1ea" />
-                    </svg>
-                    <span className="nav-logo-text">KARAVAN</span>
-                </a>
-                <div className="nav-right">
-                    <ul className="nav-links">
-                        {navLinks.map(link => (
-                            <li key={link.label}><a className="nav-link" href={link.href}>{link.label}</a></li>
-                        ))}
-                    </ul>
-                    <div className="nav-icons">
-                        <a className="nav-icon-btn nav-search" href="./product-search.html" aria-label="Search">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-                                <circle cx="10.5" cy="10.5" r="7" /><line x1="15.8" y1="15.8" x2="21" y2="21" />
-                            </svg>
-                        </a>
-                        <a className="nav-profile" href="./profile.html">Profile</a>
-                        <button type="button" className="nav-icon-btn nav-menu-btn" aria-label="Open menu" aria-expanded={isDrawerOpen} onClick={() => setIsDrawerOpen(true)}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-                                <line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </nav>
-            <div className={`nav-backdrop${isDrawerOpen ? ' is-open' : ''}`} onClick={() => setIsDrawerOpen(false)} aria-hidden="true" />
-            <aside id="nav-drawer" className={`nav-drawer${isDrawerOpen ? ' is-open' : ''}`} aria-label="Menu" inert={!isDrawerOpen ? "" : undefined}>
-                <a className="nav-drawer-brand" href="./home.html" aria-label="Karavan home">
-                    <svg className="nav-logo-icon" viewBox="0 0 52 36" fill="none" aria-hidden="true">
-                        <path d="M6 5h30c7.2 0 13 5.8 13 13v7a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3z" stroke="#1f2d44" strokeWidth="2.4" />
-                        <circle cx="15" cy="28" r="5" fill="#3f6fa0" stroke="#1f2d44" strokeWidth="2" />
-                    </svg>
-                    <span className="nav-drawer-title">KARAVAN</span>
-                    <span className="nav-drawer-tagline">Buy. Sell. Support Students.</span>
-                </a>
-                <ul className="nav-drawer-links">
-                    {navLinks.map(link => (
-                        <li key={link.label}><a className="nav-drawer-link" href={link.href}>{link.label}</a></li>
-                    ))}
-                    <li><a className="nav-drawer-link" href="./profile.html">Profile</a></li>
-                </ul>
-            </aside>
-        </header>
-    );
-}
 export default function ManageListings({ onCreateListing }) {
     const [currentView, setCurrentView] = useState('manage');
     const [currentTab, setCurrentTab] = useState('active');
@@ -112,11 +42,61 @@ export default function ManageListings({ onCreateListing }) {
     useEffect(() => {
         const styleOverride = document.createElement('style');
         styleOverride.innerHTML = `
-            #root { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-            body { margin: 0 !important; padding: 0 !important; background-color: #F7F3EA !important; }
+            html, body, #root { 
+                max-width: 100% !important; 
+                width: 100% !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                overflow-x: hidden !important; 
+                border-inline: none !important;
+            }
+            body { 
+                background-color: #F7F3EA !important; 
+            }
+            main {
+                width: 100% !important;
+                max-width: 1240px !important;
+                margin: 0 auto !important;
+                box-sizing: border-box !important;
+                padding: 40px 20px !important;
+            }
+
+            /* --- FORCE THE REAL HAMBURGER MENUS ON MOBILES --- */
+            @media screen and (max-width: 820px) {
+                /* 1. Hide the clumping desktop elements */
+                [class*="nav-links"], [class*="nav-profile"], .nav-profile, a[href*="profile"] {
+                    display: none !important;
+                    visibility: hidden !important;
+                }
+                
+                /* Ensure the navbar wrapper alignment can accept the injection pointer */
+                [class*="nav-icons"] {
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 16px !important;
+                }
+            }
+
+            /* Stacking rules to keep cards clean below the navigation header */
+            @media screen and (max-width: 820px) {
+                main > div:last-child > div {
+                    flex-direction: column !important; 
+                    gap: 24px !important;
+                    padding: 20px !important;
+                    max-width: 100% !important;
+                    box-sizing: border-box !important;
+                }
+                main > div:last-child > div > div:first-child {
+                    width: 100% !important;
+                    height: auto !important;
+                    aspect-ratio: 330 / 400 !important;
+                    max-width: 340px !important;
+                    margin: 0 auto !important;
+                }
+            }
         `;
         document.head.appendChild(styleOverride);
-        
+
         loadDatabaseListings();
 
         const handleHashRouting = () => {
@@ -173,7 +153,7 @@ export default function ManageListings({ onCreateListing }) {
     if (currentView === 'edit' && selectedListing) {
         return (
             <div style={{ width: '100%', minHeight: '100vh', paddingBottom: 40, background: '#F7F3EA', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-                <RealKaravanNavBar />
+                <NavBar />
                 <main style={{ width: '100%', maxWidth: '1240px', margin: '0 auto', padding: '40px 20px', display: 'flex', flexDirection: 'column', gap: 16, boxSizing: 'border-box', textAlign: 'left' }}>
                     <div>
                         <h1 style={{ fontSize: '30px', fontWeight: '700', margin: '0 0 6px 0', color: '#1F2F46', fontFamily: 'DM Sans' }}>Edit your listing</h1>
@@ -353,7 +333,7 @@ export default function ManageListings({ onCreateListing }) {
     }
     return (
         <div style={{ width: '100%', minHeight: '100vh', paddingBottom: 40, background: '#F7F3EA', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', margin: 0, padding: 0 }}>
-            <RealKaravanNavBar />
+            <NavBar />
             <main style={{ width: '100%', maxWidth: '1240px', margin: '0 auto', padding: '40px 20px', display: 'flex', flexDirection: 'column', gap: 8, boxSizing: 'border-box', textAlign: 'left' }}>
                 <div style={{ color: '#1F2F46', fontSize: 30, fontFamily: 'DM Sans', fontWeight: '700', lineHeight: '42px', marginTop: 20 }}>My listings</div>
                 <div style={{ color: '#6E87A0', fontSize: 15, fontFamily: 'DM Sans', fontWeight: '400', lineHeight: '21px' }}>
