@@ -459,6 +459,10 @@
             color: inherit;
         }
 
+        [hidden] {
+            display: none !important;
+        }
+
    @media (max-width: 768px) {
     .field-label{
         display:none;
