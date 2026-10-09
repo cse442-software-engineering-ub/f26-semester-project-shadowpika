@@ -290,7 +290,6 @@ function App() {
                         {/* LOGIN/SIGNUP BUTTON */}
                         <div style={{ alignSelf: 'stretch', justifyContent: 'flex-end', alignItems: 'flex-start', display: 'inline-flex' }}>
                             <div style={{ alignSelf: 'stretch', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex' }}>
-                                <div style={{ justifyContent: 'center', display: 'flex', flexDirection: 'column', color: '#C9A15B', fontSize: 10.61, fontFamily: 'DM Sans', fontWeight: '400', wordWrap: 'break-word' }}>Forgot your Password?</div>
                             </div>
                         </div>
                         <div style={{ alignSelf: 'stretch', paddingTop: 21.21, flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'flex' }}>
