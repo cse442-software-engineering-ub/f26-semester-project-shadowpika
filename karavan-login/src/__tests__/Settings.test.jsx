@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import Settings from '../pages/Settings.jsx';
+import Settings, { ACCOUNT_SETTINGS_HREF } from '../pages/Settings.jsx';
 
 // Leaflet needs a real browser, so the map is swapped for buttons that report the same events.
 vi.mock('../components/LocationsMap.jsx', () => ({
@@ -47,32 +47,55 @@ async function openAdminTab(user) {
     await user.click(await screen.findByRole('tab', { name: 'Admin' }));
 }
 
+function stubNavigation() {
+    const navigation = { replace: vi.fn(), assign: vi.fn() };
+    vi.stubGlobal('location', { ...window.location, ...navigation });
+    return navigation;
+}
+
 describe('Settings page', () => {
-    it('shows the same tab row as the Account Settings design', async () => {
-        mockBackend({ list: [403, FORBIDDEN] });
+    beforeEach(() => {
+        stubNavigation();
+    });
+
+    it('opens on the Admin tab for admins, next to the Account tab', async () => {
+        mockBackend();
         render(<Settings />);
 
         expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
-        expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['General', 'Account', 'Customization']);
-        expect(screen.getByRole('tab', { name: 'Account' })).toHaveAttribute('aria-selected', 'true');
+        expect(await screen.findByRole('tab', { name: 'Admin' })).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Account', 'Admin']);
+        expect(window.location.replace).not.toHaveBeenCalled();
+    });
+
+    it('switches to the Account settings page from the Account tab', async () => {
+        const user = userEvent.setup();
+        mockBackend();
+        render(<Settings />);
+        await openAdminTab(user);
+
+        await user.click(screen.getByRole('tab', { name: 'Account' }));
+
+        expect(window.location.assign).toHaveBeenCalledWith(ACCOUNT_SETTINGS_HREF);
     });
 
     // Frontend Test 4
-    it('hides the Admin tab from users who are not admins', async () => {
+    it('sends users who are not admins to Account settings without showing the map', async () => {
         const fetchMock = mockBackend({ list: [403, FORBIDDEN] });
         render(<Settings />);
 
-        await waitFor(() => expect(callsTo(fetchMock, 'get_approved_locations.php')).toHaveLength(1));
+        await waitFor(() => expect(window.location.replace).toHaveBeenCalledWith(ACCOUNT_SETTINGS_HREF));
+        expect(callsTo(fetchMock, 'get_approved_locations.php')).toHaveLength(1);
         expect(screen.queryByRole('tab', { name: 'Admin' })).not.toBeInTheDocument();
         expect(screen.queryByText('Approved Meeting Locations')).not.toBeInTheDocument();
         expect(screen.queryByTestId('locations-map')).not.toBeInTheDocument();
     });
 
-    it('hides the Admin tab when the server cannot be reached', async () => {
+    it('sends the user to Account settings when the server cannot be reached', async () => {
         vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))));
         render(<Settings />);
 
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        await waitFor(() => expect(window.location.replace).toHaveBeenCalledWith(ACCOUNT_SETTINGS_HREF));
         expect(screen.queryByRole('tab', { name: 'Admin' })).not.toBeInTheDocument();
     });
 

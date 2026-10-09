@@ -5,6 +5,12 @@ import KaravanHeader from './components/KaravanHeader.jsx';
 import { KaravanHero } from './components/KaravanBrand.jsx';
 import { pathFor } from './routes.js';
 import { markNewAccount, recordLogin } from './community.js';
+import { fetchSession, isLocalMockBackend, isLoggedIn } from './api.js';
+
+const HOME_PAGE = './home.html';
+
+// Moderators work from the moderator dashboard rather than the marketplace home page.
+const landingPageFor = (role) => (role === 'moderator' ? pathFor('moderator') : HOME_PAGE);
 
 function App() {
     const [username, setUsername] = useState('');
@@ -12,19 +18,30 @@ function App() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState(''); // NEW
     const [message, setMessage] = useState('');
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     // ROUTING CONFIGURATION: Detects if this is the separate register page view
     const isRegisterPage = window.location.pathname.includes('register') || window.location.hash === '#register';
 
-    // Check for an active session right when the page loads
+    // Someone already signed in (including a remembered login) skips the form and goes home.
     useEffect(() => {
-        const activeSession = localStorage.getItem('service_session_token');
-        if (activeSession) {
-            setIsLoggedIn(true);
+        if (isLocalMockBackend()) {
+            setIsLoading(false);
+            return undefined;
         }
-        setIsLoading(false); // Done checking, turn off the loading block
+        let cancelled = false;
+        fetchSession()
+            .then((session) => {
+                if (cancelled) return;
+                if (isLoggedIn(session)) window.location.replace(landingPageFor(session.role));
+                else setIsLoading(false);
+            })
+            .catch(() => {
+                if (!cancelled) setIsLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const registerSuccess = () => {
@@ -34,7 +51,7 @@ function App() {
 
     const loginSuccess = () => {
         setMessage('Login successful!');
-        window.location.href = './home.html';
+        window.location.href = HOME_PAGE;
     };
 
     const handleSubmit = async (e) => {
@@ -49,9 +66,7 @@ function App() {
         setMessage(isRegisterPage ? 'Writing to database...' : 'Logging in...');
 
         // 1. LOCAL MACHINE PREVIEW MODE
-        const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        // `npm run dev:backend` sets this so local logins go to the real login.php instead of the mock.
-        if (isLocalHost && import.meta.env.VITE_LOCAL_BACKEND !== 'true') {
+        if (isLocalMockBackend()) {
             setTimeout(() => {
                 const currentTable = JSON.parse(localStorage.getItem('cse442_users_table')) || [
                     { id: 1, username: 'admin', password_hash: 'local_hash', email: 'admin@example.com' }
@@ -82,7 +97,6 @@ function App() {
                         (lowerEmail === 'liveuser777' && password === 'SecretPass777');
                     const existingUser = currentTable.some(u => u.email && u.email.toLowerCase() === lowerEmail);
                     if (isDemoAccount || (existingUser && password.length > 0)) {
-                        setIsLoggedIn(true);
                         loginSuccess();
                     } else {
                         setMessage('Incorrect email or password. Please try again.');
@@ -120,9 +134,8 @@ function App() {
                 if (data.role === 'moderator') {
                     window.location.assign(pathFor('moderator'));
                 } else {
-                    setIsLoggedIn(true);
                     setMessage('Login successful!');
-                    window.location.href = './home.html';
+                    window.location.href = HOME_PAGE;
                 }
             } else {
                 setMessage(data.error || 'An error occurred.');
@@ -134,18 +147,6 @@ function App() {
 
     if (isLoading) {
         return <div style={{ fontFamily: 'sans-serif', textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
-    }
-
-    // RENDERING THE SEPARATE PAGES
-    if (isLoggedIn) {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', fontFamily: 'sans-serif', margin: '20px' }}>
-                <div style={{ padding: '40px', maxWidth: '350px', width: '100%', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                    <h1 style={{ color: '#333', fontSize: '24px' }}>Welcome back!</h1>
-                    <p style={{ color: 'green', fontWeight: 'bold' }}>You are securely logged into the service.</p>
-                </div>
-            </div>
-        );
     }
 
     return (

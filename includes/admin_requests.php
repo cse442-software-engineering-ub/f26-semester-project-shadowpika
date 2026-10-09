@@ -157,7 +157,7 @@ function karavan_find_user(PDO $pdo, ?int $userId): ?array
     if ($userId === null) {
         return null;
     }
-    $stmt = $pdo->prepare('SELECT id, username, role FROM users WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT id, username, email, role FROM users WHERE id = ?');
     $stmt->execute([$userId]);
     return $stmt->fetch() ?: null;
 }

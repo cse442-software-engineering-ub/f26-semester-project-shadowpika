@@ -106,6 +106,39 @@
   opacity: 0.6;
 }
 
+.kv-communities-actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+.kv-communities-leave {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid rgba(31, 45, 68, 0.35);
+  border-radius: 8px;
+  background: none;
+  color: #1f2d44;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kv-communities-leave:hover:not(:disabled) {
+  background: rgba(31, 45, 68, 0.08);
+}
+
+.kv-communities-leave:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.kv-communities-leave:focus-visible {
+  outline: 2px solid #1f2d44;
+  outline-offset: 2px;
+}
+
 .kv-communities-footer {
   display: flex;
   justify-content: flex-end;

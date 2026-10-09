@@ -110,7 +110,7 @@ describe('Frontend: Moderator Approval Page', () => {
         const user = userEvent.setup();
         render(<App />);
 
-        await user.type(screen.getByLabelText('Email'), 'moderator@test.com');
+        await user.type(await screen.findByLabelText('Email'), 'moderator@test.com');
         await user.type(screen.getByLabelText('Password'), 'Moderator123!');
         await user.click(screen.getByRole('button', { name: 'Log In' }));
 

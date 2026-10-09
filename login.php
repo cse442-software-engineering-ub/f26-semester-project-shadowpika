@@ -2,6 +2,7 @@
 require_once __DIR__ . '/includes/http.php';
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/communities.php';
+require_once __DIR__ . '/includes/auth.php';
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
@@ -68,16 +69,14 @@ try {
         session_regenerate_id(true);
         $_SESSION['user_id'] = (int) $db_user_row['id'];
 
-        // --- SET FIGMA-COMPATIBLE SECURE COOKIE ---
-        $cookie_options = [
-            'expires' => time() + (86400 * 30), // 30 Days expiration
-            'path' => '/',
-            'domain' => 'aptitude.cse.buffalo.edu', // Must match your UB server host
-            'secure' => true,     // CRITICAL: Must be true for iframes to read it
-            'httponly' => false,  // Must be false so React frontend can check if it exists
-            'samesite' => 'None'  // CRITICAL: Tells browsers it's safe to send inside Figma
-        ];
-        setcookie("karavan_auth_cookie", $input_username, $cookie_options);
+        // Keeps the login after the browser closes; session.php turns this back into a session.
+        try {
+            karavan_issue_remember_token($pdo, (int) $db_user_row['id']);
+        } catch (Throwable $e) {
+            // Without the auth_tokens table (sql/005) login still works, it just isn't remembered.
+        }
+
+        karavan_set_auth_cookie($input_username, time() + KARAVAN_REMEMBER_SECONDS);
 
         // The nav's "Join a Community" button shows the joined community's name.
         $community = karavan_find_community($pdo, $db_user_row['community_id'] ?? null);

@@ -55,6 +55,17 @@ final class TestDatabase
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )"
         );
+        // Mirrors sql/005_auth_tokens.sql.
+        $pdo->exec(
+            "CREATE TABLE auth_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+                selector TEXT NOT NULL UNIQUE,
+                token_hash TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )"
+        );
 
         return $pdo;
     }

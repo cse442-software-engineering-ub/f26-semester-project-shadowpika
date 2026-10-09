@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import './CommunityPicker.css';
 
 // Rendered under the nav bar (see .nav z-index) so the nav stays usable while it's open.
-function CommunityPicker({ communities, loading, error, joinedId, joiningId, firstLogin, onJoin, onClose }) {
+function CommunityPicker({ communities, loading, error, joinedId, joiningId, leaving, firstLogin, onJoin, onLeave, onClose }) {
     const dialogRef = useRef(null);
 
     useEffect(() => {
@@ -25,18 +25,32 @@ function CommunityPicker({ communities, loading, error, joinedId, joiningId, fir
             <ul className="kv-communities-list">
                 {communities.map(({ community_id: id, name }) => {
                     const joined = id === joinedId;
+                    const busy = joiningId !== null || leaving;
                     return (
                         <li key={id} className="kv-communities-item">
                             <span className="kv-communities-name">{name}</span>
-                            <button
-                                type="button"
-                                className="kv-communities-join"
-                                aria-label={joined ? `Joined ${name}` : `Join ${name}`}
-                                disabled={joined || joiningId !== null}
-                                onClick={() => onJoin(id)}
-                            >
-                                {joined ? 'Joined' : joiningId === id ? 'Joining…' : 'Join'}
-                            </button>
+                            <span className="kv-communities-actions">
+                                {joined ? (
+                                    <button
+                                        type="button"
+                                        className="kv-communities-leave"
+                                        aria-label={`Leave ${name}`}
+                                        disabled={busy}
+                                        onClick={onLeave}
+                                    >
+                                        {leaving ? 'Leaving…' : 'Leave'}
+                                    </button>
+                                ) : null}
+                                <button
+                                    type="button"
+                                    className="kv-communities-join"
+                                    aria-label={joined ? `Joined ${name}` : `Join ${name}`}
+                                    disabled={joined || busy}
+                                    onClick={() => onJoin(id)}
+                                >
+                                    {joined ? 'Joined' : joiningId === id ? 'Joining…' : 'Join'}
+                                </button>
+                            </span>
                         </li>
                     );
                 })}
@@ -61,7 +75,7 @@ function CommunityPicker({ communities, loading, error, joinedId, joiningId, fir
                 <p id="kv-communities-intro" className="kv-communities-intro">
                     {firstLogin
                         ? 'Welcome to Karavan! Join a community to connect with students and partners near you.'
-                        : 'You can be in one community at a time. Joining another one switches you to it.'}
+                        : 'You can be in one community at a time. Joining another one switches you to it, and you can leave at any time.'}
                 </p>
                 {error ? <p className="kv-communities-error" role="alert">{error}</p> : null}
                 {body}
