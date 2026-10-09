@@ -18,7 +18,8 @@ const root = createRoot(rootElement)
 function render() {
   const route = currentRoute()
   const Page = PAGES[route]
-  rootElement.classList.toggle('kv-root', route !== 'login')
+  // Every page, the login page included, opts out of the template's fixed-width, bordered #root.
+  rootElement.classList.add('kv-root')
   root.render(
     <StrictMode>
       <Page key={route} />

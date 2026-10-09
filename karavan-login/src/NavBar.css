@@ -114,9 +114,9 @@
   background: rgba(31, 45, 68, 0.08);
 }
 
-/* A button that looks like the text links beside it. Repeats .nav-link's type because
-   page-level button resets (e.g. `.ps-page button { font: inherit }`) outrank it. */
-.nav .nav-logout {
+/* A button that looks like the text links beside it (navbar and header Log Out). Repeats
+   .nav-link's type because page-level button resets (e.g. `.ps-page button { font: inherit }`) outrank it. */
+.nav .nav-text-button {
   padding: 0;
   border: none;
   background: none;
@@ -244,10 +244,11 @@
   .nav-drawer {
     display: flex;
     flex-direction: column;
+    /* Full height of the screen, flush with the top, right and bottom edges */
     position: fixed;
-    top: 16px;
+    top: 0;
     right: 0;
-    bottom: 16px;
+    bottom: 0;
     z-index: 101;
     width: min(300px, 78vw);
     padding: 20px 16px 24px 24px;

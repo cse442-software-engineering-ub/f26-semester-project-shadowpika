@@ -55,44 +55,35 @@
     border: 0;
 }
 
-/* Header */
-.kv-header {
+/* The header is KaravanHeader, styled by NavBar.css so it matches the navbar exactly. */
+
+/* Large centre logo (KaravanHero): the navbar's caravan and wordmark, scaled up */
+.kv-hero {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
     gap: 16px;
-    padding: 10px 32px;
-    border-bottom: 1px solid rgba(31, 58, 95, 0.12);
-    background: var(--kv-cream);
-    position: relative;
-    z-index: 10;
 }
 
-.kv-header__brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
+.kv-hero__icon {
+    width: 190px;
+    height: auto;
 }
 
-.kv-wordmark,
-.kv-brand__wordmark {
-    font-family: var(--kv-heading);
+.kv-hero__wordmark {
+    font-family: 'League Spartan', 'DM Sans', sans-serif;
+    font-size: 48px;
     font-weight: 400;
-    color: var(--kv-navy);
-    letter-spacing: 0.06em;
     line-height: 1;
+    letter-spacing: 1px;
+    color: #1f2d44;
 }
 
-.kv-wordmark {
-    font-size: 30px;
-    padding-top: 4px;
-}
-
-.kv-header__actions {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+.kv-hero__tagline {
+    font-family: var(--kv-heading);
+    font-size: 20px;
+    color: var(--kv-muted);
+    letter-spacing: 0.04em;
 }
 
 /* Two-column layout: brand left, form card right */
@@ -115,17 +106,6 @@
     align-items: center;
     justify-content: center;
     gap: 16px;
-}
-
-.kv-brand__wordmark {
-    font-size: 72px;
-}
-
-.kv-brand__tagline {
-    font-family: var(--kv-heading);
-    font-size: 20px;
-    color: var(--kv-muted);
-    letter-spacing: 0.04em;
 }
 
 .kv-centered {
@@ -488,12 +468,12 @@
 }
 
 @media (max-width: 600px) {
-    .kv-header {
-        padding: 10px 16px;
+    .kv-hero__icon {
+        width: 140px;
     }
 
-    .kv-wordmark {
-        font-size: 24px;
+    .kv-hero__wordmark {
+        font-size: 40px;
     }
 
     .kv-card {

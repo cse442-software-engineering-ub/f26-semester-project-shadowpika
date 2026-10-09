@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import KaravanHeader from '../components/KaravanHeader.jsx';
+import { KaravanHero } from '../components/KaravanBrand.jsx';
 import FileDropzone from '../components/FileDropzone.jsx';
 import { validateProofFile } from '../validation.js';
 import { submitAdminRegistration } from '../api.js';
@@ -114,8 +115,7 @@ export default function AdminRegister() {
             <KaravanHeader />
             <main className="kv-split">
                 <section className="kv-brand" aria-hidden="true">
-                    <span className="kv-brand__wordmark">KARAVAN</span>
-                    <span className="kv-brand__tagline">Community Partner Portal</span>
+                    <KaravanHero tagline="Community Partner Portal" />
                 </section>
 
                 <section className="kv-card kv-card--form" aria-labelledby="admin-register-title">

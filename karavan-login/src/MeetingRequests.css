@@ -118,10 +118,11 @@
   text-transform: uppercase;
 }
 
+/* Cards stay a readable width; wider screens fit more of them per row instead of stretching them */
 .mr-request-list {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
   gap: 12px;
-  max-width: 760px;
   margin: 12px 0 0;
   padding: 0;
   list-style: none;
