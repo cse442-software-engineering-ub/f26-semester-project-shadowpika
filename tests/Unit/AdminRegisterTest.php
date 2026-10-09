@@ -227,15 +227,57 @@ final class AdminRegisterTest extends TestCase
         $this->assertSame(0, (int) $this->pdo->query('SELECT COUNT(*) FROM admin_requests')->fetchColumn());
     }
 
-    public function testRejectsDuplicateEmail(): void
+    public function testRegularAccountEmailLinksTheRequestToThatAccount(): void
     {
-        TestDatabase::addUser($this->pdo, 'chun.admin@test.com');
+        $studentId = TestDatabase::addUser($this->pdo, 'chun.student', 'user', 'chun.admin@test.com');
+        $files = ['proof_of_ownership' => Fixtures::upload($this->tmpDir, 'lease.pdf', Fixtures::pdfBytes())];
+
+        [$status, $body] = $this->register($this->validPost(['email' => 'CHUN.ADMIN@test.com']), $files);
+
+        $this->assertSame(201, $status);
+        $this->assertTrue($body['success']);
+        $row = $this->pdo->query('SELECT * FROM admin_requests')->fetch();
+        $this->assertSame($studentId, (int) $row['user_id']);
+        $this->assertSame('pending', $row['status']);
+        $this->assertSame('user', $this->pdo->query("SELECT role FROM users WHERE id = $studentId")->fetchColumn());
+    }
+
+    public function testLegacyAccountWithEmailAsUsernameIsAlsoLinked(): void
+    {
+        $studentId = TestDatabase::addUser($this->pdo, 'chun.admin@test.com');
+        $files = ['proof_of_ownership' => Fixtures::upload($this->tmpDir, 'lease.pdf', Fixtures::pdfBytes())];
+
+        [$status] = $this->register($this->validPost(), $files);
+
+        $this->assertSame(201, $status);
+        $this->assertSame($studentId, (int) $this->pdo->query('SELECT user_id FROM admin_requests')->fetchColumn());
+    }
+
+    public function testNewEmailLeavesTheRequestUnlinked(): void
+    {
+        $files = ['proof_of_ownership' => Fixtures::upload($this->tmpDir, 'lease.pdf', Fixtures::pdfBytes())];
+
+        $this->register($this->validPost(), $files);
+
+        $this->assertNull($this->pdo->query('SELECT user_id FROM admin_requests')->fetchColumn());
+    }
+
+    public static function elevatedRoles(): array
+    {
+        return ['admin' => ['admin'], 'moderator' => ['moderator']];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('elevatedRoles')]
+    public function testRejectsEmailOfAnAdminOrModerator(string $role): void
+    {
+        TestDatabase::addUser($this->pdo, 'chun', $role, 'chun.admin@test.com');
         $files = ['proof_of_ownership' => Fixtures::upload($this->tmpDir, 'lease.pdf', Fixtures::pdfBytes())];
 
         [$status, $body] = $this->register($this->validPost(['email' => 'CHUN.ADMIN@test.com']), $files);
 
         $this->assertSame(409, $status);
-        $this->assertFalse($body['success']);
+        $this->assertSame(['success' => false, 'error' => 'An account with this email already exists.'], $body);
         $this->assertSame(0, (int) $this->pdo->query('SELECT COUNT(*) FROM admin_requests')->fetchColumn());
+        $this->assertDirectoryDoesNotExist($this->uploadDir, 'no document is saved for a rejected application');
     }
 }

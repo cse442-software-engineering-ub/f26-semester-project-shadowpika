@@ -1,9 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import PlaceholderPage from './PlaceholderPage.jsx'
+import Home from './Home.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <PlaceholderPage title="Home" />
+    <Home />
   </StrictMode>,
 )

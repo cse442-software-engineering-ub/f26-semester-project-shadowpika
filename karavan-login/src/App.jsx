@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './index.css'
 import karavanLogo from './assets/images/logo.png';
 import { pathFor } from './routes.js';
+import { markNewAccount, recordLogin } from './community.js';
 
 function App() {
     const [username, setUsername] = useState('');
@@ -46,7 +47,9 @@ function App() {
         setMessage(isRegisterPage ? 'Writing to database...' : 'Logging in...');
 
         // 1. LOCAL MACHINE PREVIEW MODE
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        // `npm run dev:backend` sets this so local logins go to the real login.php instead of the mock.
+        if (isLocalHost && import.meta.env.VITE_LOCAL_BACKEND !== 'true') {
             setTimeout(() => {
                 const currentTable = JSON.parse(localStorage.getItem('cse442_users_table')) || [
                     { id: 1, username: 'admin', password_hash: 'local_hash', email: 'admin@example.com' }
@@ -104,10 +107,16 @@ function App() {
 
             if (data.success) {
                 if (isRegisterPage) {
+                    markNewAccount(email);
                     setMessage('Account successfully saved! Redirecting to login...');
                     setTimeout(() => {
                         window.location.href = './index.html';
                     }, 1500);
+                    return;
+                }
+                recordLogin(email, data);
+                if (data.role === 'moderator') {
+                    window.location.assign(pathFor('moderator'));
                 } else {
                     setIsLoggedIn(true);
                     setMessage('Login successful!');
@@ -190,6 +199,7 @@ function App() {
                                 </div>
                                 <input
                                     type={isRegisterPage ? "text" : "email"}
+                                    aria-label={isRegisterPage ? 'Username' : 'Email'}
                                     value={isRegisterPage ? username : email}
                                     maxLength={50}
                                     onChange={(e) => isRegisterPage ? setUsername(e.target.value) : setEmail(e.target.value)}
@@ -219,6 +229,7 @@ function App() {
                                     </div>
                                     <input
                                         type="email"
+                                        aria-label="Email"
                                         value={email}
                                         maxLength={50}
                                         onChange={(e) => setEmail(e.target.value)}
@@ -245,7 +256,7 @@ function App() {
                                     </div>
                                 </div>
                             </div>
-                            <input type="password" value={password} maxLength={50} onChange={(e) => setPassword(e.target.value)} style={{
+                            <input type="password" aria-label="Password" value={password} maxLength={50} onChange={(e) => setPassword(e.target.value)} style={{
                                 width: '100%', padding: '10px', boxSizing: 'border-box', border: '1px solid #ccc',
                                 fontFamily: 'DM Sans', fontWeight: '400', borderRadius: '4px',
                                 alignSelf: 'stretch', height: 39.59, paddingLeft: 15.55, paddingRight: 15.55, background: '#F7F3EA',
@@ -268,7 +279,7 @@ function App() {
                                     </div>
                                 </div>
                                 {/* CHANGED: value and onChange to use confirmPassword */}
-                                <input type="password" value={confirmPassword} maxLength={50} onChange={(e) => setConfirmPassword(e.target.value)} style={{
+                                <input type="password" aria-label="Confirm Password" value={confirmPassword} maxLength={50} onChange={(e) => setConfirmPassword(e.target.value)} style={{
                                     width: '100%', padding: '10px', boxSizing: 'border-box', border: '1px solid #ccc',
                                     fontFamily: 'DM Sans', fontWeight: '400', borderRadius: '4px',
                                     alignSelf: 'stretch', height: 39.59, paddingLeft: 15.55, paddingRight: 15.55, background: '#F7F3EA',

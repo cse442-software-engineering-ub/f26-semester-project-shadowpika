@@ -1,0 +1,225 @@
+/* Buyer meeting requests: Buy Now, the Organize a Meet page, and My Purchase Requests on Home.
+   Builds on the product search colors and the item details frame. */
+
+.ps-page .id-buy,
+.ps-page .mr-submit {
+  align-self: flex-start;
+  margin-top: 20px;
+  padding: 12px 28px;
+  border-radius: 10px;
+  background: var(--ps-navy);
+  color: var(--ps-cream);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ps-page .id-buy:hover,
+.ps-page .id-buy:focus-visible,
+.ps-page .mr-submit:hover,
+.ps-page .mr-submit:focus-visible {
+  background: #2c3f5e;
+}
+
+.ps-page .mr-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.mr-title {
+  margin-top: 16px;
+}
+
+.mr-meet {
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) minmax(0, 420px);
+  gap: 40px;
+  max-width: 1040px;
+  margin-top: 24px;
+  padding: 32px;
+  background: var(--ps-white);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(31, 45, 68, 0.06);
+}
+
+.mr-item-cover {
+  display: flex;
+  aspect-ratio: 4 / 5;
+  padding: 24px 32px;
+  background: #efe6d8;
+  border-radius: 12px;
+}
+
+.mr-item-name {
+  margin: 16px 0 0;
+  font-family: 'League Spartan', 'DM Sans', sans-serif;
+  font-size: 22px;
+  line-height: 28px;
+  overflow-wrap: anywhere;
+}
+
+.mr-item-price {
+  margin: 6px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.mr-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mr-field input,
+.mr-field select {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid #d8d1c4;
+  border-radius: 8px;
+  background: var(--ps-white);
+  color: var(--ps-navy);
+  font: inherit;
+  font-weight: 400;
+}
+
+.mr-field input:focus,
+.mr-field select:focus {
+  outline: none;
+  border-color: var(--ps-gold);
+}
+
+.mr-message {
+  margin: 0;
+  font-size: 14px;
+}
+
+.mr-success {
+  color: #2f7a4b;
+  font-weight: 700;
+}
+
+.mr-requests {
+  margin-top: 28px;
+}
+
+.mr-section-title {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.mr-request-list {
+  display: grid;
+  gap: 12px;
+  max-width: 760px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mr-request {
+  display: flex;
+  gap: 16px;
+  padding: 14px;
+  background: var(--ps-white);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(31, 45, 68, 0.06);
+}
+
+.mr-request-cover {
+  display: flex;
+  flex: none;
+  width: 72px;
+  aspect-ratio: 4 / 5;
+  padding: 6px 8px;
+  background: #efe6d8;
+  border-radius: 8px;
+}
+
+.mr-request-cover .ps-book-title {
+  font-size: 9px;
+}
+
+.mr-request-cover .ps-book-face {
+  gap: 4px;
+  padding: 4px;
+}
+
+.mr-request-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mr-request-name {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.mr-request-price,
+.mr-request-when,
+.mr-request-where {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.mr-request-price {
+  font-weight: 700;
+}
+
+.mr-request-where {
+  color: var(--ps-muted);
+}
+
+.mr-status {
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  background: rgba(201, 161, 94, 0.18);
+  color: #8a6a2f;
+}
+
+.mr-status-approved {
+  background: rgba(47, 122, 75, 0.14);
+  color: #2f7a4b;
+}
+
+.mr-status-denied {
+  background: rgba(180, 83, 42, 0.14);
+  color: #b4532a;
+}
+
+.mr-status-location_change_requested {
+  background: rgba(63, 111, 160, 0.14);
+  color: #3f6fa0;
+}
+
+@media (max-width: 768px) {
+  .mr-meet {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding: 20px;
+  }
+
+  .mr-item-cover {
+    width: min(100%, 220px);
+  }
+}

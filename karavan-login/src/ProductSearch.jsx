@@ -13,6 +13,11 @@ const CATEGORY_OPTIONS = [
     'Clothing & Gear',
     'Other',
 ];
+const CONDITION_OPTIONS = ['New', 'Like New', 'Good', 'Fair', 'Acceptable'];
+const PRICE_PATTERN = /^(?:0|[1-9]\d{0,3})(?:\.\d{1,2})?$/;
+const PRICE_ENTRY_PATTERN = /^\d{0,4}(?:\.\d{0,2})?$/;
+const PRICE_ERROR = 'Enter a price from $0.00 to $9,999.99 with no more than two decimal places.';
+const BLOCKED_PRICE_KEYS = new Set(['-', '+', 'e', 'E']);
 
 // Emoji, pictographs, flags, and the joiners/variation selectors used to build them.
 // Kept in sync with the pattern in api/search_listings.php.
@@ -33,20 +38,75 @@ function cleanQuery(typed) {
     return { cleaned, notice };
 }
 
-// The search lives in the address (?q=...&categories=...) so the browser's Back button
-// returns from an item page to the same results.
+// The search lives in the address so the browser's Back button returns from an item page to the
+// same keyword, category, condition, and price-filtered results.
 const searchParams = () => new URLSearchParams(window.location.search);
 const initialQuery = () => cleanQuery(searchParams().get('q') ?? '').cleaned;
 const initialCategories = () => (searchParams().get('categories') ?? '')
     .split(',')
     .filter((category) => CATEGORY_OPTIONS.includes(category));
+const initialConditions = () => (searchParams().get('conditions') ?? '')
+    .split(',')
+    .filter((condition) => CONDITION_OPTIONS.includes(condition));
 
-function saveSearchInAddress(query, categories) {
+function normalizePriceBound(value) {
+    const trimmed = value.trim();
+    if (trimmed === '') return '';
+    if (!PRICE_PATTERN.test(trimmed)) return null;
+    const price = Number(trimmed);
+    if (!Number.isFinite(price) || price < 0 || price > 9999.99) return null;
+    return price.toFixed(2);
+}
+
+function isAllowedPriceEntry(value) {
+    if (value === '') return true;
+    if (!PRICE_ENTRY_PATTERN.test(value)) return false;
+    const price = Number(value);
+    return Number.isFinite(price) && price >= 0 && price <= 9999.99;
+}
+
+function validatePriceRange(minimum, maximum) {
+    const minPrice = normalizePriceBound(minimum);
+    if (minPrice === null) return { error: PRICE_ERROR, field: 'minimum' };
+
+    const maxPrice = normalizePriceBound(maximum);
+    if (maxPrice === null) return { error: PRICE_ERROR, field: 'maximum' };
+
+    if (minPrice !== '' && maxPrice !== '' && Number(minPrice) > Number(maxPrice)) {
+        return { error: 'Minimum price cannot be greater than maximum price.', field: 'minimum' };
+    }
+    return { minPrice, maxPrice, error: '', field: '' };
+}
+
+const initialPriceRange = () => {
+    const params = searchParams();
+    const validated = validatePriceRange(
+        params.get('min_price') ?? '',
+        params.get('max_price') ?? '',
+    );
+    if (validated.error) return { minPrice: '', maxPrice: '' };
+    return { minPrice: validated.minPrice, maxPrice: validated.maxPrice };
+};
+
+function priceRangeLabel(minimum, maximum) {
+    if (minimum && maximum) return `$${minimum} to $${maximum}`;
+    if (minimum) return `$${minimum} and up`;
+    if (maximum) return `Up to $${maximum}`;
+    return 'Any price';
+}
+
+function saveSearchInAddress(query, categories, conditions, minPrice, maxPrice) {
     const params = searchParams();
     if (query.trim()) params.set('q', query);
     else params.delete('q');
     if (categories.length > 0) params.set('categories', categories.join(','));
     else params.delete('categories');
+    if (conditions.length > 0) params.set('conditions', conditions.join(','));
+    else params.delete('conditions');
+    if (minPrice) params.set('min_price', minPrice);
+    else params.delete('min_price');
+    if (maxPrice) params.set('max_price', maxPrice);
+    else params.delete('max_price');
 
     const queryString = params.toString();
     const url = `${window.location.pathname}${queryString ? `?${queryString}` : ''}${window.location.hash}`;
@@ -145,9 +205,18 @@ function ProductSearch() {
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [draftCategories, setDraftCategories] = useState(initialCategories);
     const [appliedCategories, setAppliedCategories] = useState(initialCategories);
+    const [draftConditions, setDraftConditions] = useState(initialConditions);
+    const [appliedConditions, setAppliedConditions] = useState(initialConditions);
+    const [draftMinPrice, setDraftMinPrice] = useState(() => initialPriceRange().minPrice);
+    const [draftMaxPrice, setDraftMaxPrice] = useState(() => initialPriceRange().maxPrice);
+    const [appliedMinPrice, setAppliedMinPrice] = useState(() => initialPriceRange().minPrice);
+    const [appliedMaxPrice, setAppliedMaxPrice] = useState(() => initialPriceRange().maxPrice);
+    const [priceError, setPriceError] = useState('');
     const [publishedListing, setPublishedListing] = useState(null);
     const [publishedStatus, setPublishedStatus] = useState('idle');
     const requestId = useRef(0);
+    const minimumPriceRef = useRef(null);
+    const maximumPriceRef = useRef(null);
 
     useEffect(() => {
         const publishedId = new URLSearchParams(window.location.search).get('published');
@@ -188,7 +257,7 @@ function ProductSearch() {
         };
     }, []);
 
-    const runSearch = useCallback(async (rawTerm, categories) => {
+    const runSearch = useCallback(async (rawTerm, categories, conditions, minPrice, maxPrice) => {
         const term = rawTerm.trim();
         const id = ++requestId.current;
 
@@ -197,14 +266,14 @@ function ProductSearch() {
 
         // 1. LOCAL PREVIEW MODE
         if (isLocalPreview()) {
-            setResults(searchLocalListings(term, categories));
+            setResults(searchLocalListings(term, categories, conditions, minPrice, maxPrice));
             setStatus('done');
             return;
         }
 
         // 2. PRODUCTION MODE
         try {
-            const response = await fetch(buildSearchUrl(term, categories));
+            const response = await fetch(buildSearchUrl(term, categories, conditions, minPrice, maxPrice));
             const data = await response.json();
             if (id !== requestId.current) return; // a newer search has started
             if (response.ok && data.success) {
@@ -223,15 +292,27 @@ function ProductSearch() {
         }
     }, []);
 
-    // Load active listings on entry and refresh after the user pauses typing or applies categories.
+    // Load active listings on entry and refresh after the user pauses typing or applies filters.
     useEffect(() => {
-        const timer = setTimeout(() => runSearch(query, appliedCategories), SEARCH_DELAY_MS);
+        const timer = setTimeout(() => runSearch(
+            query,
+            appliedCategories,
+            appliedConditions,
+            appliedMinPrice,
+            appliedMaxPrice,
+        ), SEARCH_DELAY_MS);
         return () => clearTimeout(timer);
-    }, [query, appliedCategories, runSearch]);
+    }, [query, appliedCategories, appliedConditions, appliedMinPrice, appliedMaxPrice, runSearch]);
 
     useEffect(() => {
-        saveSearchInAddress(query, appliedCategories);
-    }, [query, appliedCategories]);
+        saveSearchInAddress(
+            query,
+            appliedCategories,
+            appliedConditions,
+            appliedMinPrice,
+            appliedMaxPrice,
+        );
+    }, [query, appliedCategories, appliedConditions, appliedMinPrice, appliedMaxPrice]);
 
     const handleChange = (e) => {
         const { cleaned, notice } = cleanQuery(e.target.value);
@@ -241,12 +322,18 @@ function ProductSearch() {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        runSearch(query, appliedCategories);
+        runSearch(query, appliedCategories, appliedConditions, appliedMinPrice, appliedMaxPrice);
     };
 
     const toggleFilters = () => {
         setFiltersOpen((isOpen) => {
-            if (!isOpen) setDraftCategories(appliedCategories);
+            if (!isOpen) {
+                setDraftCategories(appliedCategories);
+                setDraftConditions(appliedConditions);
+                setDraftMinPrice(appliedMinPrice);
+                setDraftMaxPrice(appliedMaxPrice);
+                setPriceError('');
+            }
             return !isOpen;
         });
     };
@@ -257,20 +344,68 @@ function ProductSearch() {
             : [...current, category]);
     };
 
+    const toggleDraftCondition = (condition) => {
+        setDraftConditions((current) => current.includes(condition)
+            ? current.filter((selected) => selected !== condition)
+            : [...current, condition]);
+    };
+
+    const updateDraftPrice = (value, setter) => {
+        if (!isAllowedPriceEntry(value)) {
+            setPriceError(PRICE_ERROR);
+            return;
+        }
+        setter(value);
+        setPriceError('');
+    };
+
+    const blockInvalidPriceKey = (event) => {
+        if (BLOCKED_PRICE_KEYS.has(event.key)) {
+            event.preventDefault();
+            setPriceError(PRICE_ERROR);
+        }
+    };
+
     const applyFilters = () => {
+        const validatedPrice = validatePriceRange(draftMinPrice, draftMaxPrice);
+        if (validatedPrice.error) {
+            setPriceError(validatedPrice.error);
+            const target = validatedPrice.field === 'maximum' ? maximumPriceRef : minimumPriceRef;
+            window.requestAnimationFrame(() => target.current?.focus());
+            return;
+        }
+
+        setDraftMinPrice(validatedPrice.minPrice);
+        setDraftMaxPrice(validatedPrice.maxPrice);
         setAppliedCategories([...draftCategories]);
+        setAppliedConditions([...draftConditions]);
+        setAppliedMinPrice(validatedPrice.minPrice);
+        setAppliedMaxPrice(validatedPrice.maxPrice);
+        setPriceError('');
     };
 
     const clearFilters = () => {
         setDraftCategories([]);
         setAppliedCategories([]);
+        setDraftConditions([]);
+        setAppliedConditions([]);
+        setDraftMinPrice('');
+        setDraftMaxPrice('');
+        setAppliedMinPrice('');
+        setAppliedMaxPrice('');
+        setPriceError('');
     };
 
     const term = query.trim();
     const charCount = Array.from(query).length;
-    const filterStatus = appliedCategories.length === 0
-        ? 'No Filters Active'
-        : `Categories: ${appliedCategories.join(', ')}`;
+    const activeFilterLabels = [];
+    if (appliedCategories.length > 0) activeFilterLabels.push(`Categories: ${appliedCategories.join(', ')}`);
+    if (appliedConditions.length > 0) activeFilterLabels.push(`Conditions: ${appliedConditions.join(', ')}`);
+    if (appliedMinPrice || appliedMaxPrice) {
+        activeFilterLabels.push(`Price: ${priceRangeLabel(appliedMinPrice, appliedMaxPrice)}`);
+    }
+    const filterStatus = activeFilterLabels.length === 0 ? 'No Filters Active' : activeFilterLabels.join(' · ');
+    const hasActiveFilters = activeFilterLabels.length > 0;
     const publishedResultVisible = publishedListing
         && results.some((listing) => String(listing.listing_id) === String(publishedListing.listing_id));
     const marketplaceResults = publishedResultVisible
@@ -309,7 +444,7 @@ function ProductSearch() {
                                     <SearchIcon />
                                 </button>
                             </form>
-                            <div className={`ps-filter-status${appliedCategories.length > 0 ? ' is-active' : ''}`} aria-live="polite">
+                            <div className={`ps-filter-status${hasActiveFilters ? ' is-active' : ''}`} aria-live="polite">
                                 {filterStatus}
                             </div>
                         </div>
@@ -407,26 +542,74 @@ function ProductSearch() {
                                 ))}
                             </fieldset>
 
-                            <fieldset className="ps-filter-group ps-placeholder-filter" disabled>
+                            <fieldset className="ps-filter-group">
                                 <legend>Price Range</legend>
-                                <input type="range" min="0" max="100" value="50" readOnly aria-label="Price range" />
-                                <div className="ps-price-values"><span>$10.00</span><span>to</span><span>$75.00</span></div>
+                                <div className="ps-price-inputs">
+                                    <label htmlFor="ps-min-price">
+                                        <span>Minimum price ($)</span>
+                                        <input
+                                            ref={minimumPriceRef}
+                                            id="ps-min-price"
+                                            type="number"
+                                            min="0"
+                                            max="9999.99"
+                                            step="0.01"
+                                            inputMode="decimal"
+                                            placeholder="0.00"
+                                            value={draftMinPrice}
+                                            onKeyDown={blockInvalidPriceKey}
+                                            onChange={(event) => updateDraftPrice(event.target.value, setDraftMinPrice)}
+                                            aria-invalid={Boolean(priceError)}
+                                            aria-describedby={`ps-price-summary${priceError ? ' ps-price-error' : ''}`}
+                                        />
+                                    </label>
+                                    <span className="ps-price-separator" aria-hidden="true">to</span>
+                                    <label htmlFor="ps-max-price">
+                                        <span>Maximum price ($)</span>
+                                        <input
+                                            ref={maximumPriceRef}
+                                            id="ps-max-price"
+                                            type="number"
+                                            min="0"
+                                            max="9999.99"
+                                            step="0.01"
+                                            inputMode="decimal"
+                                            placeholder="9999.99"
+                                            value={draftMaxPrice}
+                                            onKeyDown={blockInvalidPriceKey}
+                                            onChange={(event) => updateDraftPrice(event.target.value, setDraftMaxPrice)}
+                                            aria-invalid={Boolean(priceError)}
+                                            aria-describedby={`ps-price-summary${priceError ? ' ps-price-error' : ''}`}
+                                        />
+                                    </label>
+                                </div>
+                                <p id="ps-price-summary" className="ps-price-summary" aria-live="polite">
+                                    {priceRangeLabel(
+                                        normalizePriceBound(draftMinPrice) || draftMinPrice,
+                                        normalizePriceBound(draftMaxPrice) || draftMaxPrice,
+                                    )}
+                                </p>
+                                {priceError && <p id="ps-price-error" className="ps-price-error" role="alert">{priceError}</p>}
                             </fieldset>
 
-                            <fieldset className="ps-filter-group ps-placeholder-filter" disabled>
+                            <fieldset className="ps-filter-group">
                                 <legend>Condition</legend>
                                 <div className="ps-condition-options">
-                                    <button type="button" disabled>New</button>
-                                    <button type="button" className="is-selected" disabled>Like New</button>
-                                    <button type="button" disabled>Used</button>
+                                    {CONDITION_OPTIONS.map((condition) => {
+                                        const selected = draftConditions.includes(condition);
+                                        return (
+                                            <button
+                                                type="button"
+                                                className={selected ? 'is-selected' : ''}
+                                                aria-pressed={selected}
+                                                onClick={() => toggleDraftCondition(condition)}
+                                                key={condition}
+                                            >
+                                                {condition}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
-                            </fieldset>
-
-                            <fieldset className="ps-filter-group ps-placeholder-filter" disabled>
-                                <legend>Sort By</legend>
-                                <label><input type="radio" name="sort-placeholder" checked readOnly /> Newest Listings</label>
-                                <label><input type="radio" name="sort-placeholder" readOnly /> Price: Low to High</label>
-                                <label><input type="radio" name="sort-placeholder" readOnly /> Price: High to Low</label>
                             </fieldset>
 
                             <button type="button" className="ps-apply-filters" onClick={applyFilters}>Apply Filters</button>

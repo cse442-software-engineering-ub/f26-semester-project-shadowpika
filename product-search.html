@@ -8,12 +8,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=League+Spartan:wght@400;600;700&display=swap" rel="stylesheet" />
     <title>Karavan - Product Search</title>
-    <script type="module" crossorigin src="./assets/productSearch-772TRVxg.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/jsx-runtime-D1Z4dj17.js">
-    <link rel="modulepreload" crossorigin href="./assets/NavBar-CClPEIPU.js">
-    <link rel="modulepreload" crossorigin href="./assets/localListings-B2GLVZ-O.js">
-    <link rel="stylesheet" crossorigin href="./assets/NavBar-pP62phn7.css">
-    <link rel="stylesheet" crossorigin href="./assets/ProductSearch-BzHiZjGJ.css">
+    <script type="module" crossorigin src="./assets/productSearch-jHziGW0X.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/api-CRKILfJz.js">
+    <link rel="modulepreload" crossorigin href="./assets/NavBar-CgbWk9Ur.js">
+    <link rel="modulepreload" crossorigin href="./assets/localListings-BNghIe6_.js">
+    <link rel="stylesheet" crossorigin href="./assets/NavBar-bbjIl0FA.css">
+    <link rel="stylesheet" crossorigin href="./assets/ProductSearch-BwKmXGSW.css">
   </head>
   <body>
     <div id="root"></div>
@@ -40,76 +40,112 @@
       }, 100);
 
       document.addEventListener("DOMContentLoaded", () => {
-    const addLogoutButton = () => {
-        const profileButton = document.querySelector(".nav-profile");
 
-        if (!profileButton) {
-            return;
-        }
-
-        // Don't add it twice
-        if (document.querySelector(".nav-logout")) {
-            return;
-        }
-
-        function logout(){
-            fetch("logout.php", {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    current_username: getCookies("karavan_auth_cookie")
-                })
-            })
-            .then(response => {
-                console.log("HTTP status:", response.status);
-                return response.json();
-            })
-            .then(data => {
-                console.log("PHP response:", data);
-                if (data.success) {
-                    window.location.replace("index.html");
-                } else {
-                    alert(data.error);
+            const addLogoutButton = () => {
+                if (document.querySelector(".nav-logout") && !document.querySelector(".nav-logout").closest(".nav-drawer") && (getComputedStyle(document.querySelector(".nav-drawer")).display !== "none")) {
+                    document.querySelector(".nav-logout").remove();
                 }
-            })
-            .catch(error => {
-                console.error("Fetch error:", error);
+                if (document.querySelector(".nav-logout") && !document.querySelector(".nav-logout").closest(".nav-drawer") && (getComputedStyle(document.querySelector(".nav-drawer")).display === "none")) {
+                    return;
+                }
+
+                // -----------------------------
+                // Logout functionality
+                // -----------------------------
+                function logout() {
+                    fetch("logout.php", {
+                        method: "DELETE",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            current_username: getCookies("karavan_auth_cookie")
+                        })
+                    })
+                    .then(response => {
+                        console.log("HTTP status:", response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log("PHP response:", data);
+
+                        if (data.success) {
+                            window.location.replace("index.html");
+                        } else {
+                            alert(data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Fetch error:", error);
+                    });
+                }
+
+
+                // -----------------------------
+                // Desktop Logout button
+                // -----------------------------
+                const searchButton = document.querySelector(".nav-search");
+                const menuLinks = document.querySelector(".nav-drawer-links");
+
+                if (searchButton && (getComputedStyle(document.querySelector(".nav-drawer")).display === "none") && !document.querySelector(".nav-logout-desktop")) {
+
+                    const logoutButton = document.createElement("button");
+
+                    logoutButton.type = "button";
+                    logoutButton.className = "nav-logout nav-logout-desktop";
+                    logoutButton.textContent = "Log Out";
+
+                    logoutButton.addEventListener("click", () => {
+                        logout();
+                    });
+
+                    searchButton.insertAdjacentElement("afterend", logoutButton);
+                }
+
+
+                // -----------------------------
+                // Mobile hamburger Logout button
+                // -----------------------------
+
+                if (menuLinks && !document.querySelector(".nav-logout-mobile")) {
+
+                    const logoutButton = document.createElement("button");
+
+                    logoutButton.type = "button";
+                    logoutButton.className = "nav-drawer-link nav-logout nav-logout-mobile";
+                    logoutButton.textContent = "Log Out";
+
+                    logoutButton.addEventListener("click", () => {
+                        logout();
+                    });
+
+                    const logoutItem = document.createElement("li");
+
+                    logoutItem.appendChild(logoutButton);
+                    menuLinks.appendChild(logoutItem);
+                }
+            };
+
+
+            // -----------------------------
+            // React may render the navbar
+            // after DOMContentLoaded
+            // -----------------------------
+            const observer = new MutationObserver(() => {
+                addLogoutButton();
             });
-        }
-        const intervalId = setInterval(() => {
-            if (!getCookies("karavan_auth_cookie")){
-                window.location.replace("404.html");
-            }
-      }, 1000);
 
-        const logoutButton = document.createElement("button");
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
 
-        logoutButton.type = "button";
-        logoutButton.className = "nav-logout";
-        logoutButton.textContent = "Log Out";
+            logoutInterval = setInterval(() => {
+                addLogoutButton();
+            }, 1000);
+            // Try immediately
 
-        logoutButton.addEventListener("click", async () => {
-            logout();
         });
-
-        profileButton.insertAdjacentElement("afterend", logoutButton);
-    };
-
-    // React may render the navbar after DOMContentLoaded,
-    // so check repeatedly until the Profile button exists.
-    const observer = new MutationObserver(() => {
-        addLogoutButton();
-    });
-
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-
-    addLogoutButton();
-    });
     </script>
   </body>
 </html>

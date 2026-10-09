@@ -110,9 +110,9 @@ describe('Frontend: Moderator Approval Page', () => {
         const user = userEvent.setup();
         render(<App />);
 
-        await user.type(screen.getByRole('textbox'), 'moderator@test.com');
-        await user.type(document.querySelector('input[type="password"]'), 'Moderator123!');
-        await user.click(screen.getByRole('button', { name: 'Login' }));
+        await user.type(screen.getByLabelText('Email'), 'moderator@test.com');
+        await user.type(screen.getByLabelText('Password'), 'Moderator123!');
+        await user.click(screen.getByRole('button', { name: 'Log In' }));
 
         await waitFor(() => expect(assign).toHaveBeenCalledWith('/#/moderator'));
     });

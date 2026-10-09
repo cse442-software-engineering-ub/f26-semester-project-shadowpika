@@ -4,7 +4,7 @@
  */
 // Mirrors frontend task card #151 (View Item Details), using the same override payloads.
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ItemDetails from '../ItemDetails.jsx';
 
@@ -48,6 +48,7 @@ describe('Frontend: View Item Details (#151)', () => {
                 name: 'Calculus Textbook, 9th Edition',
                 price: '29.50',
                 condition: 'Like New',
+                image_url: 'favicon.svg',
                 category: 'Books',
                 description: 'Some highlighting in chapters 1-3.',
             },
@@ -59,6 +60,25 @@ describe('Frontend: View Item Details (#151)', () => {
         expect(screen.getByText('Like New')).toBeInTheDocument();
         expect(screen.getByText('BOOKS')).toBeInTheDocument();
         expect(screen.getByText('Some highlighting in chapters 1-3.')).toBeInTheDocument();
+        expect(screen.getByRole('img', { name: 'Calculus Textbook, 9th Edition listing' })).toHaveAttribute('src', 'favicon.svg');
+    });
+
+    it("Test 5: shows a drawn book cover when the listing's photo can't be shown", async () => {
+        const listing = { listing_id: 91001, name: 'Calculus Textbook', price: '35.00', condition: 'Good', image_url: 'uploads/no-such-photo.jpg', category: 'Textbooks', description: 'Used for one semester. No writing or highlighting.' };
+        override(200, { success: true, listing });
+        const { container, unmount } = render(<ItemDetails />);
+
+        fireEvent.error(await screen.findByRole('img', { name: 'Calculus Textbook listing' }));
+        expect(screen.queryByRole('img')).not.toBeInTheDocument();
+        expect(container.querySelector('.id-cover .ps-book-title')).toHaveTextContent('Calculus Textbook');
+        unmount();
+
+        override(200, { success: true, listing: { ...listing, image_url: null } });
+        const second = render(<ItemDetails />);
+
+        expect(await screen.findByRole('heading', { name: 'Calculus Textbook' })).toBeInTheDocument();
+        expect(screen.queryByRole('img')).not.toBeInTheDocument();
+        expect(second.container.querySelector('.id-cover .ps-book-title')).toHaveTextContent('Calculus Textbook');
     });
 
     it("Test 3: shows the server's error instead of item details", async () => {

@@ -17,8 +17,10 @@ final class TestDatabase
             "CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL UNIQUE,
+                email TEXT NULL,
                 password_hash TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'moderator'))
+                role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'moderator')),
+                community_id INTEGER NULL REFERENCES admin_requests (id) ON DELETE SET NULL
             )"
         );
         $pdo->exec(
@@ -64,10 +66,10 @@ final class TestDatabase
         return (int) $pdo->lastInsertId();
     }
 
-    public static function addUser(PDO $pdo, string $username, string $role = 'user'): int
+    public static function addUser(PDO $pdo, string $username, string $role = 'user', ?string $email = null): int
     {
-        $stmt = $pdo->prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)');
-        $stmt->execute([$username, password_hash('Password123!', PASSWORD_BCRYPT), $role]);
+        $stmt = $pdo->prepare('INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)');
+        $stmt->execute([$username, $email, password_hash('Password123!', PASSWORD_BCRYPT), $role]);
         return (int) $pdo->lastInsertId();
     }
 
@@ -89,13 +91,14 @@ final class TestDatabase
 
         $stmt = $pdo->prepare(
             'INSERT INTO admin_requests
-                (full_name, business_name, email, phone, password_hash, proof_file_name, proof_original_name, proof_mime_type, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                (full_name, business_name, email, phone, password_hash, proof_file_name, proof_original_name, proof_mime_type, status, user_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $row['full_name'], $row['business_name'], $row['email'], $row['phone'],
             password_hash($row['password'], PASSWORD_BCRYPT),
             $row['proof_file_name'], $row['proof_original_name'], $row['proof_mime_type'], $row['status'],
+            $row['user_id'] ?? null,
         ]);
         return (int) $pdo->lastInsertId();
     }

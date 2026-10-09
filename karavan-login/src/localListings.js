@@ -22,11 +22,14 @@ const CATEGORY_ALIASES = {
 
 const canonicalCategory = (category) => CATEGORY_ALIASES[category] || category;
 
-export function buildSearchUrl(query, categories) {
+export function buildSearchUrl(query, categories = [], conditions = [], minPrice = '', maxPrice = '') {
     const parameters = new URLSearchParams();
     const term = query.trim();
     if (term) parameters.set('q', term);
     if (categories.length > 0) parameters.set('categories', categories.join(','));
+    if (conditions.length > 0) parameters.set('conditions', conditions.join(','));
+    if (minPrice !== '') parameters.set('min_price', minPrice);
+    if (maxPrice !== '') parameters.set('max_price', maxPrice);
     const queryString = parameters.toString();
     return `./api/search_listings.php${queryString ? `?${queryString}` : ''}`;
 }
@@ -44,19 +47,27 @@ export function findLocalListing(listingId) {
 }
 
 // Same rules as the PHP endpoint: active only, optional case-insensitive keyword matching,
-// exact category filtering, OR between categories, and AND between keyword and categories.
-export function searchLocalListings(query = '', categories = []) {
+// exact category and condition filtering, inclusive price bounds, OR within each multi-select filter
+// type, and AND between different filter types.
+export function searchLocalListings(query = '', categories = [], conditions = [], minPrice = '', maxPrice = '') {
     const q = query.trim().toLowerCase();
     const selectedCategories = new Set(categories);
+    const selectedConditions = new Set(conditions);
+    const minimum = minPrice === '' ? null : Number(minPrice);
+    const maximum = maxPrice === '' ? null : Number(maxPrice);
     const matches = (l) => {
         const name = l.name.toLowerCase();
         const category = canonicalCategory(l.category);
+        const price = Number(l.price);
         const matchesQuery = q === ''
             || name.startsWith(q)
             || name.includes(' ' + q)
             || category.toLowerCase().startsWith(q);
         const matchesCategory = selectedCategories.size === 0 || selectedCategories.has(category);
-        return matchesQuery && matchesCategory;
+        const matchesCondition = selectedConditions.size === 0 || selectedConditions.has(l.condition);
+        const matchesMinimum = minimum === null || price >= minimum;
+        const matchesMaximum = maximum === null || price <= maximum;
+        return matchesQuery && matchesCategory && matchesCondition && matchesMinimum && matchesMaximum;
     };
     return LOCAL_LISTINGS
         .filter((l) => l.status === 'active' && matches(l))

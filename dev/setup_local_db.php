@@ -21,9 +21,9 @@ $accounts = [
     ['mod@test.com', 'Moderator123!', 'moderator'],
     ['user@test.com', 'User12345!', 'user'],
 ];
-$insert = $pdo->prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)');
+$insert = $pdo->prepare('INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)');
 foreach ($accounts as [$username, $password, $role]) {
-    $insert->execute([$username, password_hash($password, PASSWORD_BCRYPT), $role]);
+    $insert->execute([$username, $username, password_hash($password, PASSWORD_BCRYPT), $role]);
 }
 
 echo "Local database ready: $dbFile\n\n";
