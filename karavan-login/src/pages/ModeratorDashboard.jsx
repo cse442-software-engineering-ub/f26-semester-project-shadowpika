@@ -83,8 +83,8 @@ export default function ModeratorDashboard() {
     return (
         <div className="kv-page">
             <KaravanHeader>
-                <button type="button" className="kv-link-button" onClick={handleLogout}>
-                    Sign out
+                <button type="button" className="nav-link nav-text-button" onClick={handleLogout}>
+                    Log Out
                 </button>
             </KaravanHeader>
 

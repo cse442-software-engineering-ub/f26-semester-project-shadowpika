@@ -31,6 +31,7 @@ describe('routes', () => {
         ['/CSE442/2026-Fall/cse-442j/index.html', '/CSE442/2026-Fall/cse-442j/'],
         ['/CSE442/2026-Fall/cse-442j/settings.html', '/CSE442/2026-Fall/cse-442j/'],
         ['/CSE442/2026-Fall/cse-442j/ayushstuff/home.html', '/CSE442/2026-Fall/cse-442j/ayushstuff/'],
+        ['/CSE442/2026-Fall/cse-442j/settings/account-settings.html', '/CSE442/2026-Fall/cse-442j/'],
     ])('base of %s is %s', (pathname, base) => {
         expect(appBase(loc(pathname))).toBe(base);
     });

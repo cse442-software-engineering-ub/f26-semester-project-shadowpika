@@ -2,97 +2,160 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=League+Spartan:wght@400;600;700&display=swap" rel="stylesheet" />
     <title>Karavan - Home</title>
-    <script type="module" crossorigin src="../assets/home-DlLakfip.js"></script>
-    <link rel="modulepreload" crossorigin href="../assets/jsx-runtime-aUCHvG4-.js">
-    <link rel="modulepreload" crossorigin href="../assets/NavBar-CO2aEYeg.js">
-    <link rel="modulepreload" crossorigin href="../assets/PlaceholderPage-DF6IhdKg.js">
-    <link rel="stylesheet" crossorigin href="../assets/NavBar-pP62phn7.css">
-    <link rel="stylesheet" crossorigin href="../assets/ProductSearch-Bh527n_9.css">
+    <script type="module" crossorigin src="/../assets/home-DlLakfip.js"></script>
+    <link rel="modulepreload" crossorigin href="/../assets/jsx-runtime-aUCHvG4-.js">
+    <link rel="modulepreload" crossorigin href="/../assets/NavBar-CO2aEYeg.js">
+    <link rel="modulepreload" crossorigin href="/../assets/PlaceholderPage-DF6IhdKg.js">
+    <link rel="stylesheet" crossorigin href="/../assets/NavBar-pP62phn7.css">
+    <link rel="stylesheet" crossorigin href="/../assets/ProductSearch-Bh527n_9.css">
   </head>
   <body>
     <div id="root"></div>
     <script>
-      const intervalId = setInterval(() => {
-        window.location.replace("../home.html");
-      }, 10);
+      function getCookies(cookieName){
+            const cookies = document.cookie.split("; ")
 
-      document.addEventListener("DOMContentLoaded", () => {
-    const addLogoutButton = () => {
-        const profileButton = document.querySelector(".nav-profile");
-
-        if (!profileButton) {
-            return;
-        }
-
-        // Don't add it twice
-        if (document.querySelector(".nav-logout")) {
-            return;
-        }
-
-        function logout(){
-            fetch("../logout.php", {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    current_username: getCookies("karavan_auth_cookie")
-                })
-            })
-            .then(response => {
-                console.log("HTTP status:", response.status);
-                return response.json();
-            })
-            .then(data => {
-                console.log("PHP response:", data);
-                if (data.success) {
-                    window.location.replace("../index.html");
-                } else {
-                    alert(data.error);
+            for (const cookie of cookies) {
+                const [name, value] = cookie.split('=');
+                
+                // 3. If the name matches, decode and return the value
+                if (name === cookieName) {
+                    return decodeURIComponent(value);
                 }
-            })
-            .catch(error => {
-                console.error("Fetch error:", error);
-            });
-        }
-        const intervalId = setInterval(() => {
-            if (!getCookies("karavan_auth_cookie")){
-                window.location.replace("404.html");
             }
-      }, 1000);
+            return null; // Return null if the cookie doesn't exist
+      }
 
-        const logoutButton = document.createElement("button");
 
-        logoutButton.type = "button";
-        logoutButton.className = "nav-logout";
-        logoutButton.textContent = "Log Out";
+      const intervalId = setInterval(() => {
+            window.location.replace("../home.html");
+        }, 1);
+      
+        document.addEventListener("DOMContentLoaded", () => {
 
-        logoutButton.addEventListener("click", async () => {
-            logout();
+            const addLogoutButton = () => {
+                if (document.querySelector(".nav-logout") && !document.querySelector(".nav-logout").closest(".nav-drawer") && (getComputedStyle(document.querySelector(".nav-drawer")).display !== "none")) {
+                    document.querySelector(".nav-logout").remove();
+                }
+                if (document.querySelector(".nav-logout") && !document.querySelector(".nav-logout").closest(".nav-drawer") && (getComputedStyle(document.querySelector(".nav-drawer")).display === "none")) {
+                    return;
+                }
+
+                // -----------------------------
+                // Logout functionality
+                // -----------------------------
+                function logout() {
+                    fetch("../logout.php", {
+                        method: "DELETE",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            current_username: getCookies("karavan_auth_cookie")
+                        })
+                    })
+                    .then(response => {
+                        console.log("HTTP status:", response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log("PHP response:", data);
+
+                        if (data.success) {
+                            window.location.replace("index.html");
+                        } else {
+                            alert(data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Fetch error:", error);
+                    });
+                }
+
+
+                // -----------------------------
+                // Desktop Logout button
+                // -----------------------------
+                const searchButton = document.querySelector(".nav-search");
+                const menuLinks = document.querySelector(".nav-drawer-links");
+
+                if (searchButton && (getComputedStyle(document.querySelector(".nav-drawer")).display === "none") && !document.querySelector(".nav-logout-desktop")) {
+
+                    const logoutButton = document.createElement("button");
+
+                    logoutButton.type = "button";
+                    logoutButton.className = "nav-logout nav-logout-desktop";
+                    logoutButton.textContent = "Log Out";
+
+                    logoutButton.addEventListener("click", () => {
+                        logout();
+                    });
+
+                    searchButton.insertAdjacentElement("afterend", logoutButton);
+                }
+
+
+                // -----------------------------
+                // Mobile hamburger Logout button
+                // -----------------------------
+
+                if (menuLinks && !document.querySelector(".nav-logout-mobile")) {
+
+                    const logoutButton = document.createElement("button");
+
+                    logoutButton.type = "button";
+                    logoutButton.className = "nav-drawer-link nav-logout nav-logout-mobile";
+                    logoutButton.textContent = "Log Out";
+
+                    logoutButton.addEventListener("click", () => {
+                        logout();
+                    });
+
+                    const logoutItem = document.createElement("li");
+
+                    logoutItem.appendChild(logoutButton);
+                    menuLinks.appendChild(logoutItem);
+                }
+            };
+
+
+            // -----------------------------
+            // React may render the navbar
+            // after DOMContentLoaded
+            // -----------------------------
+            const observer = new MutationObserver(() => {
+                addLogoutButton();
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+
+            logoutInterval = setInterval(() => {
+                addLogoutButton();
+            }, 1000);
+            // Try immediately
+
         });
 
-        profileButton.insertAdjacentElement("afterend", logoutButton);
-    };
+            logoutInterval = setInterval(() => {
+                addLogoutButton();
+            }, 1000);
 
-    // React may render the navbar after DOMContentLoaded,
-    // so check repeatedly until the Profile button exists.
-    const observer = new MutationObserver(() => {
-        addLogoutButton();
-    });
+            const intervalId = setInterval(() => {
+                window.location.replace("../home.html");
+            }, 1);
+            // Try immediately
 
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
+        });
 
-    addLogoutButton();
-    });
     </script>
   </body>
 </html>

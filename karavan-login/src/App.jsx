@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import './index.css'
-import karavanLogo from './assets/images/logo.png';
+import './styles/karavan.css'
+import KaravanHeader from './components/KaravanHeader.jsx';
+import { KaravanHero } from './components/KaravanBrand.jsx';
 import { pathFor } from './routes.js';
 import { markNewAccount, recordLogin } from './community.js';
+import { fetchSession, isLocalMockBackend, isLoggedIn } from './api.js';
+
+const HOME_PAGE = './home.html';
+
+// Moderators work from the moderator dashboard rather than the marketplace home page.
+const landingPageFor = (role) => (role === 'moderator' ? pathFor('moderator') : HOME_PAGE);
 
 function App() {
     const [username, setUsername] = useState('');
@@ -10,19 +18,30 @@ function App() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState(''); // NEW
     const [message, setMessage] = useState('');
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     // ROUTING CONFIGURATION: Detects if this is the separate register page view
     const isRegisterPage = window.location.pathname.includes('register') || window.location.hash === '#register';
 
-    // Check for an active session right when the page loads
+    // Someone already signed in (including a remembered login) skips the form and goes home.
     useEffect(() => {
-        const activeSession = localStorage.getItem('service_session_token');
-        if (activeSession) {
-            setIsLoggedIn(true);
+        if (isLocalMockBackend()) {
+            setIsLoading(false);
+            return undefined;
         }
-        setIsLoading(false); // Done checking, turn off the loading block
+        let cancelled = false;
+        fetchSession()
+            .then((session) => {
+                if (cancelled) return;
+                if (isLoggedIn(session)) window.location.replace(landingPageFor(session.role));
+                else setIsLoading(false);
+            })
+            .catch(() => {
+                if (!cancelled) setIsLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const registerSuccess = () => {
@@ -32,7 +51,7 @@ function App() {
 
     const loginSuccess = () => {
         setMessage('Login successful!');
-        window.location.href = './home.html';
+        window.location.href = HOME_PAGE;
     };
 
     const handleSubmit = async (e) => {
@@ -47,9 +66,7 @@ function App() {
         setMessage(isRegisterPage ? 'Writing to database...' : 'Logging in...');
 
         // 1. LOCAL MACHINE PREVIEW MODE
-        const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        // `npm run dev:backend` sets this so local logins go to the real login.php instead of the mock.
-        if (isLocalHost && import.meta.env.VITE_LOCAL_BACKEND !== 'true') {
+        if (isLocalMockBackend()) {
             setTimeout(() => {
                 const currentTable = JSON.parse(localStorage.getItem('cse442_users_table')) || [
                     { id: 1, username: 'admin', password_hash: 'local_hash', email: 'admin@example.com' }
@@ -80,7 +97,6 @@ function App() {
                         (lowerEmail === 'liveuser777' && password === 'SecretPass777');
                     const existingUser = currentTable.some(u => u.email && u.email.toLowerCase() === lowerEmail);
                     if (isDemoAccount || (existingUser && password.length > 0)) {
-                        setIsLoggedIn(true);
                         loginSuccess();
                     } else {
                         setMessage('Incorrect email or password. Please try again.');
@@ -118,9 +134,8 @@ function App() {
                 if (data.role === 'moderator') {
                     window.location.assign(pathFor('moderator'));
                 } else {
-                    setIsLoggedIn(true);
                     setMessage('Login successful!');
-                    window.location.href = './home.html';
+                    window.location.href = HOME_PAGE;
                 }
             } else {
                 setMessage(data.error || 'An error occurred.');
@@ -134,34 +149,16 @@ function App() {
         return <div style={{ fontFamily: 'sans-serif', textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
     }
 
-    // RENDERING THE SEPARATE PAGES
-    if (isLoggedIn) {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', fontFamily: 'sans-serif', margin: '20px' }}>
-                <div style={{ padding: '40px', maxWidth: '350px', width: '100%', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                    <h1 style={{ color: '#333', fontSize: '24px' }}>Welcome back!</h1>
-                    <p style={{ color: 'green', fontWeight: 'bold' }}>You are securely logged into the service.</p>
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div style={{ width: 1440, height: 1024, background: 'linear-gradient(0deg, white 0%, white 100%), white', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex' }}>
-            <div style={{ alignSelf: 'stretch', height: 74, paddingLeft: 27.67, paddingRight: 27.67, position: 'relative', background: '#F7F3EA', borderBottom: '0.86px rgba(21, 42, 71, 0.10) solid', justifyContent: 'space-between', alignItems: 'center', display: 'inline-flex' }}>
-                <div style={{ left: 0, top: 4, position: 'absolute', justifyContent: 'flex-start', alignItems: 'center', display: 'flex' }}>
-                    <img style={{ width: 60.86, height: 66.67, paddingLeft: 13.83 }} src={karavanLogo} />
-                    <div style={{ paddingRight: 20, flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex' }}>
-                        <div style={{ width: 266, height: 21, textAlign: 'center', color: '#1F2F46', fontSize: 48, fontFamily: 'League Spartan', fontWeight: '400', wordWrap: 'break-word', letterSpacing: 4}}>KARAVAN</div>
-                    </div>
-                </div>
-            </div>
+        // Fills the window at any size: the header spans the top and the logo + form sit side by side,
+        // stacking when the screen is too narrow for both.
+        <div style={{ width: '100%', minHeight: '100vh', background: '#F7F3EA', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'stretch', display: 'flex' }}>
+            <KaravanHeader />
 
-            <div style={{ alignSelf: 'stretch', height: 1024, position: 'relative', background: '#F7F3EA', overflow: 'hidden', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center', display: 'flex' }}>
-                <div style={{ width: 1018.14, height: 656.13, paddingLeft: 42.42, paddingRight: 42.42, left: 211, top: 159, position: 'absolute', justifyContent: 'center', alignItems: 'center', display: 'inline-flex' }}>
-                    <div style={{ width: 438.36, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', display: 'inline-flex' }}>
-                        <img style={{ width: 189.10, height: 207.14 }} src={karavanLogo} />
-                        <div style={{ width: 266, height: 54, textAlign: 'center', color: '#1F2F46', fontSize: 48, fontFamily: 'League Spartan', fontWeight: '400', wordWrap: 'break-word', letterSpacing: 4 }}>KARAVAN</div>
+            <div style={{ alignSelf: 'stretch', flex: 1, boxSizing: 'border-box', padding: '32px 16px', background: '#F7F3EA', justifyContent: 'center', alignItems: 'center', display: 'flex' }}>
+                <div style={{ width: '100%', maxWidth: 1018, flexWrap: 'wrap', columnGap: 64, rowGap: 32, justifyContent: 'center', alignItems: 'center', display: 'flex' }}>
+                    <div style={{ width: 438.36, maxWidth: '100%', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', display: 'flex' }}>
+                        <KaravanHero />
                     </div>
                
                     {/*                    {message && (
@@ -171,7 +168,7 @@ function App() {
                     )}*/}
 
                     <form onSubmit={handleSubmit} style={{
-                        width: 395.94, paddingLeft: 31.11, paddingRight: 31.11, paddingTop: 28.28, paddingBottom: 28.28,
+                        width: '100%', maxWidth: 458.16, boxSizing: 'border-box', paddingLeft: 31.11, paddingRight: 31.11, paddingTop: 28.28, paddingBottom: 28.28,
                         background: 'white', boxShadow: '0px 12.726706504821777px 28.281572341918945px rgba(21, 42, 71, 0.08)',
                         borderRadius: 16.97, outline: '0.71px rgba(21, 42, 71, 0.08) solid', outlineOffset: '-0.71px',
                         flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex'
@@ -293,7 +290,6 @@ function App() {
                         {/* LOGIN/SIGNUP BUTTON */}
                         <div style={{ alignSelf: 'stretch', justifyContent: 'flex-end', alignItems: 'flex-start', display: 'inline-flex' }}>
                             <div style={{ alignSelf: 'stretch', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex' }}>
-                                <div style={{ justifyContent: 'center', display: 'flex', flexDirection: 'column', color: '#C9A15B', fontSize: 10.61, fontFamily: 'DM Sans', fontWeight: '400', wordWrap: 'break-word' }}>Forgot your Password?</div>
                             </div>
                         </div>
                         <div style={{ alignSelf: 'stretch', paddingTop: 21.21, flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'flex' }}>

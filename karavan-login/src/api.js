@@ -74,6 +74,26 @@ export async function joinCommunity(communityId) {
     return { status: response.status, ...(await readJson(response)) };
 }
 
+export async function leaveCommunity() {
+    const response = await fetch(apiUrl('leave_community.php'), { method: 'POST', credentials: 'same-origin' });
+    return { status: response.status, ...(await readJson(response)) };
+}
+
+// `npm run dev` on localhost has no PHP, so the login page fakes accounts in localStorage;
+// `npm run dev:backend` sets VITE_LOCAL_BACKEND so localhost uses the real PHP endpoints.
+export function isLocalMockBackend(location = window.location) {
+    const isLocalHost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    return isLocalHost && import.meta.env.VITE_LOCAL_BACKEND !== 'true';
+}
+
+// 200 with logged_in: true for a signed-in user (restoring a remembered login if needed), 401 otherwise.
+export async function fetchSession() {
+    const response = await fetch(apiUrl('session.php'), { credentials: 'same-origin' });
+    return { status: response.status, ...(await readJson(response)) };
+}
+
+export const isLoggedIn = (session) => session.status === 200 && session.logged_in === true;
+
 export async function logout() {
     await fetch(apiUrl('logout.php'), { method: 'POST', credentials: 'same-origin' });
 }

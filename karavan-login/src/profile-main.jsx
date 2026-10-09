@@ -1,9 +1,12 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import PlaceholderPage from './PlaceholderPage.jsx'
+import RequireLogin from './components/RequireLogin.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <PlaceholderPage title="Profile" />
+    <RequireLogin>
+      <PlaceholderPage title="Profile" />
+    </RequireLogin>
   </StrictMode>,
 )
