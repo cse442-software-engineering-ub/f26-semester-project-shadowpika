@@ -2,6 +2,10 @@
 // is resolved relative to wherever index.html is being served from.
 export const ROUTES = ['admin-register', 'moderator'];
 
+// Static pages kept in these subfolders load the shared navbar, which must still link
+// to (and call endpoints in) the site root.
+const SUBFOLDERS = ['settings'];
+
 export function currentRoute(location = window.location) {
     const fromHash = location.hash.replace(/^#\/?/, '');
     if (ROUTES.includes(fromHash)) return fromHash;
@@ -12,7 +16,7 @@ export function currentRoute(location = window.location) {
 
 export function appBase(location = window.location) {
     let path = location.pathname.replace(/[^/]+\.html$/, '');
-    for (const route of ROUTES) {
+    for (const route of [...ROUTES, ...SUBFOLDERS]) {
         path = path.replace(new RegExp(`/${route}/?$`), '/');
     }
     return path.endsWith('/') ? path : `${path}/`;

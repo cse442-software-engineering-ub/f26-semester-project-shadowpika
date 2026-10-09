@@ -114,20 +114,18 @@
   background: rgba(31, 45, 68, 0.08);
 }
 
-.nav .nav-profile {
-  display: flex;
-  align-items: center;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 6px;
-  background: var(--nav-navy);
-  color: var(--nav-white);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.nav .nav-profile:hover {
-  background: #2c3d5a;
+/* A button that looks like the text links beside it. Repeats .nav-link's type because
+   page-level button resets (e.g. `.ps-page button { font: inherit }`) outrank it. */
+.nav .nav-logout {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 400;
+  cursor: pointer;
 }
 
 .nav .nav-community {
@@ -203,7 +201,7 @@
   }
 
   .nav-links,
-  .nav .nav-profile,
+  .nav .nav-logout,
   .nav .nav-community {
     display: none;
   }
@@ -267,6 +265,18 @@
     visibility: visible;
   }
 
+  /* Top-right corner of the drawer (the drawer is position: fixed, so it anchors this) */
+  .nav .nav-drawer-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+  }
+
+  .nav-drawer-close svg {
+    width: 20px;
+    height: 20px;
+  }
+
   .nav-drawer-brand {
     display: flex;
     flex-direction: column;
@@ -320,8 +330,8 @@
     background: rgba(31, 45, 68, 0.08);
   }
 
-  /* A button, so it needs the .nav prefix to beat the global button reset. */
-  .nav .nav-drawer-community {
+  /* Community and Log Out are buttons, so they need the .nav prefix to beat the global button reset. */
+  .nav .nav-drawer-button {
     width: 100%;
     padding: 12px 8px;
     border: none;

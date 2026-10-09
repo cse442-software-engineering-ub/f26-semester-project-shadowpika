@@ -1,21 +1,22 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import './NavBar.css';
-import { fetchCommunities, joinCommunity } from './api.js';
+import { fetchCommunities, joinCommunity, logout } from './api.js';
 import { readJoinedCommunity, saveJoinedCommunity, takeCommunityPrompt } from './community.js';
 import CommunityPicker from './components/CommunityPicker.jsx';
+import { appBase, pathFor } from './routes.js';
 
 const JOIN_LABEL = 'Join a Community';
 
-const HOME_HREF = './home.html';
+// Pages are relative to the site root, so the links also work from the settings/ pages.
+const HOME_PAGE = 'home.html';
 
 const NAV_LINKS = [
-    { label: 'Home', href: HOME_HREF, icon: HomeIcon },
-    { label: 'Settings', href: './settings.html', icon: SettingsIcon },
-    { label: 'Sell', href: './sell.html', icon: CartIcon },
+    { label: 'Home', page: HOME_PAGE, icon: HomeIcon },
+    { label: 'Settings', page: 'settings/account-settings.html', icon: SettingsIcon },
+    { label: 'Sell', page: 'sell.html', icon: CartIcon },
 ];
 
-const SEARCH_HREF = './product-search.html';
-const PROFILE_HREF = './profile.html';
+const SEARCH_PAGE = 'product-search.html';
 
 function CaravanLogo() {
     return (
@@ -54,6 +55,15 @@ function MenuIcon() {
     );
 }
 
+function CloseIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+            <line x1="6" y1="6" x2="18" y2="18" />
+            <line x1="18" y1="6" x2="6" y2="18" />
+        </svg>
+    );
+}
+
 function HomeIcon() {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -81,11 +91,12 @@ function CartIcon() {
     );
 }
 
-function ProfileIcon() {
+function LogoutIcon() {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
         </svg>
     );
 }
@@ -181,6 +192,13 @@ function NavBar() {
     const community = useCommunities();
     const communityLabel = community.joined?.name ?? JOIN_LABEL;
     const communityTitle = community.joined ? 'Switch community' : undefined;
+    const base = appBase();
+
+    const handleLogout = async () => {
+        setMenuOpen(false);
+        await logout();
+        window.location.assign(pathFor('login'));
+    };
 
     // While the drawer is open: lock page scroll, let Escape close it, and close it
     // if the window grows to desktop width (where the drawer is hidden).
@@ -207,7 +225,7 @@ function NavBar() {
     return (
         <header className="nav">
             <nav className="nav-bar" aria-label="Main">
-                <a className="nav-logo" href={HOME_HREF} aria-label="Karavan home">
+                <a className="nav-logo" href={base + HOME_PAGE} aria-label="Karavan home">
                     <CaravanLogo />
                     <span className="nav-logo-text">KARAVAN</span>
                 </a>
@@ -217,13 +235,13 @@ function NavBar() {
                     <ul className="nav-links">
                         {NAV_LINKS.map((link) => (
                             <li key={link.label}>
-                                <a className="nav-link" href={link.href}>{link.label}</a>
+                                <a className="nav-link" href={base + link.page}>{link.label}</a>
                             </li>
                         ))}
                     </ul>
 
                     <div className="nav-icons">
-                        <a className="nav-icon-btn nav-search" href={SEARCH_HREF} aria-label="Search">
+                        <a className="nav-icon-btn nav-search" href={base + SEARCH_PAGE} aria-label="Search">
                             <SearchIcon />
                         </a>
                         {/* Desktop only */}
@@ -234,7 +252,9 @@ function NavBar() {
                             </button>
                         ) : null}
                         {/* Desktop only */}
-                        <a className="nav-profile" href={PROFILE_HREF}>Profile</a>
+                        <button type="button" className="nav-link nav-logout" onClick={handleLogout}>
+                            Log Out
+                        </button>
                         {/* Mobile only */}
                         <button
                             type="button"
@@ -262,32 +282,35 @@ function NavBar() {
                 aria-label="Menu"
                 inert={!menuOpen}
             >
-                <a className="nav-drawer-brand" href={HOME_HREF} aria-label="Karavan home">
+                <button
+                    type="button"
+                    className="nav-icon-btn nav-drawer-close"
+                    aria-label="Close menu"
+                    onClick={() => setMenuOpen(false)}
+                >
+                    <CloseIcon />
+                </button>
+
+                <a className="nav-drawer-brand" href={base + HOME_PAGE} aria-label="Karavan home">
                     <CaravanLogo />
                     <span className="nav-drawer-title">KARAVAN</span>
                     <span className="nav-drawer-tagline">Buy. Sell. Support Students.</span>
                 </a>
 
                 <ul className="nav-drawer-links">
-                    {NAV_LINKS.map(({ label, href, icon: Icon }) => (
+                    {NAV_LINKS.map(({ label, page, icon: Icon }) => (
                         <li key={label}>
-                            <a className="nav-drawer-link" href={href}>
+                            <a className="nav-drawer-link" href={base + page}>
                                 <Icon />
                                 {label}
                             </a>
                         </li>
                     ))}
-                    <li>
-                        <a className="nav-drawer-link" href={PROFILE_HREF}>
-                            <ProfileIcon />
-                            Profile
-                        </a>
-                    </li>
                     {community.signedIn ? (
                         <li>
                             <button
                                 type="button"
-                                className="nav-drawer-link nav-drawer-community"
+                                className="nav-drawer-link nav-drawer-button"
                                 title={communityTitle}
                                 onClick={() => {
                                     setMenuOpen(false);
@@ -299,6 +322,12 @@ function NavBar() {
                             </button>
                         </li>
                     ) : null}
+                    <li>
+                        <button type="button" className="nav-drawer-link nav-drawer-button" onClick={handleLogout}>
+                            <LogoutIcon />
+                            Log Out
+                        </button>
+                    </li>
                 </ul>
             </aside>
 
