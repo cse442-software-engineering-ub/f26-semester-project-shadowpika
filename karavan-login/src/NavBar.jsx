@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import './NavBar.css';
-import { fetchCommunities, joinCommunity } from './api.js';
+import { fetchCommunities, joinCommunity, leaveCommunity } from './api.js';
 import { readJoinedCommunity, saveJoinedCommunity, takeCommunityPrompt } from './community.js';
 import CommunityPicker from './components/CommunityPicker.jsx';
 
@@ -10,7 +10,7 @@ const HOME_HREF = './home.html';
 
 const NAV_LINKS = [
     { label: 'Home', href: HOME_HREF, icon: HomeIcon },
-    { label: 'Settings', href: './settings.html', icon: SettingsIcon },
+    { label: 'Settings', href: './settings/account-settings.html', icon: SettingsIcon },
     { label: 'Sell', href: './sell.html', icon: CartIcon },
 ];
 
@@ -109,7 +109,13 @@ function useCommunities() {
     const [error, setError] = useState('');
     const [joined, setJoined] = useState(readJoinedCommunity);
     const [joiningId, setJoiningId] = useState(null);
+    const [leaving, setLeaving] = useState(false);
     const [picker, setPicker] = useState(null); // null, 'first-login' or 'nav'
+
+    const remember = useCallback((community) => {
+        setJoined(community);
+        saveJoinedCommunity(community);
+    }, []);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -119,6 +125,11 @@ function useCommunities() {
                 setSignedIn(true);
                 setCommunities(result.communities);
                 setError('');
+                // The server knows best, e.g. after leaving or joining on another device.
+                if ('joined_community_id' in result) {
+                    const current = result.communities.find((c) => c.community_id === result.joined_community_id);
+                    remember(current ? { community_id: current.community_id, name: current.name } : null);
+                }
                 return true;
             }
             if (result.status === 403) {
@@ -133,7 +144,7 @@ function useCommunities() {
             setLoading(false);
         }
         return false;
-    }, []);
+    }, [remember]);
 
     useEffect(() => {
         const showSuggestions = takeCommunityPrompt();
@@ -159,9 +170,7 @@ function useCommunities() {
         try {
             const result = await joinCommunity(communityId);
             if (result.status === 200 && result.success) {
-                const community = { community_id: result.community_id, name: result.community_name };
-                setJoined(community);
-                saveJoinedCommunity(community);
+                remember({ community_id: result.community_id, name: result.community_name });
                 setPicker(null);
             } else {
                 setError(result.error || 'Could not join that community. Please try again.');
@@ -173,7 +182,22 @@ function useCommunities() {
         }
     };
 
-    return { signedIn, communities, loading, error, joined, joiningId, picker, open, close, join };
+    // The picker stays open so the user can pick a different community straight away.
+    const leave = async () => {
+        setLeaving(true);
+        setError('');
+        try {
+            const result = await leaveCommunity();
+            if (result.status === 200 && result.success) remember(null);
+            else setError(result.error || 'Could not leave the community. Please try again.');
+        } catch {
+            setError('Could not leave the community. Please try again.');
+        } finally {
+            setLeaving(false);
+        }
+    };
+
+    return { signedIn, communities, loading, error, joined, joiningId, leaving, picker, open, close, join, leave };
 }
 
 function NavBar() {
@@ -309,8 +333,10 @@ function NavBar() {
                     error={community.error}
                     joinedId={community.joined?.community_id ?? null}
                     joiningId={community.joiningId}
+                    leaving={community.leaving}
                     firstLogin={community.picker === 'first-login'}
                     onJoin={community.join}
+                    onLeave={community.leave}
                     onClose={community.close}
                 />
             ) : null}

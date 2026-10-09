@@ -17,10 +17,12 @@ function mockBackend() {
     const backend = {
         list: [200, { success: true, communities: [KELLER] }],
         join: (id) => [200, { success: true, community_id: id, community_name: id === 2 ? RIVERSIDE.name : KELLER.name }],
+        leave: [200, { success: true, community_id: null, community_name: null }],
     };
     backend.fetch = vi.fn((url, options = {}) => {
         if (url.endsWith('list_communities.php')) return jsonResponse(...backend.list);
         if (url.endsWith('join_community.php')) return jsonResponse(...backend.join(JSON.parse(options.body).community_id));
+        if (url.endsWith('leave_community.php')) return jsonResponse(...backend.leave);
         return jsonResponse(404, { success: false });
     });
     vi.stubGlobal('fetch', backend.fetch);
@@ -191,6 +193,62 @@ describe('Join a Community', () => {
         await waitFor(() => expect(callsTo(backend.fetch, 'list_communities.php')).toHaveLength(1));
         expect(screen.queryByRole('button', { name: /community/i })).not.toBeInTheDocument();
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    // Leave a Community frontend
+    it('leaving from the picker clears the nav button and lets the user join again', async () => {
+        const backend = mockBackend();
+        recordLogin('casey.leave@test.com', { success: true, role: 'user', community_id: 1, community_name: KELLER.name });
+        const user = userEvent.setup();
+        render(<NavBar />);
+
+        await user.click(await navButton('Keller Properties LLC'));
+        const dialog = await screen.findByRole('dialog', { name: 'Join a Community' });
+        backend.list = [200, { success: true, communities: [KELLER], joined_community_id: null }];
+        await user.click(within(dialog).getByRole('button', { name: 'Leave Keller Properties LLC' }));
+
+        expect(await navButton('Join a Community')).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: 'Join Keller Properties LLC' })).toBeEnabled();
+        expect(within(dialog).queryByRole('button', { name: /^Leave/ })).not.toBeInTheDocument();
+        const [[, options]] = callsTo(backend.fetch, 'leave_community.php');
+        expect(options.method).toBe('POST');
+        expect(localStorage.getItem('karavan_community')).toBeNull();
+    });
+
+    it('only offers Leave for the community the user is in', async () => {
+        mockBackend().list = [200, { success: true, communities: [KELLER, RIVERSIDE], joined_community_id: 2 }];
+        const user = userEvent.setup();
+        render(<NavBar />);
+
+        await user.click(await navButton('Riverside Apartments'));
+        const dialog = await screen.findByRole('dialog');
+
+        expect(within(dialog).getByRole('button', { name: 'Leave Riverside Apartments' })).toBeInTheDocument();
+        expect(within(dialog).queryByRole('button', { name: 'Leave Keller Properties LLC' })).not.toBeInTheDocument();
+    });
+
+    it('keeps the community and shows the error when leaving fails', async () => {
+        const backend = mockBackend();
+        backend.leave = [500, { success: false, error: 'Could not leave the community.' }];
+        recordLogin('casey.leave@test.com', { success: true, role: 'user', community_id: 1, community_name: KELLER.name });
+        const user = userEvent.setup();
+        render(<NavBar />);
+
+        await user.click(await navButton('Keller Properties LLC'));
+        await user.click(await screen.findByRole('button', { name: 'Leave Keller Properties LLC' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Could not leave the community.');
+        expect(navBar().getByRole('button', { name: 'Keller Properties LLC' })).toBeInTheDocument();
+    });
+
+    it('trusts the server about which community the user is in', async () => {
+        mockBackend().list = [200, { success: true, communities: [KELLER], joined_community_id: null }];
+        recordLogin('casey.stale@test.com', { success: true, role: 'user', community_id: 1, community_name: KELLER.name });
+
+        render(<NavBar />);
+
+        expect(await navButton('Join a Community')).toBeInTheDocument();
+        expect(localStorage.getItem('karavan_community')).toBeNull();
     });
 
     it('says so when there are no communities yet', async () => {
