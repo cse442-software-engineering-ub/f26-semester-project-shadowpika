@@ -198,17 +198,62 @@ final class ModeratorTest extends TestCase
         $this->assertSame(404, $status);
     }
 
-    public function testApproveFailsCleanlyIfEmailWasTakenMeanwhile(): void
+    private function userCount(): int
+    {
+        return (int) $this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+    }
+
+    public function testApprovePromotesTheLinkedRegularAccountInsteadOfCreatingOne(): void
+    {
+        $studentId = TestDatabase::addUser($this->pdo, 'riley.student', 'user', 'riley@test.com');
+        $requestId = TestDatabase::addRequest($this->pdo, ['email' => 'riley@test.com', 'user_id' => $studentId]);
+        $usersBefore = $this->userCount();
+
+        [$status, $body] = $this->decide($this->moderatorId, ['request_id' => $requestId, 'action' => 'approve']);
+
+        $this->assertSame(200, $status);
+        $this->assertSame(['success' => true, 'request_id' => $requestId, 'status' => 'approved'], $body);
+        $this->assertSame($usersBefore, $this->userCount());
+        $student = $this->userByUsername('riley.student');
+        $this->assertSame('admin', $student['role']);
+        $this->assertTrue(password_verify('Password123!', $student['password_hash']), 'keeps their own password');
+        $this->assertSame($studentId, (int) $this->requestRow($requestId)['user_id']);
+    }
+
+    public function testApprovePromotesARegularAccountMadeAfterApplying(): void
     {
         $requestId = TestDatabase::addRequest($this->pdo, ['email' => 'taken@test.com']);
-        TestDatabase::addUser($this->pdo, 'taken@test.com', 'user');
+        $laterId = TestDatabase::addUser($this->pdo, 'taken@test.com', 'user');
+        $usersBefore = $this->userCount();
+
+        [$status] = $this->decide($this->moderatorId, ['request_id' => $requestId, 'action' => 'approve']);
+
+        $this->assertSame(200, $status);
+        $this->assertSame($usersBefore, $this->userCount());
+        $this->assertSame('admin', $this->userByUsername('taken@test.com')['role']);
+        $this->assertSame($laterId, (int) $this->requestRow($requestId)['user_id']);
+    }
+
+    public function testApproveFailsCleanlyIfAnAdminTookTheEmailMeanwhile(): void
+    {
+        $requestId = TestDatabase::addRequest($this->pdo, ['email' => 'taken@test.com']);
+        TestDatabase::addUser($this->pdo, 'taken@test.com', 'admin');
 
         [$status, $body] = $this->decide($this->moderatorId, ['request_id' => $requestId, 'action' => 'approve']);
 
         $this->assertSame(409, $status);
         $this->assertSame('An account with this email already exists.', $body['error']);
         $this->assertSame('pending', $this->requestRow($requestId)['status']);
-        $this->assertSame('user', $this->userByUsername('taken@test.com')['role']);
+    }
+
+    public function testApproveNeverDemotesALinkedModerator(): void
+    {
+        $requestId = TestDatabase::addRequest($this->pdo, ['email' => 'mod2@test.com', 'user_id' => $this->moderatorId]);
+
+        [$status] = $this->decide($this->moderatorId, ['request_id' => $requestId, 'action' => 'approve']);
+
+        $this->assertSame(200, $status);
+        $this->assertSame('moderator', $this->userByUsername('karavan.mod')['role']);
     }
 
     public function testUnknownRequestReturns404(): void

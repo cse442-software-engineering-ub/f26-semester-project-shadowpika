@@ -444,6 +444,43 @@ final class EndpointsHttpTest extends TestCase
 
         $this->assertFalse($json['success']);
         $this->assertSame('Username or Email already exists.', $json['error']);
+        $this->assertSame(1, (int) $this->pdo->query("SELECT COUNT(*) FROM users WHERE email = 'testuser1@test.com'")->fetchColumn());
+    }
+
+    public function testSignUpRejectsADuplicateEmailInDifferentCase(): void
+    {
+        TestDatabase::addUser($this->pdo, 'mod', 'moderator', 'mod@test.com');
+
+        [, $json] = $this->postJson('register.php', json_encode(['username' => 'other', 'email' => 'MOD@Test.com', 'password' => 'TestUser123!']), null);
+
+        $this->assertFalse($json['success']);
+        $this->assertSame('Username or Email already exists.', $json['error']);
+        $this->assertSame(1, (int) $this->pdo->query('SELECT COUNT(*) FROM users')->fetchColumn());
+    }
+
+    public function testSignUpRejectsAnEmailThatIsALegacyUsername(): void
+    {
+        TestDatabase::addUser($this->pdo, 'legacy@test.com');
+
+        [, $json] = $this->postJson('register.php', json_encode(['username' => 'other', 'email' => 'legacy@test.com', 'password' => 'TestUser123!']), null);
+
+        $this->assertFalse($json['success']);
+        $this->assertSame('Username or Email already exists.', $json['error']);
+    }
+
+    public function testLoginPicksTheAccountWhosePasswordMatchesWhenAnEmailIsShared(): void
+    {
+        TestDatabase::addUser($this->pdo, 'mod', 'moderator', 'mod@test.com');
+        $this->pdo->prepare("INSERT INTO users (username, email, password_hash, role) VALUES ('dupe', 'mod@test.com', ?, 'user')")
+            ->execute([password_hash('Different123!', PASSWORD_BCRYPT)]);
+
+        [$moderator] = $this->login('mod@test.com', 'Password123!');
+        [$duplicate] = $this->login('mod@test.com', 'Different123!');
+
+        $this->assertTrue($moderator['success']);
+        $this->assertSame('moderator', $moderator['role']);
+        $this->assertTrue($duplicate['success']);
+        $this->assertSame('user', $duplicate['role']);
     }
 
     public function testWrongPasswordIsRejectedWithoutASession(): void
@@ -606,5 +643,124 @@ final class EndpointsHttpTest extends TestCase
         [$removeStatus] = $this->request('GET', 'remove_approved_location.php', null, $session);
 
         $this->assertSame([405, 405, 405], [$getStatus, $addStatus, $removeStatus]);
+    }
+
+    private function signUp(string $username, string $email, string $password): void
+    {
+        [, $json] = $this->postJson('register.php', json_encode(['username' => $username, 'email' => $email, 'password' => $password]), null);
+        $this->assertTrue($json['success'], 'sign up');
+    }
+
+    private function approveAs(string $modSession, int $requestId): array
+    {
+        return $this->postJson('moderator_approve.php', json_encode(['request_id' => $requestId, 'action' => 'approve']), $modSession);
+    }
+
+    // Bug fix: a student applies with the email of their existing regular account.
+    public function testStudentAppliesWithTheirOwnEmailAndBecomesAdminOnTheSameAccount(): void
+    {
+        $modSession = $this->sessionFor(TestDatabase::addUser($this->pdo, 'moderator@test.com', 'moderator'));
+        $this->signUp('riley.student', 'riley.student@test.com', 'Student123!');
+        $studentId = (int) $this->pdo->query("SELECT id FROM users WHERE username = 'riley.student'")->fetchColumn();
+
+        [$applyStatus, $applied] = $this->request('POST', 'admin_register.php', $this->form(
+            ['email' => 'riley.student@test.com', 'business_name' => 'Riley Rentals', 'password' => 'Partner123!'],
+            $this->fileOf('lease.pdf', Fixtures::pdfBytes())
+        ));
+        $this->assertSame(201, $applyStatus);
+        $this->assertSame($studentId, (int) $this->pdo->query("SELECT user_id FROM admin_requests WHERE id = {$applied['request_id']}")->fetchColumn());
+
+        [$approveStatus] = $this->approveAs($modSession, $applied['request_id']);
+        $this->assertSame(200, $approveStatus);
+        $this->assertSame(1, (int) $this->pdo->query("SELECT COUNT(*) FROM users WHERE LOWER(email) = 'riley.student@test.com' OR LOWER(username) = 'riley.student@test.com'")->fetchColumn());
+
+        [$login, $session] = $this->login('riley.student@test.com', 'Student123!');
+        $this->assertTrue($login['success']);
+        $this->assertSame('admin', $login['role']);
+        [$adminStatus] = $this->request('GET', 'get_approved_locations.php', null, $session);
+        $this->assertSame(200, $adminStatus, 'the Admin tab loads for the promoted account');
+    }
+
+    public function testAdminOrModeratorEmailStillCannotApply(): void
+    {
+        TestDatabase::addUser($this->pdo, 'moderator@test.com', 'moderator', 'moderator@test.com');
+
+        [$status, , $raw] = $this->request('POST', 'admin_register.php', $this->form(
+            ['email' => 'moderator@test.com'], $this->fileOf('lease.pdf', Fixtures::pdfBytes())
+        ));
+
+        $this->assertSame(409, $status);
+        $this->assertSame('{"success":false,"error":"An account with this email already exists."}', $raw);
+        $this->assertSame(0, $this->requestCount());
+    }
+
+    private function approvedCommunity(string $businessName, string $email): int
+    {
+        return TestDatabase::addRequest($this->pdo, ['business_name' => $businessName, 'email' => $email, 'status' => 'approved']);
+    }
+
+    public function testStudentListsJoinsAndSwitchesCommunities(): void
+    {
+        $keller = $this->approvedCommunity('Keller Properties LLC', 'morgan.keller.b3@test.com');
+        $riverside = $this->approvedCommunity('Riverside Apartments', 'taylor.rivers.b3@test.com');
+        $this->signUp('drew.student', 'drew.student@test.com', 'Student123!');
+        [$login, $session] = $this->login('drew.student@test.com', 'Student123!');
+        $this->assertNull($login['community_id']);
+        $this->assertNull($login['community_name']);
+
+        [$listStatus, , $listRaw] = $this->request('GET', 'list_communities.php', null, $session);
+        $this->assertSame(200, $listStatus);
+        $this->assertSame(
+            '{"success":true,"communities":[{"community_id":' . $keller . ',"name":"Keller Properties LLC"},{"community_id":' . $riverside . ',"name":"Riverside Apartments"}]}',
+            $listRaw
+        );
+
+        [$joinStatus, , $joinRaw] = $this->postJson('join_community.php', json_encode(['community_id' => $keller]), $session);
+        $this->assertSame(200, $joinStatus);
+        $this->assertSame('{"success":true,"community_id":' . $keller . ',"community_name":"Keller Properties LLC"}', $joinRaw);
+
+        [$switchStatus, $switched] = $this->postJson('join_community.php', json_encode(['community_id' => $riverside]), $session);
+        $this->assertSame(200, $switchStatus);
+        $this->assertSame(['success' => true, 'community_id' => $riverside, 'community_name' => 'Riverside Apartments'], $switched);
+        $this->assertSame($riverside, (int) $this->pdo->query("SELECT community_id FROM users WHERE username = 'drew.student'")->fetchColumn());
+        $this->assertSame(1, (int) $this->pdo->query("SELECT COUNT(*) FROM users WHERE username = 'drew.student'")->fetchColumn());
+
+        [$again] = $this->login('drew.student@test.com', 'Student123!');
+        $this->assertSame($riverside, $again['community_id']);
+        $this->assertSame('Riverside Apartments', $again['community_name']);
+    }
+
+    public function testJoiningANonexistentCommunityReturns404(): void
+    {
+        $this->signUp('avery.student', 'avery.student@test.com', 'Student123!');
+        [, $session] = $this->login('avery.student@test.com', 'Student123!');
+
+        [$status, , $raw] = $this->postJson('join_community.php', '{"community_id":999999}', $session);
+
+        $this->assertSame(404, $status);
+        $this->assertSame('{"success":false,"error":"Community not found."}', $raw);
+    }
+
+    public function testCommunityEndpointsReturn403WhenNotLoggedIn(): void
+    {
+        $keller = $this->approvedCommunity('Keller Properties LLC', 'morgan.keller.b1@test.com');
+
+        [$listStatus, , $listRaw] = $this->request('GET', 'list_communities.php');
+        [$joinStatus, , $joinRaw] = $this->postJson('join_community.php', json_encode(['community_id' => $keller]), null);
+
+        $this->assertSame(403, $listStatus);
+        $this->assertSame('{"success":false,"error":"You do not have permission to perform this action."}', $listRaw);
+        $this->assertSame(403, $joinStatus);
+        $this->assertSame($listRaw, $joinRaw);
+    }
+
+    public function testCommunityEndpointsRejectTheWrongMethod(): void
+    {
+        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'someone@test.com'));
+
+        [$listStatus] = $this->postJson('list_communities.php', '{}', $session);
+        [$joinStatus] = $this->request('GET', 'join_community.php', null, $session);
+
+        $this->assertSame([405, 405], [$listStatus, $joinStatus]);
     }
 }

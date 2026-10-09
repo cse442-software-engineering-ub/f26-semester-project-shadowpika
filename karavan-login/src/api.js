@@ -58,6 +58,22 @@ export async function removeApprovedLocation(locationId) {
     return { status: response.status, ...(await readJson(response)) };
 }
 
+// Doubles as the logged-in check for the nav: signed-out visitors get a 403.
+export async function fetchCommunities() {
+    const response = await fetch(apiUrl('list_communities.php'), { credentials: 'same-origin' });
+    return { status: response.status, ...(await readJson(response)) };
+}
+
+export async function joinCommunity(communityId) {
+    const response = await fetch(apiUrl('join_community.php'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ community_id: communityId }),
+    });
+    return { status: response.status, ...(await readJson(response)) };
+}
+
 export async function logout() {
     await fetch(apiUrl('logout.php'), { method: 'POST', credentials: 'same-origin' });
 }

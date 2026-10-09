@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './index.css'
 import karavanLogo from './assets/images/logo.png';
 import { pathFor } from './routes.js';
+import { markNewAccount, recordLogin } from './community.js';
 
 function App() {
     const [username, setUsername] = useState('');
@@ -106,11 +107,15 @@ function App() {
 
             if (data.success) {
                 if (isRegisterPage) {
+                    markNewAccount(email);
                     setMessage('Account successfully saved! Redirecting to login...');
                     setTimeout(() => {
                         window.location.href = './index.html';
                     }, 1500);
-                } else if (data.role === 'moderator') {
+                    return;
+                }
+                recordLogin(email, data);
+                if (data.role === 'moderator') {
                     window.location.assign(pathFor('moderator'));
                 } else {
                     setIsLoggedIn(true);

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/http.php';
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/communities.php';
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
@@ -47,12 +48,21 @@ try {
 try {
     // --- DYNAMIC LOOKUP BY EMAIL ---
     // Accounts created before the email column existed only have their email in username.
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?) ORDER BY LOWER(email) = LOWER(?) DESC LIMIT 1");
+    // Older rows can share an email (the live table has no UNIQUE index on it), so the account
+    // is the oldest match whose password is correct rather than whichever row MySQL returns first.
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?) ORDER BY LOWER(email) = LOWER(?) DESC, id ASC");
     $stmt->execute([$input_username, $input_username, $input_username]);
-    $db_user_row = $stmt->fetch();
 
     // --- SECURE BCRYPT VERIFICATION ---
-    if ($db_user_row && password_verify($input_password, $db_user_row['password_hash'])) {
+    $db_user_row = null;
+    foreach ($stmt->fetchAll() as $candidate) {
+        if (password_verify($input_password, $candidate['password_hash'])) {
+            $db_user_row = $candidate;
+            break;
+        }
+    }
+
+    if ($db_user_row) {
         // Moderator, admin and location endpoints identify the user from the PHP session.
         karavan_start_session();
         session_regenerate_id(true);
@@ -69,11 +79,16 @@ try {
         ];
         setcookie("karavan_auth_cookie", $input_username, $cookie_options);
 
+        // The nav's "Join a Community" button shows the joined community's name.
+        $community = karavan_find_community($pdo, $db_user_row['community_id'] ?? null);
+
         echo json_encode([
             "success" => true,
             "status" => "success",
             "authenticated" => true,
-            "role" => $db_user_row['role'] ?? 'user'
+            "role" => $db_user_row['role'] ?? 'user',
+            "community_id" => $community['community_id'] ?? null,
+            "community_name" => $community['community_name'] ?? null
         ]);
     } else {
         echo json_encode([

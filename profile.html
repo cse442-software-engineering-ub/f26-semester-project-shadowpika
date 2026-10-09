@@ -5,37 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Karavan - Profile</title>
 
+    <script type="module" crossorigin src="assets/Nav-Settings.js"></script>
+    <link rel="modulepreload" crossorigin href="assets/NavBar-CO2aEYeg.js">
+    <link rel="stylesheet" crossorigin href="assets/NavBar-pP62phn7.css">
+
     <link href="profile.css" rel="stylesheet" type="text/css">
     <link href="settings/account-settings.css" rel="stylesheet" type="text/css">
 </head>
 
 <body>
-
-    <!-- =========================================
-         NAVIGATION
-    ========================================= -->
-
-    <header class="navbar">
-
-        <div class="brand">
-            <a href="home.html"><img src="settings/logo.webp" width="50" height="50" id="logo"></a>
-            <div class="brand-name">KARAVAN</div>
-        </div>
-
-        <nav class="nav-links">
-            <a href="#" class="nav-link">Meeting Request</a>
-            <a href="settings/general-settings.html" class="nav-link">Settings</a>
-            <a href="#" class="nav-link">Sell</a>
-        </nav>
-
-        <div class="nav-right">
-            <div class="search-icon"></div>
-            <img src="settings/bell.svg" width="25" height="25" id="bell">
-            <button class="profile-buttoned" onClick="logout()">Log Out</button>
-        </div>
-
-    </header>
-
+    <div id="root"></div>
 
     <!-- =========================================
          MAIN
@@ -82,13 +61,13 @@
                 </div>
 
                 <div class="profile-actions">
-                    <button class="outline-button">
+                    <!-- <button class="outline-button" height="0">
                         Share profile
                     </button>
 
-                    <button class="dark-button">
+                    <button class="dark-button" height="0">
                         Edit profile
-                    </button>
+                    </button> -->
                 </div>
 
             </div>
@@ -282,9 +261,9 @@
 
                     </div>
 
-                    <button class="view-all">
+                    <!-- <button class="view-all" height="0">
                         View all
-                    </button>
+                    </button> -->
 
                 </section>
 
@@ -306,9 +285,9 @@
 
                         </div>
 
-                        <a href="#" class="activity-link">
+                        <!-- <a href="#" class="activity-link" height="0">
                             <h3>View activity</h3>
-                        </a>
+                        </a> -->
 
                     </div>
 
@@ -433,7 +412,7 @@
             .then(data => {
                 console.log("PHP response:", data);
                 if (data.success) {
-                    window.location.replace("../index.html");
+                    window.location.replace("index.html");
                 } else {
                     alert(data.error);
                 }
@@ -444,9 +423,81 @@
         }
         const intervalId = setInterval(() => {
             if (!getCookies("karavan_auth_cookie")){
-                window.location.replace("../404.html");
+                window.location.replace("404.html");
             }
       }, 1000);
+
+      document.addEventListener("DOMContentLoaded", () => {
+    const addLogoutButton = () => {
+        const profileButton = document.querySelector(".nav-profile");
+
+        if (!profileButton) {
+            return;
+        }
+
+        // Don't add it twice
+        if (document.querySelector(".nav-logout")) {
+            return;
+        }
+
+        function logout(){
+            fetch("logout.php", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    current_username: getCookies("karavan_auth_cookie")
+                })
+            })
+            .then(response => {
+                console.log("HTTP status:", response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log("PHP response:", data);
+                if (data.success) {
+                    window.location.replace("index.html");
+                } else {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error("Fetch error:", error);
+            });
+        }
+        const intervalId = setInterval(() => {
+            if (!getCookies("karavan_auth_cookie")){
+                window.location.replace("404.html");
+            }
+      }, 1000);
+
+        const logoutButton = document.createElement("button");
+
+        logoutButton.type = "button";
+        logoutButton.className = "nav-logout";
+        logoutButton.textContent = "Log Out";
+
+        logoutButton.addEventListener("click", async () => {
+            logout();
+        });
+
+        profileButton.insertAdjacentElement("afterend", logoutButton);
+    };
+
+    // React may render the navbar after DOMContentLoaded,
+    // so check repeatedly until the Profile button exists.
+    const observer = new MutationObserver(() => {
+        addLogoutButton();
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    addLogoutButton();
+    });
     </script>
 
 </body>

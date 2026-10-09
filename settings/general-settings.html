@@ -5,34 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Karavan - General Settings</title>
 
+    <script type="module" crossorigin src="../assets/Nav-Settings.js"></script>
+    <link rel="modulepreload" crossorigin href="../assets/NavBar-CO2aEYeg.js">
+    <link rel="stylesheet" crossorigin href="../assets/NavBar-pP62phn7.css">
+
     <link rel="stylesheet" href="general-settings.css" type="text/css">
     <link rel="stylesheet" href="account-settings.css" type="text/css">
 </head>
 
 <body>
-
-    <!-- Navigation -->
-    <header class="navbar">
-
-        <div class="brand">
-            <a href="../home.html"><img src="logo.webp" width="50" height="50" id="logo"></a>
-            <div class="brand-name">KARAVAN</div>
-        </div>
-
-        <nav class="nav-links">
-            <a href="#" class="nav-link">Meeting Request</a>
-            <a href="#" class="nav-link">Settings</a>
-            <a href="#" class="nav-link">Sell</a>
-        </nav>
-
-        <div class="nav-right">
-            <div class="search-icon"></div>
-            <img src="bell.svg" width="25" height="25" id="bell">
-            <a href="../profile.html"><button class="profile-button">Profile</button></a>
-        </div>
-
-    </header>
-
+    <div id="root"></div>
 
     <!-- Main Content -->
     <main class="main">
@@ -71,7 +53,7 @@
                             Preferred language
                         </label>
 
-                        <div class="select-wrapper">
+                        <!-- <div class="select-wrapper">
                             <select class="select-input">
                                 <option>English (US)</option>
                                 <option>Spanish</option>
@@ -84,7 +66,7 @@
                             </select>
 
                             <span class="select-arrow"></span>
-                        </div>
+                        </div> -->
 
                     </div>
 
@@ -105,11 +87,11 @@
                             Email notifications
                         </label>
 
-                        <div class="toggle" id="toggle1" onClick="toggle()"></div>
+                        <!-- <div class="toggle" id="toggle1" onClick="toggle()"></div>
 
                         <span class="notification-description">
                             Receive weekly digests and important account updates by email.
-                        </span>
+                        </span> -->
 
                     </div>
 
@@ -121,11 +103,11 @@
                             Push notifications
                         </label>
 
-                        <div class="toggle" id="toggle2" onclick="otherToggle()"></div>
+                        <!-- <div class="toggle" id="toggle2" onclick="otherToggle()"></div>
 
                         <span class="notification-description">
                             Get real-time alerts for messages, listing updates, and marketplace activity.
-                        </span>
+                        </span> -->
 
                     </div>
 
@@ -145,7 +127,7 @@
                             Timezone
                         </label>
 
-                        <div class="select-wrapper">
+                        <!-- <div class="select-wrapper">
 
                             <select class="select-input">
                                 <option>
@@ -167,7 +149,7 @@
 
                             <span class="select-arrow"></span>
 
-                        </div>
+                        </div> -->
 
                     </div>
 
@@ -187,11 +169,11 @@
                             Dark mode
                         </label>
 
-                        <div class="toggle" id="dark_toggle" onClick="darkToggle()"></div>
+                        <!-- <div class="toggle" id="dark_toggle" onClick="darkToggle()"></div>
 
                         <span class="notification-description">
                             Switch to a darker interface for lower light environments.
-                        </span>
+                        </span> -->
 
                     </div>
 
@@ -201,13 +183,13 @@
                 <!-- Save -->
                 <div class="save-area">
 
-                    <button class="save-button">
+                    <!-- <button class="save-button">
                         Save changes
                     </button>
 
                     <span class="save-description">
                         Changes will apply across all devices.
-                    </span>
+                    </span> -->
 
                 </div>
 
@@ -253,6 +235,78 @@
                     gotten.classList.remove('active');
                 }else{gotten.classList.add('active');}
             }
+
+            document.addEventListener("DOMContentLoaded", () => {
+    const addLogoutButton = () => {
+        const profileButton = document.querySelector(".nav-profile");
+
+        if (!profileButton) {
+            return;
+        }
+
+        // Don't add it twice
+        if (document.querySelector(".nav-logout")) {
+            return;
+        }
+
+        function logout(){
+            fetch("../logout.php", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    current_username: getCookies("karavan_auth_cookie")
+                })
+            })
+            .then(response => {
+                console.log("HTTP status:", response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log("PHP response:", data);
+                if (data.success) {
+                    window.location.replace("../index.html");
+                } else {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error("Fetch error:", error);
+            });
+        }
+        const intervalId = setInterval(() => {
+            if (!getCookies("karavan_auth_cookie")){
+                window.location.replace("404.html");
+            }
+      }, 1000);
+
+        const logoutButton = document.createElement("button");
+
+        logoutButton.type = "button";
+        logoutButton.className = "nav-logout";
+        logoutButton.textContent = "Log Out";
+
+        logoutButton.addEventListener("click", async () => {
+            logout();
+        });
+
+        profileButton.insertAdjacentElement("afterend", logoutButton);
+    };
+
+    // React may render the navbar after DOMContentLoaded,
+    // so check repeatedly until the Profile button exists.
+    const observer = new MutationObserver(() => {
+        addLogoutButton();
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    addLogoutButton();
+    });
         </script>
     </main>
 

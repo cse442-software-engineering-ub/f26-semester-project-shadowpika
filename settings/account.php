@@ -1,4 +1,5 @@
 <?php
+
 session_start();
 
 ini_set('display_errors', '1');
@@ -23,17 +24,15 @@ if (!$data) {
         "success" => false,
         "error" => "Invalid data received."
     ]);
-    http_response_code(502);
+    http_response_code(400);
     exit;
 }
 
 
-// Current username
-$current_username = isset($data["current_username"])
-    ? trim($data["current_username"])
-    : "";
+// -----------------------------
+// GET USER INFORMATION
+// -----------------------------
 
-// New username
 $new_username = isset($data["username"])
     ? trim($data["username"])
     : "";
@@ -43,31 +42,43 @@ $new_email = isset($data["email"])
     : "";
 
 $curr_pass = isset($data["password"])
-    ? trim($data["password"])
+    ? $data["password"]
     : "";
 
-// Make sure current username was provided
-if (empty($current_username)) {
+
+// -----------------------------
+// GET CURRENT USER FROM COOKIE
+// -----------------------------
+
+// Change "username" to the actual name of your cookie.
+$cookie_user = $cookie_user = isset($_COOKIE["karavan_auth_cookie"])
+    ? urldecode(trim($_COOKIE["karavan_auth_cookie"]))
+    : "";
+
+
+// -----------------------------
+// VALIDATE INPUT
+// -----------------------------
+
+if (empty($cookie_user)) {
     echo json_encode([
         "success" => false,
-        "error" => "Current username is required."
+        "error" => "User cookie not found."
     ]);
-    http_response_code(404);
+    http_response_code(401);
     exit;
 }
 
-
-// Make sure new username was provided
 if (empty($new_username) || empty($new_email)) {
     echo json_encode([
         "success" => false,
-        "error" => "New username and email is required."
+        "error" => "New username and email are required."
     ]);
-    http_response_code(404);
+    http_response_code(400);
     exit;
 }
 
-if (!str_contains($new_email, "@")){
+if (!str_contains($new_email, "@")) {
     echo json_encode([
         "success" => false,
         "error" => "Invalid Email."
@@ -76,25 +87,25 @@ if (!str_contains($new_email, "@")){
     exit;
 }
 
+if (empty($curr_pass)) {
+    echo json_encode([
+        "success" => false,
+        "error" => "Password is required."
+    ]);
+    http_response_code(400);
+    exit;
+}
+
+
 // -----------------------------
 // DATABASE CONNECTION
 // -----------------------------
 
-$db_host = 'localhost';
-$db_name = 'cse442_2026_fall_team_j_db';
-$db_user = 'ndberg';
-$db_pass = '50250298';
+require_once __DIR__ . '/../includes/db.php';
 
-$conn = new mysqli(
-    $db_host,
-    $db_user,
-    $db_pass,
-    $db_name
-);
-
-
-// Check connection
-if ($conn->connect_error) {
+try {
+    $pdo = karavan_pdo();
+} catch (\Throwable $e) {
     echo json_encode([
         "success" => false,
         "error" => "Database connection failed."
@@ -103,131 +114,179 @@ if ($conn->connect_error) {
     exit;
 }
 
+
 // -----------------------------
-// CHECK IF EMAIL IS ALREADY USED
+// FIND CURRENT USER
 // -----------------------------
 
-$stmt = $conn->prepare(
-    "SELECT COUNT(*) AS count FROM users WHERE email = ?"
-);
+try {
 
-$stmt->bind_param(
-    "s",
-    $new_email
-);
+    /*
+     * Compare the cookie against BOTH:
+     *
+     *     users.username
+     *
+     * OR
+     *
+     *     users.email
+     *
+     * This means the cookie can contain either
+     * the user's username OR their email.
+     */
 
-$stmt->execute();
+    $stmt = $pdo->prepare(
+        "SELECT id, username, email, password_hash
+         FROM users
+         WHERE username = ? OR email = ?"
+    );
 
-$result = $stmt->get_result();
-$row = $result->fetch_assoc();
-
-if ($row["count"] > 0) {
-    echo json_encode([
-        "success" => false,
-        "error" => "Email already in use."
+    $stmt->execute([
+        $cookie_user,
+        $cookie_user
     ]);
 
-    $stmt->close();
-    $conn->close();
-    http_response_code(409);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+} catch (\PDOException $e) {
+
+    echo json_encode([
+        "success" => false,
+        "error" => "Failed to find current user."
+    ]);
+
+    http_response_code(500);
     exit;
 }
 
-$stmt->close();
-
 
 // -----------------------------
-// FIND USER ID
+// MAKE SURE USER EXISTS
 // -----------------------------
 
-$stmt = $conn->prepare(
-    "SELECT id, password_hash FROM users WHERE username = ?"
-);
-
-$stmt->bind_param(
-    "s",
-    $current_username
-);
-
-$stmt->execute();
-
-$result = $stmt->get_result();
-$user = $result->fetch_assoc();
-
-
-// Make sure user exists
 if (!$user) {
     echo json_encode([
         "success" => false,
-        "error" => "Current user not found."
+        "error" => "User associated with cookie was not found."
     ]);
 
-    $stmt->close();
-    $conn->close();
     http_response_code(404);
     exit;
 }
 
 
-// Store the user's ID
-$user_id = $user["id"];
+// -----------------------------
+// VERIFY PASSWORD
+// -----------------------------
 
-if (!password_verify($curr_pass, $user["password_hash"])){
+if (!password_verify($curr_pass, $user["password_hash"])) {
     echo json_encode([
         "success" => false,
         "error" => "Password is incorrect."
     ]);
 
-    $stmt->close();
-    $conn->close();
     http_response_code(401);
     exit;
 }
 
-$stmt->close();
+
+// -----------------------------
+// CHECK IF EMAIL IS ALREADY USED
+// -----------------------------
+
+try {
+
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*)
+         FROM users
+         WHERE email = ?
+         AND id != ?"
+    );
+
+    $stmt->execute([
+        $new_email,
+        $user["id"]
+    ]);
+
+    $email_count = $stmt->fetchColumn();
+
+    if ($email_count > 0) {
+        echo json_encode([
+            "success" => false,
+            "error" => "Email already in use."
+        ]);
+
+        http_response_code(409);
+        exit;
+    }
+
+} catch (\PDOException $e) {
+
+    echo json_encode([
+        "success" => false,
+        "error" => "Failed to check email."
+    ]);
+
+    http_response_code(500);
+    exit;
+}
 
 
 // -----------------------------
-// UPDATE USERNAME
+// UPDATE USERNAME AND EMAIL
 // -----------------------------
 
-$stmt = $conn->prepare(
-    "UPDATE users SET username = ?, email = ? WHERE id = ?"
-);
+$user_id = $user["id"];
 
-$stmt->bind_param(
-    "ssi",
-    $new_username,
-    $new_email,
-    $user_id
-);
+try {
 
+    $stmt = $pdo->prepare(
+        "UPDATE users
+         SET username = ?, email = ?
+         WHERE id = ?"
+    );
 
-// Execute update
-if ($stmt->execute()) {
+    $stmt->execute([
+        $new_username,
+        $new_email,
+        $user_id
+    ]);
 
     echo json_encode([
         "success" => true,
-        "message" => "Username updated successfully.",
+        "message" => "Account information updated successfully.",
         "user_id" => $user_id,
         "username" => $new_username,
         "email" => $new_email
     ]);
 
-} else {
+    setcookie(
+        "karavan_auth_cookie",
+        $new_username,
+        time() + 86400,
+        "/",
+        ".aptitude.cse.buffalo.edu"
+    );
 
-    echo json_encode([
-        "success" => false,
-        "error" => "Failed to update username."
-    ]);
+    http_response_code(200);
+
+} catch (\PDOException $e) {
+
+    if ($e->getCode() == "23000") {
+        echo json_encode([
+            "success" => false,
+            "error" => "Username or email already in use."
+        ]);
+
+        http_response_code(409);
+
+    } else {
+        echo json_encode([
+            "success" => false,
+            "error" => "Failed to update account."
+        ]);
+
+        http_response_code(500);
+    }
 }
-
-
-// -----------------------------
-// CLEAN UP
-// -----------------------------
-
-$stmt->close();
-$conn->close();
 
 ?>

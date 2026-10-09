@@ -108,6 +108,7 @@ final class ItemDetailsHttpTest extends TestCase
             'name'        => 'Calculus Textbook',
             'price'       => '35.00',
             'condition'   => 'Good',
+            'image_url'   => 'uploads/calculus-textbook.jpg',
             'category'    => 'Textbooks',
             'description' => 'Used for one semester. No writing or highlighting.',
         ]], '?listing_id=91001');
@@ -120,6 +121,7 @@ final class ItemDetailsHttpTest extends TestCase
             'name'        => 'Calculus Workbook',
             'price'       => '20.00',
             'condition'   => 'Like New',
+            'image_url'   => 'uploads/calculus-workbook.jpg',
             'category'    => 'Textbooks',
             'description' => null,
         ]], '?listing_id=91002');

@@ -4,33 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Karavan - Settings</title>
+    <script type="module" crossorigin src="../assets/Nav-Settings.js"></script>
+    <link rel="modulepreload" crossorigin href="../assets/NavBar-CO2aEYeg.js">
+    <link rel="stylesheet" crossorigin href="../assets/NavBar-pP62phn7.css">
     <link rel="stylesheet" href="account-settings.css" type="text/css">
 </head>
 
 <body>
-
-    <!-- Navigation -->
-    <header class="navbar">
-
-        <div class="brand">
-            <a href="../home.html"><img src="logo.webp" width="50" height="50" id="logo"></a>
-            <div class="brand-name">KARAVAN</div>
-        </div>
-
-        <nav class="nav-links">
-            <a href="#" class="nav-link">Meeting Request</a>
-            <a href="#" class="nav-link">Settings</a>
-            <a href="#" class="nav-link">Sell</a>
-        </nav>
-
-        <div class="nav-right">
-            <div class="search-icon"></div>
-            <img src="bell.svg" width="25" height="25" id="bell">
-            <a href="../profile.html"><button class="profile-button">Profile</button></a>
-        </div>
-
-    </header>
-
+    <div id="root"></div>
 
     <!-- Main Content -->
     <main class="main">
@@ -66,7 +47,6 @@
                         <input
                             class="field-input"
                             type="text"
-                            value="Shadowpika"
                             id="name"
                             name="input_username"
                         >
@@ -107,9 +87,9 @@
                     <div class="password-row">
                         <label class="password-label">Password</label>
 
-                        <!-- <button class="change-password">
+                        <a href="change-password.html"><button class="change-password">
                             Change password
-                        </button> -->
+                        </button></a>
 
                         <span class="password-description">
                             Update your password to keep your account secure.
@@ -154,62 +134,8 @@
 
         </section>
         <script>
-            // function submitData() {
-            // let username = document.user_info.input_username.value;
-            // let address = document.user_info.input_email.value;
-            // fetch("account.php", {
-            //     method: "POST",
-            //     headers: {
-            //         "Content-Type": "application/json"
-            //     },
-            //     body: JSON.stringify({
-            //         name: username,
-            //         email: address
-            //     })
-            // })
-            // .then(response => response.json())
-            // .then(data => {
-            //     console.log(data);
-            // });
-            // }
-
-        //     function submitData() {
-        //     var pass = prompt("Please enter your password to make these changes:")
-        //     let name = document.user_info.input_username.value;
-        //     let address = document.user_info.input_email.value;
-
-        //     fetch("account.php", {
-        //         method: "POST",
-        //         headers: {
-        //             "Content-Type": "application/json"
-        //         },
-        //         body: JSON.stringify({
-        //             current_username: "Shadowpika",
-        //             username: name,
-        //             email: address,
-        //             password: pass
-        //         })
-        //     })
-        //     .then(response => {
-        //         console.log("HTTP status:", response.status);
-        //         return response.text();
-        //     })
-        //     .then(data => {
-        //         console.log("PHP response:", data);
-        //     })
-        //     .catch(error => {
-        //         console.error("Fetch error:", error);
-        //     });
-        //     .then(data => {
-        //         console.log("PHP response:", data);
-
-        //         if (data.success) {
-        //             document.getElementById("name").value = data.username;
-        //             document.getElementById("email").value = data.email;
-        //         }
-        //     })
-        // }
-
+            document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+            
         function getCookies(cookieName){
             const cookies = document.cookie.split("; ")
 
@@ -226,6 +152,12 @@
 
         function deleteAccount(){
             var pass = prompt("Please enter your password to delete your account");
+
+            if (pass == null) { 
+                alert("Account deletion cancelled."); 
+                return; 
+            }
+
             var confirmation = prompt("Are you sure you want to delete your account? You can't go back after this!");
 
             if (confirmation == null) { 
@@ -290,7 +222,7 @@
                     document.getElementById("name").value = data.username;
                     document.getElementById("email").value = data.email;
                 } else {
-                    document.getElementById("name").value = "Shadowpika";
+                    document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
                     document.getElementById("email").value = "";
                     console.log("Error:", data.error);
                     alert(data.error);
@@ -306,6 +238,78 @@
                 window.location.replace("../404.html");
             }
         }, 1000);
+
+        document.addEventListener("DOMContentLoaded", () => {
+    const addLogoutButton = () => {
+        const profileButton = document.querySelector(".nav-profile");
+
+        if (!profileButton) {
+            return;
+        }
+
+        // Don't add it twice
+        if (document.querySelector(".nav-logout")) {
+            return;
+        }
+
+        function logout(){
+            fetch("../logout.php", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    current_username: getCookies("karavan_auth_cookie")
+                })
+            })
+            .then(response => {
+                console.log("HTTP status:", response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log("PHP response:", data);
+                if (data.success) {
+                    window.location.replace("../index.html");
+                } else {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error("Fetch error:", error);
+            });
+        }
+        const intervalId = setInterval(() => {
+            if (!getCookies("karavan_auth_cookie")){
+                window.location.replace("404.html");
+            }
+      }, 1000);
+
+        const logoutButton = document.createElement("button");
+
+        logoutButton.type = "button";
+        logoutButton.className = "nav-logout";
+        logoutButton.textContent = "Log Out";
+
+        logoutButton.addEventListener("click", async () => {
+            logout();
+        });
+
+        profileButton.insertAdjacentElement("afterend", logoutButton);
+    };
+
+    // React may render the navbar after DOMContentLoaded,
+    // so check repeatedly until the Profile button exists.
+    const observer = new MutationObserver(() => {
+        addLogoutButton();
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    addLogoutButton();
+    });
 
         </script>
 
