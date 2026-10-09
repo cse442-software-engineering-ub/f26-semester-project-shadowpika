@@ -1,1 +1,0 @@
-import{r as e,t}from"./jsx-runtime-D1Z4dj17.js";import{t as n}from"./NavBar-CClPEIPU.js";/* empty css                      */e();var r=t();function i({title:e}){return(0,r.jsxs)(`div`,{className:`ps-page`,children:[(0,r.jsx)(n,{}),(0,r.jsx)(`main`,{className:`ps-frame`,children:(0,r.jsx)(`h1`,{className:`ps-title`,children:e})})]})}export{i as t};

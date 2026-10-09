@@ -1,0 +1,1 @@
+import{_ as e}from"./api-9zkWTuUC.js";import{n as t,r as n}from"./NavBar-DwsCXHHB.js";{let r=()=>{t()||n(e(`404.html`))};r();let i=window.setInterval(r,1e3);window.addEventListener(`pagehide`,()=>window.clearInterval(i),{once:!0})}

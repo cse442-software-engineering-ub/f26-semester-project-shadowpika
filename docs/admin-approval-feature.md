@@ -23,7 +23,7 @@ Only `moderator` can list, approve or deny requests or view documents. `user` an
 
 ## Database
 
-Migration: `sql/001_admin_requests.sql`
+Migration: `database/migrations/001_admin_requests.sql`
 
 - `users` gains `role ENUM('user','admin','moderator') NOT NULL DEFAULT 'user'`.
 - New table `admin_requests`: `id` (AUTO_INCREMENT **starts at 5001**), `full_name`, `business_name`, `email` (UNIQUE), `phone`, `password_hash` (bcrypt via `password_hash()`), `proof_file_name` (random 32-hex name on disk), `proof_original_name`, `proof_mime_type`, `status ENUM('pending','approved')`, `user_id` (set on approval), `reviewed_by`, `reviewed_at`, `created_at`.
@@ -87,7 +87,7 @@ Destroys the session.
 ### Config
 `includes/config.php` reads database settings from environment variables (`KARAVAN_DB_*`) or a gitignored `config.local.php`. `login.php` and `register.php` also use it now, so there are no hardcoded credentials.
 
-## Frontend (React + Vite in `karavan-login/src`)
+## Frontend (React + Vite in `frontend/src`)
 
 - `/admin-register`: `pages/AdminRegister.jsx`.
   - **Layout:** Figma layout with a two-column desktop view (brand left, form card right) that stacks on mobile.
@@ -106,33 +106,35 @@ Destroys the session.
 - `/` (base URL): the existing login page (`App.jsx`); a moderator login redirects to `/moderator`.
 - `routes.js`: resolves routes relative to wherever `index.html` is served from, so it works in a subfolder. The app links with hash routes (`#/moderator`, `#/admin-register`) because Aptitude does not apply the `.htaccess` rewrites; `main.jsx` re-renders on `hashchange`. The plain paths (`/moderator`) still work locally and on servers where `.htaccess` is honored.
 
-## Existing automated tests (all passing)
+## Automated tests
 
 Run from the repo root:
 ```bash
-vendor/bin/phpunit                 # 54 backend tests (SQLite, no MySQL needed)
-cd karavan-login && npm test       # 36 frontend tests (Vitest + React Testing Library)
+node scripts/build/build-release.mjs  # assemble the HTTP test document root first
+vendor/bin/phpunit                    # backend tests (SQLite, no MySQL needed)
+cd frontend && npm test               # frontend tests (Vitest + React Testing Library)
 ```
 
 | File | Covers |
 |---|---|
-| `tests/Unit/AdminRegisterTest.php` | File required/type/size, hashing, no user created, random filenames, apostrophes, duplicate emails |
-| `tests/Unit/ModeratorTest.php` | 403 for none/user/admin roles, pending-only list, approve creates an admin user, deny deletes row + file, double decisions, bad payloads, proof file access |
-| `tests/Http/EndpointsHttpTest.php` | Real endpoints over HTTP via `php -S`: exact response bodies from the task cards (IDs 5001/5002, Alex Landlord data), `.exe` rejection writes no file, real `login.php` sessions for moderator/admin/pending applicant |
-| `karavan-login/src/__tests__/AdminRegister.test.jsx` | Form controls, no request without a file, red outline, client type/size checks, FormData contents, confirmation, server errors |
-| `karavan-login/src/__tests__/ModeratorDashboard.test.jsx` | List rendering, empty state, approve/deny remove the card + confirm, error handling, 403 page |
-| `karavan-login/src/__tests__/TaskCards.test.jsx` | Mirrors the manual task cards, including moderator login redirecting to `/moderator` and exact approve/deny request bodies |
-| `karavan-login/src/__tests__/routes.test.js` | Route/base-path resolution in subfolders |
+| `tests/backend/Unit/AdminRegisterTest.php` | File required/type/size, hashing, no user created, random filenames, apostrophes, duplicate emails |
+| `tests/backend/Unit/ModeratorTest.php` | 403 for none/user/admin roles, pending-only list, approve creates an admin user, deny deletes row + file, double decisions, bad payloads, proof file access |
+| `tests/backend/Http/EndpointsHttpTest.php` | Real endpoints over HTTP via `php -S`: exact response bodies from the task cards (IDs 5001/5002, Alex Landlord data), `.exe` rejection writes no file, real `login.php` sessions for moderator/admin/pending applicant |
+| `frontend/src/__tests__/AdminRegister.test.jsx` | Form controls, no request without a file, red outline, client type/size checks, FormData contents, confirmation, server errors |
+| `frontend/src/__tests__/ModeratorDashboard.test.jsx` | List rendering, empty state, approve/deny remove the card + confirm, error handling, 403 page |
+| `frontend/src/__tests__/TaskCards.test.jsx` | Mirrors the manual task cards, including moderator login redirecting to `/moderator` and exact approve/deny request bodies |
+| `frontend/src/__tests__/routes.test.js` | Route/base-path resolution in subfolders |
 
-Test helpers: `tests/Support/TestDatabase.php` (SQLite copy of the schema, IDs also start at 5001) and `tests/Support/Fixtures.php` (valid PDF/PNG/JPG bytes, fake uploads).
+Test helpers: `tests/backend/Support/TestDatabase.php` (SQLite copy of the schema, IDs also start at 5001) and `tests/backend/Support/Fixtures.php` (valid PDF/PNG/JPG bytes, fake uploads).
 
 ## Running it locally with real logins
 
 ```bash
-./dev/start-backend.sh                          # terminal 1: PHP on :8000, SQLite at dev/local.sqlite
-cd karavan-login && npm run dev:backend         # terminal 2: http://localhost:5173
+node scripts/build/build-release.mjs
+./scripts/local-dev/start-backend.sh                          # terminal 1: PHP on :8000, SQLite at scripts/local-dev/runtime/local.sqlite
+cd frontend && npm run dev:backend         # terminal 2: http://localhost:5173
 ```
-Seeded accounts: `mod@test.com` / `Moderator123!` (moderator) and `user@test.com` / `User12345!` (user). Reset with `php dev/setup_local_db.php`.
+Seeded accounts: `mod@test.com` / `Moderator123!` (moderator) and `user@test.com` / `User12345!` (user). Reset with `php scripts/local-dev/setup_local_db.php`.
 
 ## Deployed test environment
 
@@ -169,4 +171,4 @@ Seeded accounts: `mod@test.com` / `Moderator123!` (moderator) and `user@test.com
   - A distinct "pending" message on login for applicants
   - Email notifications
   - Uploads outside the web root on Aptitude: `karavan_uploads` currently sits inside the site folder, because that's where the web server can write. Apache ignores `.htaccess` there, so the folder is protected only by a blank `index.html` (written automatically on the first upload) and random 32-character file names. The documents themselves are served to moderators through `proof_file.php`.
-- **Test upload files** live in `docs/test-files/`; `docs/task-cards.md` lists what each one should do.
+- **Test upload files** live in `tests/fixtures/admin-registration/`; `docs/task-cards.md` lists what each one should do.

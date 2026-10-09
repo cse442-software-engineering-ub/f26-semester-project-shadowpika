@@ -27,7 +27,9 @@ vendor/
 .phpunit.cache/
 .phpunit.result.cache
 karavan_uploads/
-dev/local.sqlite
-dev/uploads/
-dev/sessions/
-deploy/
+scripts/local-dev/runtime/
+deploy/config.local.php
+deploy/karavan_uploads/
+deploy/listing/uploads/*
+!deploy/listing/uploads/.htaccess
+uploads/

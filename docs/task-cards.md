@@ -13,7 +13,7 @@
 
 ## Test files
 
-Attach these to the task cards. Testers download them and use them **by name**; they're also in the repo under `docs/test-files/`.
+Attach these to the task cards. Testers download them and use them **by name**; they're also in the repo under `tests/fixtures/admin-registration/`.
 
 | File | What it is | Expected result |
 |---|---|---|
