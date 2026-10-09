@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Karavan - Settings</title>
+    <link rel="stylesheet" href="account-settings.css" type="text/css">
     <script type="module" crossorigin src="../assets/Nav-Settings.js"></script>
     <link rel="modulepreload" crossorigin href="../assets/NavBar-CO2aEYeg.js">
     <link rel="stylesheet" crossorigin href="../assets/NavBar-pP62phn7.css">
+
     <link rel="stylesheet" href="account-settings.css" type="text/css">
 </head>
 
@@ -28,10 +30,10 @@
 
             <!-- Tabs -->
             <div class="tabs">
-                <a href="general-settings.html" class="tab_group"><div class="tab">General</div></a>
+                <!-- <div class="tab">General</div> -->
                 <div class="tab active">Account</div>
-                <div class="tab">Customization</div>
-                <div class="tab">Admin</div>
+                <!-- <div class="tab">Customization</div> -->
+                <a href="admin-settings.html" class="tab_group" id="admin-tab" hidden><div class="tab">Admin</div></a>
             </div>
 
 
@@ -47,6 +49,7 @@
                         <input
                             class="field-input"
                             type="text"
+                            placeholder="John Doe"
                             id="name"
                             name="input_username"
                         >
@@ -57,16 +60,16 @@
                         <input
                             class="field-input"
                             type="email"
-                            placeholder="shadow.pika@example.com"
+                            placeholder="john.doe@example.com"
                             id="email"
                             name="input_email"
                         >
                     </div>
 
-                    <div class="field photo-field">
+                    <!-- <div class="field photo-field">
                         <label class="field-label photo-label">
                             Profile photo
-                        </label>
+                        </label> -->
 
                         <!-- <div class="upload-box" id="pfp">
                             <div class="camera-icon"></div>
@@ -74,7 +77,7 @@
                                 Upload new photo
                             </span>
                         </div> -->
-                    </div>
+                    <!-- </div> -->
                     </form>
                 </section>
 
@@ -134,7 +137,7 @@
 
         </section>
         <script>
-            document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+            document.getElementById("email").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
             
         function getCookies(cookieName){
             const cookies = document.cookie.split("; ")
@@ -240,76 +243,140 @@
         }, 1000);
 
         document.addEventListener("DOMContentLoaded", () => {
-    const addLogoutButton = () => {
-        const profileButton = document.querySelector(".nav-profile");
 
-        if (!profileButton) {
-            return;
-        }
-
-        // Don't add it twice
-        if (document.querySelector(".nav-logout")) {
-            return;
-        }
-
-        function logout(){
-            fetch("../logout.php", {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    current_username: getCookies("karavan_auth_cookie")
-                })
-            })
-            .then(response => {
-                console.log("HTTP status:", response.status);
-                return response.json();
-            })
-            .then(data => {
-                console.log("PHP response:", data);
-                if (data.success) {
-                    window.location.replace("../index.html");
-                } else {
-                    alert(data.error);
+            const addLogoutButton = () => {
+                if (document.querySelector(".nav-logout") && !document.querySelector(".nav-logout").closest(".nav-drawer") && (getComputedStyle(document.querySelector(".nav-drawer")).display !== "none")) {
+                    document.querySelector(".nav-logout").remove();
                 }
-            })
-            .catch(error => {
-                console.error("Fetch error:", error);
+                if (document.querySelector(".nav-logout") && !document.querySelector(".nav-logout").closest(".nav-drawer") && (getComputedStyle(document.querySelector(".nav-drawer")).display === "none")) {
+                    return;
+                }
+
+                // -----------------------------
+                // Logout functionality
+                // -----------------------------
+                function logout() {
+                    fetch("../logout.php", {
+                        method: "DELETE",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            current_username: getCookies("karavan_auth_cookie")
+                        })
+                    })
+                    .then(response => {
+                        console.log("HTTP status:", response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log("PHP response:", data);
+
+                        if (data.success) {
+                            window.location.replace("index.html");
+                        } else {
+                            alert(data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Fetch error:", error);
+                    });
+                }
+
+
+                // -----------------------------
+                // Desktop Logout button
+                // -----------------------------
+                const searchButton = document.querySelector(".nav-search");
+                const menuLinks = document.querySelector(".nav-drawer-links");
+
+                if (searchButton && (getComputedStyle(document.querySelector(".nav-drawer")).display === "none") && !document.querySelector(".nav-logout-desktop")) {
+
+                    const logoutButton = document.createElement("button");
+
+                    logoutButton.type = "button";
+                    logoutButton.className = "nav-logout nav-logout-desktop";
+                    logoutButton.textContent = "Log Out";
+
+                    logoutButton.addEventListener("click", () => {
+                        logout();
+                    });
+
+                    logoutButton.style.font = "inherit";
+                    logoutButton.style.color = "inherit";
+                    logoutButton.style.cursor = "pointer";
+                    logoutButton.style.border = "none";
+
+                    searchButton.insertAdjacentElement("afterend", logoutButton);
+                }
+
+
+                // -----------------------------
+                // Mobile hamburger Logout button
+                // -----------------------------
+
+                if (menuLinks && !document.querySelector(".nav-logout-mobile")) {
+
+                    const logoutButton = document.createElement("button");
+
+                    logoutButton.type = "button";
+                    logoutButton.className = "nav-drawer-link nav-logout nav-logout-mobile";
+                    logoutButton.textContent = "Log Out";
+
+                    logoutButton.addEventListener("click", () => {
+                        logout();
+                    });
+
+                    const logoutItem = document.createElement("li");
+
+                    logoutItem.appendChild(logoutButton);
+                    menuLinks.appendChild(logoutItem);
+                }
+            };
+
+
+            // -----------------------------
+            // React may render the navbar
+            // after DOMContentLoaded
+            // -----------------------------
+            const observer = new MutationObserver(() => {
+                addLogoutButton();
             });
-        }
-        const intervalId = setInterval(() => {
-            if (!getCookies("karavan_auth_cookie")){
-                window.location.replace("404.html");
+
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+
+                logoutInterval = setInterval(() => {
+                    addLogoutButton();
+                }, 1000);
+                // Try immediately
+
+            });
+
+            async function checkAdminStatus() {
+        const adminTab = document.getElementById("admin-tab");
+
+        try {
+            const response = await fetch("admin-check.php", {
+                credentials: "same-origin"
+            });
+
+            if (!response.ok) {
+                adminTab.hidden = true;
+                return;
             }
-      }, 1000);
 
-        const logoutButton = document.createElement("button");
+            const data = await response.json();
+            adminTab.hidden = !(data.success && data.is_admin);
+        } catch (error) {
+            console.error("Admin check failed:", error);
+            adminTab.hidden = true;
+        }
+    }
 
-        logoutButton.type = "button";
-        logoutButton.className = "nav-logout";
-        logoutButton.textContent = "Log Out";
-
-        logoutButton.addEventListener("click", async () => {
-            logout();
-        });
-
-        profileButton.insertAdjacentElement("afterend", logoutButton);
-    };
-
-    // React may render the navbar after DOMContentLoaded,
-    // so check repeatedly until the Profile button exists.
-    const observer = new MutationObserver(() => {
-        addLogoutButton();
-    });
-
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-
-    addLogoutButton();
-    });
+    checkAdminStatus();
 
         </script>
 
