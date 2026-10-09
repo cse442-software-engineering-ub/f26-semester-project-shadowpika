@@ -135,7 +135,11 @@
 
         </section>
         <script>
-            document.getElementById("email").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+            if (!decodeURIComponent(getCookies("karavan_auth_cookie")).includes("@") && !decodeURIComponent(getCookies("karavan_auth_cookie")).includes(".")){
+                document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+            }else{
+                document.getElementById("email").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+            }
             
         function getCookies(cookieName){
             const cookies = document.cookie.split("; ")
@@ -223,8 +227,13 @@
                     document.getElementById("name").value = data.username;
                     document.getElementById("email").value = data.email;
                 } else {
-                    document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
-                    document.getElementById("email").value = "";
+                    if (!decodeURIComponent(getCookies("karavan_auth_cookie")).includes("@") && !decodeURIComponent(getCookies("karavan_auth_cookie")).includes(".")){
+                        document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+                        document.getElementById("email").value = "";
+                    }else{
+                        document.getElementById("email").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+                        document.getElementById("name").value = "";
+                    }
                     console.log("Error:", data.error);
                     alert(data.error);
                 }
