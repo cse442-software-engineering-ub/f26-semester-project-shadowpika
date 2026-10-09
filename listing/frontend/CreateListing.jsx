@@ -293,8 +293,7 @@ function CreateListing() {
                 <button
                     type="button"
                     className="listing-secondary-button manage-listings-button"
-                    disabled
-                    title="Listing management will be added in a separate task."
+                    href="./product-search.html"
                 >
                     Manage listings
                 </button>

@@ -23,7 +23,8 @@ export default defineConfig({
                 settings: 'settings.html',
                 sell: 'sell.html',
                 profile: 'profile.html',
-                notFound: '404.html'
+                notFound: '404.html',
+                manageListings: 'manage-listings.html'
             }
         }
     },
