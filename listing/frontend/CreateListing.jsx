@@ -293,7 +293,7 @@ function CreateListing() {
                 <button
                     type="button"
                     className="listing-secondary-button manage-listings-button"
-                    href="./manage-listings.html"
+                    onClick={() => window.location.assign(`./manage-listings.html`)}
                 >
                     Manage listings
                 </button>
