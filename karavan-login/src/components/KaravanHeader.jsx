@@ -1,14 +1,16 @@
-import KaravanCrest from './KaravanCrest.jsx';
+import '../NavBar.css';
+import { KaravanBrand } from './KaravanBrand.jsx';
 import { pathFor } from '../routes.js';
 
+// The universal header for pages without the navbar (log in, sign up, partner and moderator pages):
+// the navbar's logo bar with no links. Pages that need an action (e.g. Log Out) pass it as children.
 export default function KaravanHeader({ children }) {
     return (
-        <header className="kv-header">
-            <a className="kv-header__brand" href={pathFor('login')} aria-label="Karavan home">
-                <KaravanCrest size={40} />
-                <span className="kv-wordmark">KARAVAN</span>
-            </a>
-            {children && <div className="kv-header__actions">{children}</div>}
+        <header className="nav">
+            <div className="nav-bar">
+                <KaravanBrand href={pathFor('login')} />
+                {children && <div className="nav-right">{children}</div>}
+            </div>
         </header>
     );
 }

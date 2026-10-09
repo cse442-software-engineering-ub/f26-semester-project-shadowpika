@@ -26,17 +26,10 @@ body:has(.create-listing-page) {
   box-sizing: border-box;
 }
 
-.create-listing-page > .nav {
-  max-width: 1440px;
-  margin: 0 auto;
-  background: var(--listing-cream);
-}
-
+/* Full window width on every screen size, matching the other pages */
 .create-listing-content {
   width: 100%;
-  max-width: 1440px;
   min-height: calc(100vh - 72px);
-  margin: 0 auto;
   padding: 20px 40px 40px;
   background: var(--listing-cream);
 }

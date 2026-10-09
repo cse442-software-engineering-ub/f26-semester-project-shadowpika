@@ -23,7 +23,12 @@ export default defineConfig({
                 settings: 'settings.html',
                 sell: 'sell.html',
                 profile: 'profile.html',
-                notFound: '404.html'
+                notFound: '404.html',
+                // The static settings/ pages load this by a fixed name, so it can't be hashed.
+                navbar: 'src/navbar-main.jsx'
+            },
+            output: {
+                entryFileNames: (chunk) => (chunk.name === 'navbar' ? 'assets/navbar.js' : 'assets/[name]-[hash].js')
             }
         }
     },

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './index.css'
-import karavanLogo from './assets/images/logo.png';
+import './styles/karavan.css'
+import KaravanHeader from './components/KaravanHeader.jsx';
+import { KaravanHero } from './components/KaravanBrand.jsx';
 import { pathFor } from './routes.js';
 import { markNewAccount, recordLogin } from './community.js';
 
@@ -147,21 +149,15 @@ function App() {
     }
 
     return (
-        <div style={{ width: 1440, height: 1024, background: 'linear-gradient(0deg, white 0%, white 100%), white', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex' }}>
-            <div style={{ alignSelf: 'stretch', height: 74, paddingLeft: 27.67, paddingRight: 27.67, position: 'relative', background: '#F7F3EA', borderBottom: '0.86px rgba(21, 42, 71, 0.10) solid', justifyContent: 'space-between', alignItems: 'center', display: 'inline-flex' }}>
-                <div style={{ left: 0, top: 4, position: 'absolute', justifyContent: 'flex-start', alignItems: 'center', display: 'flex' }}>
-                    <img style={{ width: 60.86, height: 66.67, paddingLeft: 13.83 }} src={karavanLogo} />
-                    <div style={{ paddingRight: 20, flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex' }}>
-                        <div style={{ width: 266, height: 21, textAlign: 'center', color: '#1F2F46', fontSize: 48, fontFamily: 'League Spartan', fontWeight: '400', wordWrap: 'break-word', letterSpacing: 4}}>KARAVAN</div>
-                    </div>
-                </div>
-            </div>
+        // Fills the window at any size: the header spans the top and the logo + form sit side by side,
+        // stacking when the screen is too narrow for both.
+        <div style={{ width: '100%', minHeight: '100vh', background: '#F7F3EA', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'stretch', display: 'flex' }}>
+            <KaravanHeader />
 
-            <div style={{ alignSelf: 'stretch', height: 1024, position: 'relative', background: '#F7F3EA', overflow: 'hidden', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center', display: 'flex' }}>
-                <div style={{ width: 1018.14, height: 656.13, paddingLeft: 42.42, paddingRight: 42.42, left: 211, top: 159, position: 'absolute', justifyContent: 'center', alignItems: 'center', display: 'inline-flex' }}>
-                    <div style={{ width: 438.36, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', display: 'inline-flex' }}>
-                        <img style={{ width: 189.10, height: 207.14 }} src={karavanLogo} />
-                        <div style={{ width: 266, height: 54, textAlign: 'center', color: '#1F2F46', fontSize: 48, fontFamily: 'League Spartan', fontWeight: '400', wordWrap: 'break-word', letterSpacing: 4 }}>KARAVAN</div>
+            <div style={{ alignSelf: 'stretch', flex: 1, boxSizing: 'border-box', padding: '32px 16px', background: '#F7F3EA', justifyContent: 'center', alignItems: 'center', display: 'flex' }}>
+                <div style={{ width: '100%', maxWidth: 1018, flexWrap: 'wrap', columnGap: 64, rowGap: 32, justifyContent: 'center', alignItems: 'center', display: 'flex' }}>
+                    <div style={{ width: 438.36, maxWidth: '100%', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', display: 'flex' }}>
+                        <KaravanHero />
                     </div>
                
                     {/*                    {message && (
@@ -171,7 +167,7 @@ function App() {
                     )}*/}
 
                     <form onSubmit={handleSubmit} style={{
-                        width: 395.94, paddingLeft: 31.11, paddingRight: 31.11, paddingTop: 28.28, paddingBottom: 28.28,
+                        width: '100%', maxWidth: 458.16, boxSizing: 'border-box', paddingLeft: 31.11, paddingRight: 31.11, paddingTop: 28.28, paddingBottom: 28.28,
                         background: 'white', boxShadow: '0px 12.726706504821777px 28.281572341918945px rgba(21, 42, 71, 0.08)',
                         borderRadius: 16.97, outline: '0.71px rgba(21, 42, 71, 0.08) solid', outlineOffset: '-0.71px',
                         flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex'
