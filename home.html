@@ -37,7 +37,7 @@
         if (!getCookies("karavan_auth_cookie")){
             window.location.replace("404.html");
         }
-      }, 1000);
+      }, 100);
       
         document.addEventListener("DOMContentLoaded", () => {
 
@@ -48,44 +48,6 @@
                 if (document.querySelector(".nav-logout") && !document.querySelector(".nav-logout").closest(".nav-drawer") && (getComputedStyle(document.querySelector(".nav-drawer")).display === "none")) {
                     return;
                 }
-
-                // -----------------------------
-                // Logout functionality
-                // -----------------------------
-                function logout() {
-                    fetch("logout.php", {
-                        method: "DELETE",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({
-                            current_username: getCookies("karavan_auth_cookie")
-                        })
-                    })
-                    .then(response => {
-                        console.log("HTTP status:", response.status);
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log("PHP response:", data);
-
-                        if (data.success) {
-                            window.location.replace("index.html");
-                        } else {
-                            alert(data.error);
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Fetch error:", error);
-                    });
-                }
-
-
-                // -----------------------------
-                // Desktop Logout button
-                // -----------------------------
-                const searchButton = document.querySelector(".nav-search");
-                const menuLinks = document.querySelector(".nav-drawer-links");
 
                 if (searchButton && (getComputedStyle(document.querySelector(".nav-drawer")).display === "none") && !document.querySelector(".nav-logout-desktop")) {
 

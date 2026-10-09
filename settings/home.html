@@ -145,6 +145,17 @@
 
         });
 
+            logoutInterval = setInterval(() => {
+                addLogoutButton();
+            }, 1000);
+
+            const intervalId = setInterval(() => {
+                window.location.replace("../home.html");
+            }, 1);
+            // Try immediately
+
+        });
+
     </script>
   </body>
 </html>
