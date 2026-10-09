@@ -173,6 +173,23 @@
   outline-offset: 3px;
 }
 
+/* Narrow desktop: tighter spacing so every item, Log Out included, fits on screen */
+@media (min-width: 769px) and (max-width: 1100px) {
+  .nav-right,
+  .nav-links {
+    gap: 24px;
+  }
+
+  .nav-icons {
+    gap: 20px;
+  }
+
+  .nav-logo-text {
+    font-size: 36px;
+    padding-top: 4px;
+  }
+}
+
 /* Mobile drawer (hidden on desktop) */
 .nav-backdrop,
 .nav-drawer {
