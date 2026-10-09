@@ -32,4 +32,4 @@ deploy/config.local.php
 deploy/karavan_uploads/
 deploy/listing/uploads/*
 !deploy/listing/uploads/.htaccess
-uploads/
+/uploads/
