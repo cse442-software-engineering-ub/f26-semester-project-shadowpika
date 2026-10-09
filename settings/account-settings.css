@@ -8,7 +8,6 @@
             font-family: Arial, Helvetica, sans-serif;
             background: #ffffff;
             color: #1f3048;
-            min-width: 1000px;
         }
 
         /* =========================
@@ -151,7 +150,7 @@
         ========================= */
 
         .main {
-            width: 1310px;
+            width: 50%;
             margin: 0 auto;
             padding-top: 42px;
         }
@@ -175,12 +174,12 @@
         ========================= */
 
         .settings-card {
-            width: 1078px;
+            width: 100%;
             min-height: 689px;
             border: 1px solid #e3e0d9;
+            overflow: hidden;
             border-radius: 11px;
             margin-left: 0;
-            overflow: hidden;
             background: white;
         }
 
@@ -454,3 +453,63 @@
         .upload-box:hover {
             border-color: #c9c4b9;
         }
+
+        .tab_group {
+            text-decoration: none;
+            color: inherit;
+        }
+
+   @media (max-width: 768px) {
+    .field-label{
+        display:none;
+    }
+    .save-description{
+        display:none;
+    }
+    .delete-label{
+        display:none;
+    }
+    .password-label{
+        display:none;
+    }
+        .password-description{
+            display:none;
+        }
+        .delete-description{
+            display:none;
+        }
+        .tabs {
+            display: flex;
+            align-items: flex-end;
+
+            width: 100%;
+            min-width: 0;
+
+            overflow-x: auto;
+            overflow-y: hidden;
+            flex-wrap: nowrap;
+
+            padding-left: 16px;
+            gap: 0;
+
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab_group {
+            display: block;
+            flex: 0 0 auto;
+            white-space: nowrap;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .tab {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+    }
