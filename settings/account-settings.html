@@ -13,29 +13,7 @@
 </head>
 
 <body>
-
-    <!-- Navigation -->
-    <header class="navbar">
-
-        <div class="brand">
-            <a href="../index.html"><img src="logo.webp" width="50" height="50" id="logo"></a>
-            <div class="brand-name">KARAVAN</div>
-        </div>
-
-        <nav class="nav-links">
-            <a href="#" class="nav-link">Meeting Request</a>
-            <a href="#" class="nav-link">Settings</a>
-            <a href="#" class="nav-link">Sell</a>
-        </nav>
-
-        <div class="nav-right">
-            <div class="search-icon"></div>
-            <img src="bell.svg" width="25" height="25" id="bell">
-            <button class="profile-button">Profile</button>
-        </div>
-
-    </header>
-
+    <div id="root"></div>
 
     <!-- Main Content -->
     <main class="main">
@@ -112,9 +90,9 @@
                     <div class="password-row">
                         <label class="password-label">Password</label>
 
-                        <button class="change-password">
+                        <a href="change-password.html"><button class="change-password">
                             Change password
-                        </button>
+                        </button></a>
 
                         <span class="password-description">
                             Update your password to keep your account secure.
@@ -134,9 +112,7 @@
                             Delete account
                         </label>
 
-                        <form action="../index.html" method="get">
-                            <button class="delete-button" type="submit">Delete account</button>
-                        </form>
+                        <button class="delete-button" type="submit" onClick="deleteAccount()">Delete account</button>
 
                         <span class="delete-description">
                             Permanently delete your account and all associated data.
@@ -232,7 +208,7 @@
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    current_username: "Shadowpika",
+                    current_username: getCookies("karavan_auth_cookie"),
                     username: name,
                     email: address,
                     password: pass
@@ -249,7 +225,7 @@
                     document.getElementById("name").value = data.username;
                     document.getElementById("email").value = data.email;
                 } else {
-                    document.getElementById("name").value = "Shadowpika";
+                    document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
                     document.getElementById("email").value = "";
                     console.log("Error:", data.error);
                     alert(data.error);

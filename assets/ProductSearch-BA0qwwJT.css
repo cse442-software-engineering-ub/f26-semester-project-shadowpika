@@ -1,0 +1,1400 @@
+.ps-page {
+    --ps-navy: #1f2d44;
+    --ps-cream: #f8f1e7;
+    --ps-gold: #c9a15e;
+    --ps-muted: #8a94a6;
+    --ps-white: #fff;
+
+    background: var(--ps-cream);
+    min-height: 100vh;
+    color: var(--ps-navy);
+    -webkit-font-smoothing: antialiased;
+
+    font-family:
+        DM Sans,
+        system-ui,
+        "Segoe UI",
+        Roboto,
+        sans-serif;
+}
+
+body:has(.ps-page) {
+    margin: 0;
+}
+
+.ps-page *,
+.ps-page *::before,
+.ps-page *::after {
+    box-sizing: border-box;
+}
+
+.ps-page button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.ps-page > .nav {
+    background: var(--ps-cream);
+    max-width: 1440px;
+    margin: 0 auto;
+}
+
+
+/* =========================================================
+   MAIN FRAME
+========================================================= */
+
+.ps-frame {
+    background: var(--ps-cream);
+    width: 100%;
+    max-width: 1440px;
+    min-height: 1024px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+
+/* =========================================================
+   PAGE TITLE
+========================================================= */
+
+.ps-title {
+    letter-spacing: 0;
+    color: var(--ps-navy);
+    margin: 0;
+
+    font-family:
+        League Spartan,
+        DM Sans,
+        sans-serif;
+
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 40px;
+}
+
+.ps-subtitle {
+    color: var(--ps-muted);
+    margin: 4px 0 0;
+    font-size: 13px;
+    line-height: 18px;
+}
+
+
+/* =========================================================
+   MARKETPLACE LAYOUT
+========================================================= */
+
+.ps-marketplace-layout {
+    align-items: flex-start;
+    gap: 0;
+    min-height: 1024px;
+    margin-top: 0;
+    display: flex;
+}
+
+.ps-marketplace-main {
+    flex: 1;
+    min-width: 0;
+    min-height: 944px;
+
+    padding:
+        32px
+        32px
+        40px
+        40px;
+}
+
+
+/* =========================================================
+   SEARCH
+========================================================= */
+
+.ps-search-row {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    display: flex;
+}
+
+.ps-search {
+    background: var(--ps-white);
+
+    border-radius:
+        12px
+        26px
+        26px
+        12px;
+
+    align-items: center;
+
+    width: 356px;
+    max-width: 100%;
+    height: 52px;
+
+    margin-top: 0;
+
+    padding:
+        2px
+        16px
+        2px
+        2px;
+
+    display: flex;
+}
+
+.ps-page .ps-filter-btn {
+    background: var(--ps-gold);
+
+    width: 48px;
+    height: 48px;
+
+    color: var(--ps-navy);
+
+    border-radius:
+        10px
+        0
+        0
+        10px;
+
+    flex: none;
+
+    justify-content: center;
+    align-items: center;
+
+    display: flex;
+}
+
+.ps-page .ps-filter-btn.is-active {
+    background: #b98a3f;
+}
+
+.ps-search-input {
+    min-width: 0;
+    height: 100%;
+
+    font: inherit;
+    color: var(--ps-navy);
+
+    background: none;
+    border: none;
+    outline: none;
+
+    flex: 1;
+
+    padding:
+        0
+        8px
+        0
+        4px;
+
+    font-size: 14px;
+}
+
+.ps-search-input::placeholder {
+    color: var(--ps-navy);
+    opacity: 1;
+}
+
+.ps-page .ps-search-btn {
+    color: var(--ps-navy);
+    flex: none;
+    display: flex;
+}
+
+.ps-search-help {
+    justify-content: space-between;
+
+    width: 356px;
+    max-width: 100%;
+
+    min-height: 18px;
+
+    margin-top: 6px;
+    padding: 0 4px;
+
+    font-size: 12px;
+    line-height: 18px;
+
+    display: flex;
+}
+
+.ps-search-notice {
+    color: #b4532a;
+}
+
+.ps-search-count {
+    color: var(--ps-muted);
+    margin-left: auto;
+}
+
+
+/* =========================================================
+   FILTER STATUS
+========================================================= */
+
+.ps-filter-status {
+    max-width: min(100%, 480px);
+    min-height: 32px;
+
+    color: var(--ps-navy);
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    background: #fff9;
+
+    border:
+        1px
+        solid
+        #c9a15eb3;
+
+    border-radius: 18px;
+
+    padding:
+        7px
+        13px;
+
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16px;
+
+    overflow: hidden;
+}
+
+.ps-filter-status.is-active {
+    border-color: var(--ps-gold);
+    background: #fff8e8;
+}
+
+
+/* =========================================================
+   RESULTS
+========================================================= */
+
+.ps-results {
+    margin-top: 18px;
+}
+
+.ps-results-header {
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    display: flex;
+}
+
+.ps-results-label {
+    letter-spacing: 0;
+    color: var(--ps-navy);
+
+    margin: 0;
+
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 28px;
+}
+
+.ps-results-context {
+    color: var(--ps-muted);
+    margin: 0;
+
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.ps-results-count {
+    color: var(--ps-muted);
+
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.ps-results-message {
+    color: var(--ps-muted);
+    margin: 12px 0 0;
+
+    font-size: 13px;
+}
+
+.ps-results-error {
+    color: #b4532a;
+}
+
+.ps-empty-state {
+    text-align: center;
+    place-content: center;
+
+    min-height: 600px;
+
+    display: grid;
+}
+
+.ps-empty-state h3 {
+    margin: 0;
+
+    font-size: 22px;
+    line-height: 30px;
+}
+
+.ps-empty-state p {
+    color: var(--ps-muted);
+    margin: 6px 0 0;
+
+    font-size: 13px;
+}
+
+
+/* =========================================================
+   FILTER PANEL
+========================================================= */
+
+.ps-filters-panel {
+    background: var(--ps-white);
+
+    width: 420px;
+    min-height: 1024px;
+
+    border:
+        0
+        0
+        0
+        1px solid #1f2f461a;
+
+    border-radius: 0;
+
+    flex: 0 0 420px;
+
+    padding: 32px;
+
+    box-shadow: none;
+}
+
+.ps-filters-header {
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    display: flex;
+}
+
+.ps-filters-header h2 {
+    align-items: center;
+    gap: 8px;
+
+    margin: 0;
+
+    font-size: 21px;
+    line-height: 28px;
+
+    display: flex;
+}
+
+.ps-filter-header-actions {
+    align-items: center;
+    gap: 6px;
+    display: flex;
+}
+
+.ps-page .ps-close-filters {
+    display: none;
+}
+
+.ps-page .ps-clear-filters {
+    background: #f8f4ec;
+
+    border:
+        1px
+        solid
+        #ddd5c7;
+
+    border-radius: 8px;
+
+    padding:
+        7px
+        10px;
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.ps-page .ps-close-filters:hover,
+.ps-page .ps-close-filters:focus-visible {
+    background: #f1ece3;
+}
+
+
+/* =========================================================
+   FILTER GROUPS
+========================================================= */
+
+.ps-filter-group {
+    border: 0;
+    min-width: 0;
+
+    margin:
+        28px
+        0
+        0;
+
+    padding: 0;
+}
+
+.ps-filter-group legend {
+    text-transform: uppercase;
+
+    width: 100%;
+
+    color: var(--ps-navy);
+
+    letter-spacing: .09em;
+
+    border-bottom:
+        1px
+        solid
+        #ebe6dc;
+
+    margin-bottom: 12px;
+    padding: 0 0 8px;
+
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 16px;
+}
+
+.ps-category-option {
+    cursor: pointer;
+
+    align-items: center;
+    gap: 10px;
+
+    min-height: 32px;
+
+    font-size: 15px;
+
+    display: flex;
+}
+
+.ps-category-option input {
+    width: 18px;
+    height: 18px;
+
+    accent-color: var(--ps-navy);
+
+    margin: 0;
+}
+
+
+/* =========================================================
+   PRICE FILTER
+========================================================= */
+
+.ps-placeholder-filter {
+    opacity: 1;
+}
+
+.ps-placeholder-filter input[type="range"] {
+    width: 100%;
+    accent-color: var(--ps-gold);
+}
+
+.ps-price-values {
+    color: var(--ps-navy);
+
+    justify-content: space-between;
+    align-items: center;
+
+    gap: 8px;
+
+    margin-top: 8px;
+
+    font-size: 11px;
+
+    display: flex;
+}
+
+.ps-price-values span:first-child,
+.ps-price-values span:last-child {
+    background: #f7f3eb;
+
+    border:
+        1px
+        solid
+        #ded7ca;
+
+    border-radius: 8px;
+
+    min-width: 120px;
+
+    padding:
+        8px
+        16px;
+}
+
+
+/* =========================================================
+   CONDITION FILTER
+========================================================= */
+
+.ps-condition-options {
+    flex-wrap: wrap;
+    gap: 7px;
+    display: flex;
+}
+
+.ps-page .ps-condition-options button {
+    border:
+        1px
+        solid
+        var(--ps-navy);
+
+    opacity: 1;
+
+    border-radius: 16px;
+
+    padding:
+        8px
+        16px;
+
+    font-size: 11px;
+}
+
+.ps-page .ps-condition-options button.is-selected {
+    background: var(--ps-navy);
+    color: var(--ps-cream);
+}
+
+.ps-placeholder-filter > label {
+    align-items: center;
+    gap: 8px;
+
+    min-height: 28px;
+
+    font-size: 12px;
+
+    display: flex;
+}
+
+
+/* =========================================================
+   APPLY FILTERS
+========================================================= */
+
+.ps-page .ps-apply-filters {
+    background: var(--ps-gold);
+
+    width: 100%;
+    min-height: 48px;
+
+    color: var(--ps-navy);
+
+    border-radius: 8px;
+
+    margin-top: 40px;
+
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.ps-page .ps-apply-filters:hover,
+.ps-page .ps-apply-filters:focus-visible {
+    background: #bc914b;
+}
+
+
+/* =========================================================
+   BOOK GRID
+========================================================= */
+
+.ps-book-grid {
+    grid-template-columns:
+        repeat(
+            auto-fill,
+            minmax(180px, 1fr)
+        );
+
+    gap: 16px;
+
+    margin-top: 12px;
+
+    display: grid;
+}
+
+.ps-book-card {
+    background: var(--ps-white);
+
+    border-radius: 12px;
+
+    flex-direction: column;
+
+    transition:
+        box-shadow .2s,
+        transform .2s;
+
+    display: flex;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 1px 3px #1f2d440f;
+}
+
+.ps-book-card:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 20px #1f2d441f;
+}
+
+
+/* =========================================================
+   BOOK COVER
+========================================================= */
+
+.ps-book-cover {
+    aspect-ratio: 4 / 5;
+
+    background: #efe6d8;
+
+    justify-content: center;
+    align-items: center;
+
+    padding:
+        18px
+        28px;
+
+    display: flex;
+}
+
+.ps-book-img {
+    object-fit: cover;
+
+    border-radius: 4px;
+
+    width: 100%;
+    height: 100%;
+
+    box-shadow:
+        0 6px 14px #1f2d4440;
+}
+
+.ps-book-placeholder {
+    border-radius:
+        3px
+        6px
+        6px
+        3px;
+
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 6px 14px #1f2d4440;
+}
+
+.ps-book-spine {
+    background: #16213a;
+
+    flex: none;
+
+    width: 10%;
+}
+
+.ps-book-face {
+    background: var(--ps-navy);
+
+    text-align: center;
+
+    flex-direction: column;
+
+    flex: 1;
+
+    justify-content: center;
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 12px;
+
+    display: flex;
+}
+
+.ps-book-band {
+    background: var(--ps-gold);
+
+    width: 70%;
+    height: 2px;
+}
+
+.ps-book-title {
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    -webkit-box-orient: vertical;
+
+    color: var(--ps-cream);
+
+    font-family:
+        League Spartan,
+        DM Sans,
+        sans-serif;
+
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+
+    display: -webkit-box;
+
+    overflow: hidden;
+}
+
+
+/* =========================================================
+   BOOK INFORMATION
+========================================================= */
+
+.ps-book-body {
+    flex-direction: column;
+    gap: 8px;
+
+    padding:
+        12px
+        14px
+        14px;
+
+    display: flex;
+}
+
+.ps-book-name {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    letter-spacing: 0;
+
+    color: var(--ps-navy);
+
+    margin: 0;
+
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 18px;
+
+    overflow: hidden;
+}
+
+.ps-book-meta {
+    justify-content: space-between;
+    align-items: center;
+
+    gap: 8px;
+
+    display: flex;
+}
+
+.ps-book-price {
+    color: var(--ps-navy);
+
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.ps-book-condition {
+    color: #8a6a2f;
+
+    white-space: nowrap;
+
+    background: #c9a15e2e;
+
+    border-radius: 10px;
+
+    padding:
+        2px
+        8px;
+
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+}
+
+.ps-owner-label {
+    color: var(--ps-muted);
+
+    letter-spacing: .03em;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 14px;
+
+    overflow: hidden;
+}
+
+.ps-page .ps-manage-button {
+    background: var(--ps-gold);
+
+    min-width: 82px;
+
+    color: var(--ps-navy);
+
+    cursor: not-allowed;
+
+    border-radius: 7px;
+
+    align-self: flex-end;
+
+    padding:
+        6px
+        12px;
+
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16px;
+}
+
+
+/* =========================================================
+   PUBLISHED SECTION
+========================================================= */
+
+.ps-published-section {
+    width: 100%;
+    max-width: 948px;
+
+    margin-top: 18px;
+}
+
+.ps-published-banner {
+    color: #2d7a4c;
+
+    background: #eaf6ee;
+
+    border:
+        1px
+        solid
+        #b7d9c3;
+
+    border-radius: 12px;
+
+    align-items: center;
+    gap: 10px;
+
+    min-height: 52px;
+
+    padding:
+        12px
+        16px;
+
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 20px;
+
+    display: flex;
+}
+
+.ps-published-error {
+    color: #a52a2c;
+    background: #fceded;
+    border-color: #e5b8b8;
+}
+
+.ps-published-header {
+    justify-content: space-between;
+    align-items: flex-end;
+
+    gap: 16px;
+
+    margin-top: 16px;
+
+    display: flex;
+}
+
+.ps-published-header h2 {
+    color: var(--ps-navy);
+
+    margin: 0;
+
+    font-size: 22px;
+    line-height: 30px;
+}
+
+.ps-published-header p,
+.ps-published-header > span {
+    color: var(--ps-muted);
+
+    margin: 0;
+
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.ps-published-header > span {
+    color: #2d7a4c;
+    font-weight: 700;
+}
+
+.ps-published-grid {
+    grid-template-columns:
+        minmax(180px, 215px);
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 1024px) {
+
+    .ps-marketplace-main {
+        padding:
+            28px
+            24px
+            40px;
+    }
+
+    .ps-filters-panel {
+        width: 340px;
+        flex-basis: 340px;
+        padding: 24px;
+    }
+
+    .ps-book-grid {
+        grid-template-columns:
+            repeat(
+                auto-fill,
+                minmax(160px, 1fr)
+            );
+    }
+
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 768px) {
+
+    .ps-frame {
+        width: 100%;
+        min-height: calc(100vh - 88px);
+        padding: 0;
+    }
+
+    .ps-marketplace-layout {
+        width: 100%;
+        min-height: calc(100vh - 88px);
+
+        display: block;
+    }
+
+    .ps-marketplace-main {
+        width: 100%;
+        min-height: calc(100vh - 88px);
+
+        padding:
+            20px
+            15px
+            40px;
+    }
+
+
+    /* ---------- TITLE ---------- */
+
+    .ps-title {
+        font-size: 28px;
+        line-height: 34px;
+    }
+
+    .ps-subtitle {
+        font-size: 12px;
+        line-height: 17px;
+    }
+
+
+    /* ---------- SEARCH ---------- */
+
+    .ps-search-row {
+        width: 100%;
+
+        flex-direction: column;
+        align-items: stretch;
+
+        gap: 10px;
+    }
+
+    .ps-search {
+        width: 100%;
+        max-width: none;
+        height: 48px;
+    }
+
+    .ps-page .ps-filter-btn {
+        width: 44px;
+        height: 44px;
+    }
+
+    .ps-search-help {
+        width: 100%;
+        max-width: none;
+
+        flex-wrap: wrap;
+
+        gap: 4px;
+
+        font-size: 11px;
+    }
+
+    .ps-filter-status {
+        width: 100%;
+        max-width: none;
+    }
+
+
+    /* ---------- RESULTS ---------- */
+
+    .ps-results {
+        margin-top: 20px;
+    }
+
+    .ps-results-header {
+        width: 100%;
+
+        flex-direction: column;
+
+        align-items: flex-start;
+
+        gap: 4px;
+    }
+
+    .ps-results-label {
+        font-size: 20px;
+        line-height: 26px;
+    }
+
+    .ps-results-context,
+    .ps-results-count {
+        font-size: 11px;
+    }
+
+
+    /* ---------- BOOK GRID ---------- */
+
+    .ps-book-grid {
+        width: 100%;
+
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+
+        gap: 12px;
+
+        margin-top: 14px;
+    }
+
+    .ps-book-cover {
+        padding:
+            12px
+            18px;
+    }
+
+    .ps-book-body {
+        padding:
+            10px
+            11px
+            12px;
+    }
+
+    .ps-book-name {
+        font-size: 12px;
+        line-height: 16px;
+    }
+
+    .ps-book-price {
+        font-size: 14px;
+    }
+
+    .ps-book-condition {
+        font-size: 10px;
+
+        padding:
+            2px
+            6px;
+    }
+
+    .ps-owner-label {
+        font-size: 9px;
+    }
+
+    .ps-page .ps-manage-button {
+        min-width: 70px;
+
+        padding:
+            5px
+            8px;
+
+        font-size: 10px;
+    }
+
+
+    /* ---------- PUBLISHED ---------- */
+
+    .ps-published-section {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .ps-published-header {
+        align-items: flex-start;
+
+        flex-direction: column;
+
+        gap: 4px;
+    }
+
+    .ps-published-header h2 {
+        font-size: 20px;
+        line-height: 27px;
+    }
+
+    .ps-published-grid {
+        grid-template-columns:
+            minmax(0, 1fr);
+    }
+
+
+    /* ---------- FILTER DRAWER ---------- */
+
+    .ps-filters-panel {
+        z-index: 40;
+
+        background: var(--ps-white);
+
+        border: none;
+
+        border-radius:
+            12px
+            0
+            0
+            12px;
+
+        width: min(342px, 100vw);
+
+        min-height: 0;
+
+        position: fixed;
+
+        top: 72px;
+        right: 0;
+        bottom: 0;
+
+        overflow-y: auto;
+
+        padding:
+            24px
+            20px
+            32px;
+
+        box-shadow:
+            -12px
+            0
+            32px
+            #1f2d4433;
+    }
+
+    .ps-page .ps-close-filters {
+        border-radius: 8px;
+
+        width: 30px;
+        height: 30px;
+
+        font-size: 22px;
+        line-height: 1;
+
+        display: grid;
+        place-content: center;
+    }
+
+    .ps-filter-group {
+        margin-top: 24px;
+    }
+
+    .ps-page .ps-apply-filters {
+        margin-top: 30px;
+    }
+
+}
+
+
+/* =========================================================
+   SMALL PHONES
+========================================================= */
+
+@media (max-width: 480px) {
+
+    .ps-marketplace-main {
+        padding:
+            16px
+            12px
+            32px;
+    }
+
+    .ps-title {
+        font-size: 25px;
+        line-height: 31px;
+    }
+
+    .ps-subtitle {
+        font-size: 11px;
+    }
+
+    .ps-search {
+        height: 46px;
+    }
+
+    .ps-page .ps-filter-btn {
+        width: 42px;
+        height: 42px;
+    }
+
+    .ps-book-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+
+        gap: 10px;
+    }
+
+    .ps-book-cover {
+        padding:
+            10px
+            14px;
+    }
+
+    .ps-book-face {
+        gap: 6px;
+        padding: 8px;
+    }
+
+    .ps-book-title {
+        font-size: 11px;
+    }
+
+    .ps-book-band {
+        width: 65%;
+    }
+
+    .ps-book-body {
+        gap: 6px;
+
+        padding:
+            9px
+            9px
+            10px;
+    }
+
+    .ps-book-name {
+        font-size: 11px;
+        line-height: 15px;
+    }
+
+    .ps-book-meta {
+        align-items: flex-start;
+
+        flex-direction: column;
+
+        gap: 4px;
+    }
+
+    .ps-book-price {
+        font-size: 13px;
+    }
+
+    .ps-book-condition {
+        align-self: flex-start;
+    }
+
+    .ps-filters-panel {
+        border-radius: 0;
+
+        width: 100%;
+
+        left: 0;
+        right: 0;
+
+        top: 72px;
+
+        padding:
+            20px
+            16px
+            30px;
+    }
+
+    .ps-price-values {
+        gap: 6px;
+    }
+
+    .ps-price-values span:first-child,
+    .ps-price-values span:last-child {
+        min-width: 0;
+        flex: 1;
+
+        padding:
+            7px
+            10px;
+    }
+
+}
+
+
+/* =========================================================
+   VERY SMALL PHONES
+========================================================= */
+
+@media (max-width: 360px) {
+
+    .ps-marketplace-main {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .ps-book-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ps-book-cover {
+        max-height: 300px;
+    }
+
+    .ps-results-label {
+        font-size: 18px;
+    }
+
+    .ps-search-input {
+        font-size: 13px;
+    }
+
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .ps-book-card {
+        transition: none;
+    }
+
+}
