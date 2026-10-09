@@ -37,20 +37,17 @@
         if (!getCookies("karavan_auth_cookie")){
             window.location.replace("404.html");
         }
-      }, 1000);
+      }, 100);
+      
+        document.addEventListener("DOMContentLoaded", () => {
 
-      document.addEventListener("DOMContentLoaded", () => {
-    const addLogoutButton = () => {
-        const profileButton = document.querySelector(".nav-profile");
-
-        if (!profileButton) {
-            return;
-        }
-
-        // Don't add it twice
-        if (document.querySelector(".nav-logout")) {
-            return;
-        }
+            const addLogoutButton = () => {
+                if (document.querySelector(".nav-logout") && !document.querySelector(".nav-logout").closest(".nav-drawer") && (getComputedStyle(document.querySelector(".nav-drawer")).display !== "none")) {
+                    document.querySelector(".nav-logout").remove();
+                }
+                if (document.querySelector(".nav-logout") && !document.querySelector(".nav-logout").closest(".nav-drawer") && (getComputedStyle(document.querySelector(".nav-drawer")).display === "none")) {
+                    return;
+                }
 
         function logout(){
             fetch("logout.php", {
