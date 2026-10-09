@@ -254,6 +254,40 @@ describe('ProductSearch price filtering', () => {
         expect(screen.getByText('Any price')).toBeInTheDocument();
     });
 
+    it('removes the unused Sort By controls from the Filters panel', async () => {
+        render(<ProductSearch />);
+        await finishSearch();
+        fireEvent.click(screen.getByRole('button', { name: 'Open filters' }));
+
+        expect(screen.queryByText('Sort By')).not.toBeInTheDocument();
+        expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    });
+
+    it('does not allow negative, over-limit, exponent, or signed price entries', async () => {
+        render(<ProductSearch />);
+        await finishSearch();
+        fireEvent.click(screen.getByRole('button', { name: 'Open filters' }));
+
+        const minimum = screen.getByRole('spinbutton', { name: 'Minimum price ($)' });
+        const maximum = screen.getByRole('spinbutton', { name: 'Maximum price ($)' });
+
+        fireEvent.change(minimum, { target: { value: '25.50' } });
+        fireEvent.change(minimum, { target: { value: '-1' } });
+        expect(minimum).toHaveValue(25.5);
+
+        fireEvent.change(maximum, { target: { value: '9999.99' } });
+        fireEvent.change(maximum, { target: { value: '10000' } });
+        expect(maximum).toHaveValue(9999.99);
+
+        expect(fireEvent.keyDown(minimum, { key: '-' })).toBe(false);
+        expect(fireEvent.keyDown(minimum, { key: '+' })).toBe(false);
+        expect(fireEvent.keyDown(minimum, { key: 'e' })).toBe(false);
+        expect(fireEvent.keyDown(minimum, { key: 'E' })).toBe(false);
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Enter a price from $0.00 to $9,999.99 with no more than two decimal places.',
+        );
+    });
+
     it('keeps price entries as drafts and applies inclusive boundaries', async () => {
         render(<ProductSearch />);
         await finishSearch();

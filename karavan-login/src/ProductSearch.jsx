@@ -15,7 +15,9 @@ const CATEGORY_OPTIONS = [
 ];
 const CONDITION_OPTIONS = ['New', 'Like New', 'Good', 'Fair', 'Acceptable'];
 const PRICE_PATTERN = /^(?:0|[1-9]\d{0,3})(?:\.\d{1,2})?$/;
+const PRICE_ENTRY_PATTERN = /^\d{0,4}(?:\.\d{0,2})?$/;
 const PRICE_ERROR = 'Enter a price from $0.00 to $9,999.99 with no more than two decimal places.';
+const BLOCKED_PRICE_KEYS = new Set(['-', '+', 'e', 'E']);
 
 // Emoji, pictographs, flags, and the joiners/variation selectors used to build them.
 // Kept in sync with the pattern in api/search_listings.php.
@@ -54,6 +56,13 @@ function normalizePriceBound(value) {
     const price = Number(trimmed);
     if (!Number.isFinite(price) || price < 0 || price > 9999.99) return null;
     return price.toFixed(2);
+}
+
+function isAllowedPriceEntry(value) {
+    if (value === '') return true;
+    if (!PRICE_ENTRY_PATTERN.test(value)) return false;
+    const price = Number(value);
+    return Number.isFinite(price) && price >= 0 && price <= 9999.99;
 }
 
 function validatePriceRange(minimum, maximum) {
@@ -341,6 +350,22 @@ function ProductSearch() {
             : [...current, condition]);
     };
 
+    const updateDraftPrice = (value, setter) => {
+        if (!isAllowedPriceEntry(value)) {
+            setPriceError(PRICE_ERROR);
+            return;
+        }
+        setter(value);
+        setPriceError('');
+    };
+
+    const blockInvalidPriceKey = (event) => {
+        if (BLOCKED_PRICE_KEYS.has(event.key)) {
+            event.preventDefault();
+            setPriceError(PRICE_ERROR);
+        }
+    };
+
     const applyFilters = () => {
         const validatedPrice = validatePriceRange(draftMinPrice, draftMaxPrice);
         if (validatedPrice.error) {
@@ -532,10 +557,8 @@ function ProductSearch() {
                                             inputMode="decimal"
                                             placeholder="0.00"
                                             value={draftMinPrice}
-                                            onChange={(event) => {
-                                                setDraftMinPrice(event.target.value);
-                                                setPriceError('');
-                                            }}
+                                            onKeyDown={blockInvalidPriceKey}
+                                            onChange={(event) => updateDraftPrice(event.target.value, setDraftMinPrice)}
                                             aria-invalid={Boolean(priceError)}
                                             aria-describedby={`ps-price-summary${priceError ? ' ps-price-error' : ''}`}
                                         />
@@ -553,10 +576,8 @@ function ProductSearch() {
                                             inputMode="decimal"
                                             placeholder="9999.99"
                                             value={draftMaxPrice}
-                                            onChange={(event) => {
-                                                setDraftMaxPrice(event.target.value);
-                                                setPriceError('');
-                                            }}
+                                            onKeyDown={blockInvalidPriceKey}
+                                            onChange={(event) => updateDraftPrice(event.target.value, setDraftMaxPrice)}
                                             aria-invalid={Boolean(priceError)}
                                             aria-describedby={`ps-price-summary${priceError ? ' ps-price-error' : ''}`}
                                         />
@@ -589,13 +610,6 @@ function ProductSearch() {
                                         );
                                     })}
                                 </div>
-                            </fieldset>
-
-                            <fieldset className="ps-filter-group ps-placeholder-filter" disabled>
-                                <legend>Sort By</legend>
-                                <label><input type="radio" name="sort-placeholder" checked readOnly /> Newest Listings</label>
-                                <label><input type="radio" name="sort-placeholder" readOnly /> Price: Low to High</label>
-                                <label><input type="radio" name="sort-placeholder" readOnly /> Price: High to Low</label>
                             </fieldset>
 
                             <button type="button" className="ps-apply-filters" onClick={applyFilters}>Apply Filters</button>
