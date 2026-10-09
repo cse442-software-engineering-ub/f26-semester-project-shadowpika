@@ -459,6 +459,11 @@
             color: inherit;
         }
 
+        /* Outranks the mobile .tab_group display rule so a hidden Admin tab stays hidden on phones. */
+        .tab_group[hidden] {
+            display: none;
+        }
+
    @media (max-width: 768px) {
     .field-label{
         display:none;
