@@ -4,11 +4,16 @@ import './index.css'
 import App from './App.jsx'
 import AdminRegister from './pages/AdminRegister.jsx'
 import ModeratorDashboard from './pages/ModeratorDashboard.jsx'
+import RequireLogin from './components/RequireLogin.jsx'
 import { currentRoute } from './routes.js'
 
 const PAGES = {
   'admin-register': AdminRegister,
-  moderator: ModeratorDashboard,
+  moderator: () => (
+    <RequireLogin>
+      <ModeratorDashboard />
+    </RequireLogin>
+  ),
   login: App,
 }
 

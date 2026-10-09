@@ -9,6 +9,9 @@ function jsonResponse(body) {
 
 const openPage = (path) => window.history.replaceState({}, '', path);
 
+// The page first asks session.php whether someone is already signed in.
+const formCalls = (fetchMock) => fetchMock.mock.calls.filter(([url]) => !url.endsWith('session.php'));
+
 describe('Login page', () => {
     beforeEach(() => {
         openPage('/index.html');
@@ -42,7 +45,7 @@ describe('Login page', () => {
         await user.click(screen.getByRole('button', { name: 'Log In' }));
 
         expect(await screen.findByText('Invalid username or password.')).toBeInTheDocument();
-        const [url, options] = fetchMock.mock.calls[0];
+        const [[url, options]] = formCalls(fetchMock);
         expect(url).toBe('./login.php');
         expect(JSON.parse(options.body)).toEqual({ email: 'alex.landlord@test.com', password: 'Landlord123!' });
     });
@@ -59,6 +62,73 @@ describe('Login page', () => {
         await user.click(screen.getByRole('button', { name: 'Log In' }));
 
         await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/#/moderator'));
+    });
+});
+
+describe('Persistent login', () => {
+    const LOGGED_OUT = { success: false, logged_in: false, error: 'You are not logged in.' };
+    const sessionFor = (role) => ({ success: true, logged_in: true, user_id: 7, username: 'jamie.student', email: 'jamie.student@test.com', role });
+
+    function stubPage(pathname) {
+        const replace = vi.fn();
+        vi.stubGlobal('location', { ...window.location, hostname: 'aptitude.cse.buffalo.edu', pathname, hash: '', replace });
+        return replace;
+    }
+
+    function stubSession(status, body) {
+        const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })));
+        vi.stubGlobal('fetch', fetchMock);
+        return fetchMock;
+    }
+
+    beforeEach(() => {
+        vi.stubEnv('VITE_LOCAL_BACKEND', 'true');
+    });
+
+    // Persistent login frontend, Test 1
+    it('sends a signed-in user from the login page straight to the home page', async () => {
+        const replace = stubPage('/CSE442/2026-Fall/cse-442j/index.html');
+        const fetchMock = stubSession(200, sessionFor('user'));
+        render(<App />);
+
+        await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('./home.html'));
+        expect(fetchMock.mock.calls[0][0]).toBe('/CSE442/2026-Fall/cse-442j/session.php');
+        expect(screen.queryByRole('button', { name: 'Log In' })).not.toBeInTheDocument();
+    });
+
+    // Persistent login frontend, Test 2
+    it('sends a signed-in moderator to the moderator page instead', async () => {
+        const replace = stubPage('/CSE442/2026-Fall/cse-442j/');
+        stubSession(200, sessionFor('moderator'));
+        render(<App />);
+
+        await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/CSE442/2026-Fall/cse-442j/#/moderator'));
+    });
+
+    // Persistent login frontend, Test 3
+    it('shows the login form when nobody is signed in', async () => {
+        const replace = stubPage('/CSE442/2026-Fall/cse-442j/index.html');
+        stubSession(401, LOGGED_OUT);
+        render(<App />);
+
+        expect(await screen.findByRole('button', { name: 'Log In' })).toBeInTheDocument();
+        expect(replace).not.toHaveBeenCalled();
+    });
+
+    it('shows the login form when the login cannot be checked', async () => {
+        stubPage('/CSE442/2026-Fall/cse-442j/index.html');
+        vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))));
+        render(<App />);
+
+        expect(await screen.findByRole('button', { name: 'Log In' })).toBeInTheDocument();
+    });
+
+    it('sends a signed-in user away from the sign up page too', async () => {
+        const replace = stubPage('/CSE442/2026-Fall/cse-442j/register.html');
+        stubSession(200, sessionFor('admin'));
+        render(<App />);
+
+        await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('./home.html'));
     });
 });
 
@@ -90,7 +160,7 @@ describe('Sign up page', () => {
         await fillSignUp(user);
 
         expect(await screen.findByText('Account successfully saved! Redirecting to login...')).toBeInTheDocument();
-        const [url, options] = fetchMock.mock.calls[0];
+        const [[url, options]] = formCalls(fetchMock);
         expect(url).toBe('./register.php');
         expect(JSON.parse(options.body)).toEqual({ username: 'testuser1', email: 'testuser1@test.com', password: 'TestUser123!' });
         expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', './index.html');
@@ -105,7 +175,7 @@ describe('Sign up page', () => {
         await fillSignUp(user, { confirm: 'Different123!' });
 
         expect(await screen.findByText('Error: Passwords do not match.')).toBeInTheDocument();
-        expect(fetchMock).not.toHaveBeenCalled();
+        expect(formCalls(fetchMock)).toHaveLength(0);
     });
 
     it('shows the server error when the username or email is taken', async () => {
