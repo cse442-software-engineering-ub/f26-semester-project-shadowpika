@@ -1,1 +1,0 @@
-import{S as e,b as t,d as n,w as r}from"./api-9zkWTuUC.js";import{t as i}from"./NavBar-DwsCXHHB.js";var a=r(e(),1),o=t(),s=n();(0,o.createRoot)(document.getElementById(`root`)).render((0,s.jsx)(a.StrictMode,{children:(0,s.jsx)(i,{})}));

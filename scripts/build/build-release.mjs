@@ -1,4 +1,4 @@
-// Generate the tracked release without deleting environment-owned files.
+// Generate a local, ignored deployment bundle without deleting environment-owned files.
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -51,11 +51,13 @@ try {
     copy(path.join(repo, 'backend/server/listing-uploads.htaccess'), 'listing/uploads/.htaccess');
     // Keep inbound URLs from older nested navbars working, without duplicate apps/bundles.
     const aliases = {
+        'settings/index.html': '../index.html',
         'settings/home.html': '../home.html',
         'settings/product-search.html': '../product-search.html',
         'settings/sell.html': '../sell.html',
-        'settings/profile.html': '../profile.html',
-        'settings/settings/general-settings.html': '../general-settings.html',
+        'settings/settings.html': 'account-settings.html',
+        'settings/admin-settings.html': '../settings.html',
+        'settings/404.html': '../404.html',
     };
     for (const [file, destination] of Object.entries(aliases)) {
         const target = path.join(stage, file);
@@ -92,7 +94,7 @@ try {
         fs.mkdirSync(path.dirname(target), { recursive: true });
         fs.copyFileSync(path.join(stage, file), target);
     }
-    console.log(`Release assembled: deploy/ (${Object.keys(manifest.files).length} managed files). Commit source and deploy together.`);
+    console.log(`Release assembled locally: deploy/ (${Object.keys(manifest.files).length} managed files). Do not commit generated deploy files.`);
 } finally {
     // stage is a fresh directory created by this process, never a user/workspace path.
     fs.rmSync(stage, { recursive: true, force: true });

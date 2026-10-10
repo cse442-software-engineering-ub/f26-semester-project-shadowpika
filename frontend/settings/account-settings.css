@@ -8,7 +8,6 @@
             font-family: Arial, Helvetica, sans-serif;
             background: #f6f1ea;
             color: #1f3048;
-            min-width: 1000px;
         }
 
         /* =========================
@@ -67,27 +66,6 @@
             letter-spacing: 2px;
             font-weight: 400;
             color: #263c57;
-        }
-
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 44px;
-            height: 100%;
-            flex: 1;
-        }
-
-        .nav-link {
-            font-size: 14px;
-            color: #263c57;
-            text-decoration: none;
-            white-space: nowrap;
-        }
-
-        .nav-right {
-            display: flex;
-            align-items: center;
-            gap: 60px;
         }
 
         .search-icon,
@@ -150,37 +128,42 @@
            MAIN CONTENT
         ========================= */
 
+        /* Same frame, heading and left edge as the Home page, so the content lines up under the logo */
         .main {
-            width: 1000px;
-            margin: 0 auto;
-            padding-top: 42px;
+            width: 100%;
+            padding: 32px 40px 48px;
         }
 
         .page-title {
             margin-left: 0;
-            font-size: 25px;
+            font-family: 'League Spartan', 'DM Sans', sans-serif;
+            font-size: 32px;
+            line-height: 40px;
             font-weight: 700;
-            color: #24364f;
-            margin-bottom: 6px;
+            color: #1f2d44;
         }
 
         .page-description {
-            font-size: 9px;
-            color: #68788d;
-            margin-bottom: 29px;
+            margin-top: 4px;
+            font-family: 'DM Sans', system-ui, sans-serif;
+            font-size: 13px;
+            line-height: 18px;
+            color: #8a94a6;
+            margin-bottom: 24px;
         }
 
         /* =========================
            SETTINGS CARD
         ========================= */
 
+        /* Fills the page width inside the margins, like the Sell page's form card */
         .settings-card {
-            width: 1000px;
+            width: 100%;
             min-height: 689px;
             border: 1px solid #e3e0d9;
+            overflow: hidden;
             border-radius: 11px;
             margin-left: 0;
-            overflow: hidden;
             background: white;
         }
 
@@ -459,5 +442,66 @@
             text-decoration: none;
             color: inherit;
         }
-/* =========================
-   MOBILE RESPONSIVE
+
+        [hidden] {
+            display: none !important;
+        }
+
+   @media (max-width: 768px) {
+    /* Same phone padding as the Home page */
+    .main {
+        padding: 20px 15px 40px;
+    }
+    .field-label{
+        display:none;
+    }
+    .save-description{
+        display:none;
+    }
+    .delete-label{
+        display:none;
+    }
+    .password-label{
+        display:none;
+    }
+        .password-description{
+            display:none;
+        }
+        .delete-description{
+            display:none;
+        }
+        .tabs {
+            display: flex;
+            align-items: flex-end;
+
+            width: 100%;
+            min-width: 0;
+
+            overflow-x: auto;
+            overflow-y: hidden;
+            flex-wrap: nowrap;
+
+            padding-left: 16px;
+            gap: 0;
+
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab_group {
+            display: block;
+            flex: 0 0 auto;
+            white-space: nowrap;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .tab {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+    }

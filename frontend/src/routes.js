@@ -2,6 +2,10 @@
 // is resolved relative to wherever index.html is being served from.
 export const ROUTES = ['admin-register', 'moderator'];
 
+// Static pages kept in these subfolders load the shared navbar, which must still link
+// to (and call endpoints in) the site root.
+const SUBFOLDERS = ['settings'];
+
 export function currentRoute(location = window.location) {
     const fromHash = location.hash.replace(/^#\/?/, '');
     if (ROUTES.includes(fromHash)) return fromHash;
@@ -11,11 +15,8 @@ export function currentRoute(location = window.location) {
 }
 
 export function appBase(location = window.location) {
-    // Legacy account/password pages remain under settings/ in the release.
-    // Navigation and shared APIs must still resolve from the application root.
-    let path = location.pathname.replace(/\/settings\/[^/]+\.html$/, '/');
-    path = path.replace(/[^/]+\.html$/, '');
-    for (const route of ROUTES) {
+    let path = location.pathname.replace(/[^/]+\.html$/, '');
+    for (const route of [...ROUTES, ...SUBFOLDERS]) {
         path = path.replace(new RegExp(`/${route}/?$`), '/');
     }
     return path.endsWith('/') ? path : `${path}/`;

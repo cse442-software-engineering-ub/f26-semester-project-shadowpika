@@ -8,7 +8,8 @@ require_once __DIR__ . '/admin_requests.php';
 
 function karavan_list_communities(PDO $pdo, ?int $userId): array
 {
-    if (karavan_find_user($pdo, $userId) === null) {
+    $user = karavan_find_user($pdo, $userId);
+    if ($user === null) {
         return karavan_forbidden();
     }
 
@@ -26,7 +27,28 @@ function karavan_list_communities(PDO $pdo, ?int $userId): array
         $communities[] = ['community_id' => (int) $row['id'], 'name' => $row['name']];
     }
 
-    return [200, ['success' => true, 'communities' => $communities]];
+    // A user may have joined a partner whose business shares its listed entry, so match by name.
+    $joined = karavan_find_community($pdo, karavan_joined_community_id($pdo, (int) $user['id']));
+    $joinedId = null;
+    foreach ($joined === null ? [] : $communities as $community) {
+        if (strtolower(trim($community['name'])) === strtolower(trim($joined['community_name']))) {
+            $joinedId = $community['community_id'];
+        }
+    }
+
+    return [200, [
+        'success'             => true,
+        'communities'         => $communities,
+        'joined_community_id' => $joinedId,
+    ]];
+}
+
+function karavan_joined_community_id(PDO $pdo, int $userId): ?int
+{
+    $stmt = $pdo->prepare('SELECT community_id FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    $value = $stmt->fetchColumn();
+    return $value === null || $value === false ? null : (int) $value;
 }
 
 /** @return array{community_id: int, community_name: string}|null */
@@ -63,4 +85,22 @@ function karavan_join_community(PDO $pdo, ?int $userId, $input): array
     }
 
     return [200, ['success' => true] + $community];
+}
+
+// Leaving when not in a community is still a success, so a double click or a stale page is harmless.
+function karavan_leave_community(PDO $pdo, ?int $userId): array
+{
+    $user = karavan_find_user($pdo, $userId);
+    if ($user === null) {
+        return karavan_forbidden();
+    }
+
+    try {
+        $update = $pdo->prepare('UPDATE users SET community_id = NULL WHERE id = ?');
+        $update->execute([(int) $user['id']]);
+    } catch (PDOException $e) {
+        return [500, ['success' => false, 'error' => 'Could not leave the community.']];
+    }
+
+    return [200, ['success' => true, 'community_id' => null, 'community_name' => null]];
 }

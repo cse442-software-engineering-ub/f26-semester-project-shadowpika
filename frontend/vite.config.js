@@ -29,11 +29,10 @@ export default defineConfig({
                 home: 'home.html',
                 settings: 'settings.html',
                 sell: 'sell.html',
-                profile: 'profile.html',
                 accountSettings: 'settings/account-settings.html',
-                generalSettings: 'settings/general-settings.html',
                 changePassword: 'settings/change-password.html',
-                notFound: '404.html'
+                notFound: '404.html',
+                manageListings: 'manage-listings.html',
             }
         }
     },

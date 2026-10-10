@@ -1,41 +1,23 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import './NavBar.css';
-import { fetchCommunities, joinCommunity } from './api.js';
+import { fetchCommunities, joinCommunity, leaveCommunity, logout } from './api.js';
 import { readJoinedCommunity, saveJoinedCommunity, takeCommunityPrompt } from './community.js';
 import CommunityPicker from './components/CommunityPicker.jsx';
-import { apiUrl } from './routes.js';
-import { signOut } from './session.js';
+import { CaravanLogo, KaravanBrand } from './components/KaravanBrand.jsx';
+import { appBase, pathFor } from './routes.js';
 
 const JOIN_LABEL = 'Join a Community';
 
-const HOME_HREF = apiUrl('home.html');
+// Pages are relative to the site root, so the links also work from the settings/ pages.
+const HOME_PAGE = 'home.html';
 
 const NAV_LINKS = [
-    { label: 'Home', href: HOME_HREF, icon: HomeIcon },
-    { label: 'Settings', href: apiUrl('settings/general-settings.html'), icon: SettingsIcon },
-    { label: 'Sell', href: apiUrl('sell.html'), icon: CartIcon },
+    { label: 'Home', page: HOME_PAGE, icon: HomeIcon },
+    { label: 'Settings', page: 'settings/account-settings.html', icon: SettingsIcon },
+    { label: 'Sell', page: 'sell.html', icon: CartIcon },
 ];
 
-const SEARCH_HREF = apiUrl('product-search.html');
-const PROFILE_HREF = apiUrl('profile.html');
-
-function CaravanLogo() {
-    return (
-        <svg className="nav-logo-icon" viewBox="0 0 52 36" fill="none" aria-hidden="true">
-            {/* body */}
-            <path d="M6 5h30c7.2 0 13 5.8 13 13v7a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3z" stroke="#1f2d44" strokeWidth="2.4" />
-            {/* windows */}
-            <rect x="8" y="10" width="11" height="7" rx="1.5" stroke="#1f2d44" strokeWidth="2" />
-            <path d="M39 10h1.5a5 5 0 0 1 5 5v2H39z" stroke="#1f2d44" strokeWidth="2" strokeLinejoin="round" />
-            {/* door */}
-            <rect x="25" y="10" width="8" height="15" rx="1" fill="#d9a441" stroke="#1f2d44" strokeWidth="1.6" />
-            <circle cx="31" cy="18" r="0.9" fill="#1f2d44" />
-            {/* wheel */}
-            <circle cx="15" cy="28" r="5" fill="#3f6fa0" stroke="#1f2d44" strokeWidth="2" />
-            <circle cx="15" cy="28" r="1.6" fill="#f6f1ea" />
-        </svg>
-    );
-}
+const SEARCH_PAGE = 'product-search.html';
 
 function SearchIcon() {
     return (
@@ -52,6 +34,15 @@ function MenuIcon() {
             <line x1="4" y1="6" x2="20" y2="6" />
             <line x1="4" y1="12" x2="20" y2="12" />
             <line x1="4" y1="18" x2="20" y2="18" />
+        </svg>
+    );
+}
+
+function CloseIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+            <line x1="6" y1="6" x2="18" y2="18" />
+            <line x1="18" y1="6" x2="6" y2="18" />
         </svg>
     );
 }
@@ -83,11 +74,12 @@ function CartIcon() {
     );
 }
 
-function ProfileIcon() {
+function LogoutIcon() {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
         </svg>
     );
 }
@@ -111,7 +103,13 @@ function useCommunities() {
     const [error, setError] = useState('');
     const [joined, setJoined] = useState(readJoinedCommunity);
     const [joiningId, setJoiningId] = useState(null);
+    const [leaving, setLeaving] = useState(false);
     const [picker, setPicker] = useState(null); // null, 'first-login' or 'nav'
+
+    const remember = useCallback((community) => {
+        setJoined(community);
+        saveJoinedCommunity(community);
+    }, []);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -121,6 +119,11 @@ function useCommunities() {
                 setSignedIn(true);
                 setCommunities(result.communities);
                 setError('');
+                // The server knows best, e.g. after leaving or joining on another device.
+                if ('joined_community_id' in result) {
+                    const current = result.communities.find((c) => c.community_id === result.joined_community_id);
+                    remember(current ? { community_id: current.community_id, name: current.name } : null);
+                }
                 return true;
             }
             if (result.status === 403) {
@@ -135,7 +138,7 @@ function useCommunities() {
             setLoading(false);
         }
         return false;
-    }, []);
+    }, [remember]);
 
     useEffect(() => {
         const showSuggestions = takeCommunityPrompt();
@@ -161,9 +164,7 @@ function useCommunities() {
         try {
             const result = await joinCommunity(communityId);
             if (result.status === 200 && result.success) {
-                const community = { community_id: result.community_id, name: result.community_name };
-                setJoined(community);
-                saveJoinedCommunity(community);
+                remember({ community_id: result.community_id, name: result.community_name });
                 setPicker(null);
             } else {
                 setError(result.error || 'Could not join that community. Please try again.');
@@ -175,27 +176,35 @@ function useCommunities() {
         }
     };
 
-    return { signedIn, communities, loading, error, joined, joiningId, picker, open, close, join };
+    // The picker stays open so the user can pick a different community straight away.
+    const leave = async () => {
+        setLeaving(true);
+        setError('');
+        try {
+            const result = await leaveCommunity();
+            if (result.status === 200 && result.success) remember(null);
+            else setError(result.error || 'Could not leave the community. Please try again.');
+        } catch {
+            setError('Could not leave the community. Please try again.');
+        } finally {
+            setLeaving(false);
+        }
+    };
+
+    return { signedIn, communities, loading, error, joined, joiningId, leaving, picker, open, close, join, leave };
 }
 
 function NavBar() {
     const [menuOpen, setMenuOpen] = useState(false);
-    const [loggingOut, setLoggingOut] = useState(false);
-    const [logoutError, setLogoutError] = useState('');
     const community = useCommunities();
     const communityLabel = community.joined?.name ?? JOIN_LABEL;
     const communityTitle = community.joined ? 'Switch community' : undefined;
+    const base = appBase();
+
     const handleLogout = async () => {
-        if (loggingOut) return;
-        setLoggingOut(true);
-        setLogoutError('');
-        try {
-            await signOut();
-        } catch {
-            setLogoutError('Could not log out. Please try again.');
-        } finally {
-            setLoggingOut(false);
-        }
+        setMenuOpen(false);
+        await logout();
+        window.location.assign(pathFor('login'));
     };
 
     // While the drawer is open: lock page scroll, let Escape close it, and close it
@@ -223,23 +232,20 @@ function NavBar() {
     return (
         <header className="nav">
             <nav className="nav-bar" aria-label="Main">
-                <a className="nav-logo" href={HOME_HREF} aria-label="Karavan home">
-                    <CaravanLogo />
-                    <span className="nav-logo-text">KARAVAN</span>
-                </a>
+                <KaravanBrand href={base + HOME_PAGE} />
 
                 <div className="nav-right">
                     {/* Desktop only */}
                     <ul className="nav-links">
                         {NAV_LINKS.map((link) => (
                             <li key={link.label}>
-                                <a className="nav-link" href={link.href}>{link.label}</a>
+                                <a className="nav-link" href={base + link.page}>{link.label}</a>
                             </li>
                         ))}
                     </ul>
 
                     <div className="nav-icons">
-                        <a className="nav-icon-btn nav-search" href={SEARCH_HREF} aria-label="Search">
+                        <a className="nav-icon-btn nav-search" href={base + SEARCH_PAGE} aria-label="Search">
                             <SearchIcon />
                         </a>
                         {/* Desktop only */}
@@ -250,8 +256,9 @@ function NavBar() {
                             </button>
                         ) : null}
                         {/* Desktop only */}
-                        <a className="nav-profile" href={PROFILE_HREF}>Profile</a>
-                        <button type="button" className="nav-logout nav-logout-desktop" disabled={loggingOut} onClick={handleLogout}>Log Out</button>
+                        <button type="button" className="nav-link nav-text-button nav-logout" onClick={handleLogout}>
+                            Log Out
+                        </button>
                         {/* Mobile only */}
                         <button
                             type="button"
@@ -279,32 +286,35 @@ function NavBar() {
                 aria-label="Menu"
                 inert={!menuOpen}
             >
-                <a className="nav-drawer-brand" href={HOME_HREF} aria-label="Karavan home">
+                <button
+                    type="button"
+                    className="nav-icon-btn nav-drawer-close"
+                    aria-label="Close menu"
+                    onClick={() => setMenuOpen(false)}
+                >
+                    <CloseIcon />
+                </button>
+
+                <a className="nav-drawer-brand" href={base + HOME_PAGE} aria-label="Karavan home">
                     <CaravanLogo />
                     <span className="nav-drawer-title">KARAVAN</span>
                     <span className="nav-drawer-tagline">Buy. Sell. Support Students.</span>
                 </a>
 
                 <ul className="nav-drawer-links">
-                    {NAV_LINKS.map(({ label, href, icon: Icon }) => (
+                    {NAV_LINKS.map(({ label, page, icon: Icon }) => (
                         <li key={label}>
-                            <a className="nav-drawer-link" href={href}>
+                            <a className="nav-drawer-link" href={base + page}>
                                 <Icon />
                                 {label}
                             </a>
                         </li>
                     ))}
-                    <li>
-                        <a className="nav-drawer-link" href={PROFILE_HREF}>
-                            <ProfileIcon />
-                            Profile
-                        </a>
-                    </li>
                     {community.signedIn ? (
                         <li>
                             <button
                                 type="button"
-                                className="nav-drawer-link nav-drawer-community"
+                                className="nav-drawer-link nav-drawer-button"
                                 title={communityTitle}
                                 onClick={() => {
                                     setMenuOpen(false);
@@ -317,12 +327,13 @@ function NavBar() {
                         </li>
                     ) : null}
                     <li>
-                        <button type="button" className="nav-drawer-link nav-drawer-logout" disabled={loggingOut} onClick={handleLogout}>Log Out</button>
+                        <button type="button" className="nav-drawer-link nav-drawer-button" onClick={handleLogout}>
+                            <LogoutIcon />
+                            Log Out
+                        </button>
                     </li>
                 </ul>
             </aside>
-
-            {logoutError ? <p className="nav-logout-error" role="alert">{logoutError}</p> : null}
 
             {community.picker ? (
                 <CommunityPicker
@@ -331,8 +342,10 @@ function NavBar() {
                     error={community.error}
                     joinedId={community.joined?.community_id ?? null}
                     joiningId={community.joiningId}
+                    leaving={community.leaving}
                     firstLogin={community.picker === 'first-login'}
                     onJoin={community.join}
+                    onLeave={community.leave}
                     onClose={community.close}
                 />
             ) : null}

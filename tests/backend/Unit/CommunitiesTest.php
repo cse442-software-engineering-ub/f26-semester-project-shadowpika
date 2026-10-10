@@ -38,7 +38,52 @@ final class CommunitiesTest extends TestCase
         [$status, $body] = karavan_list_communities($this->pdo, $this->studentId);
 
         $this->assertSame(200, $status);
-        $this->assertSame('{"success":true,"communities":[{"community_id":' . $keller . ',"name":"Keller Properties LLC"}]}', json_encode($body));
+        $this->assertSame('{"success":true,"communities":[{"community_id":' . $keller . ',"name":"Keller Properties LLC"}],"joined_community_id":null}', json_encode($body));
+    }
+
+    public function testListSaysWhichCommunityTheUserIsIn(): void
+    {
+        $first = $this->approvedCommunity('Keller Properties LLC');
+        $sameName = $this->approvedCommunity('keller properties llc ');
+        $this->approvedCommunity('Riverside Apartments');
+        $this->pdo->exec("UPDATE users SET community_id = $sameName WHERE id = {$this->studentId}");
+
+        [, $body] = karavan_list_communities($this->pdo, $this->studentId);
+
+        $this->assertSame($first, $body['joined_community_id'], 'Shared business names point at the listed entry.');
+    }
+
+    // Leave a Community backend
+    public function testLeavingClearsTheUsersCommunity(): void
+    {
+        $keller = $this->approvedCommunity('Keller Properties LLC');
+        karavan_join_community($this->pdo, $this->studentId, ['community_id' => $keller]);
+
+        [$status, $body] = karavan_leave_community($this->pdo, $this->studentId);
+
+        $this->assertSame([200, ['success' => true, 'community_id' => null, 'community_name' => null]], [$status, $body]);
+        $this->assertNull($this->communityOf($this->studentId));
+        $this->assertNull(karavan_list_communities($this->pdo, $this->studentId)[1]['joined_community_id']);
+    }
+
+    public function testLeavingWhenNotInACommunityStillSucceeds(): void
+    {
+        [$status] = karavan_leave_community($this->pdo, $this->studentId);
+
+        $this->assertSame(200, $status);
+        $this->assertNull($this->communityOf($this->studentId));
+    }
+
+    public function testLeavingOnlyAffectsThatUser(): void
+    {
+        $keller = $this->approvedCommunity('Keller Properties LLC');
+        $otherId = TestDatabase::addUser($this->pdo, 'other.student', 'user', 'other.student@test.com');
+        karavan_join_community($this->pdo, $this->studentId, ['community_id' => $keller]);
+        karavan_join_community($this->pdo, $otherId, ['community_id' => $keller]);
+
+        karavan_leave_community($this->pdo, $this->studentId);
+
+        $this->assertSame($keller, $this->communityOf($otherId));
     }
 
     public function testPendingApplicationsAreNotCommunitiesYet(): void
@@ -155,5 +200,6 @@ final class CommunitiesTest extends TestCase
 
         $this->assertSame([403, self::FORBIDDEN], karavan_list_communities($this->pdo, $userId));
         $this->assertSame([403, self::FORBIDDEN], karavan_join_community($this->pdo, $userId, ['community_id' => $keller]));
+        $this->assertSame([403, self::FORBIDDEN], karavan_leave_community($this->pdo, $userId));
     }
 }

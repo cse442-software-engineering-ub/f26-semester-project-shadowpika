@@ -26,10 +26,10 @@
 
             <!-- Tabs -->
             <div class="tabs">
-                <a href="general-settings.html" class="tab_group"><div class="tab">General</div></a>
+                <!-- <div class="tab">General</div> -->
                 <div class="tab active">Account</div>
-                <div class="tab">Customization</div>
-                <a href="../settings.html" class="tab_group"><div class="tab">Admin</div></a>
+                <!-- <div class="tab">Customization</div> -->
+                <a href="../settings.html" class="tab_group" id="admin-tab" hidden><div class="tab">Admin</div></a>
             </div>
 
 
@@ -45,6 +45,7 @@
                         <input
                             class="field-input"
                             type="text"
+                            placeholder="John Doe"
                             id="name"
                             name="input_username"
                         >
@@ -55,16 +56,16 @@
                         <input
                             class="field-input"
                             type="email"
-                            placeholder="shadow.pika@example.com"
+                            placeholder="john.doe@example.com"
                             id="email"
                             name="input_email"
                         >
                     </div>
 
-                    <div class="field photo-field">
+                    <!-- <div class="field photo-field">
                         <label class="field-label photo-label">
                             Profile photo
-                        </label>
+                        </label> -->
 
                         <!-- <div class="upload-box" id="pfp">
                             <div class="camera-icon"></div>
@@ -72,7 +73,7 @@
                                 Upload new photo
                             </span>
                         </div> -->
-                    </div>
+                    <!-- </div> -->
                     </form>
                 </section>
 
@@ -132,7 +133,11 @@
 
         </section>
         <script>
-            document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+            if (!decodeURIComponent(getCookies("karavan_auth_cookie")).includes("@") && !decodeURIComponent(getCookies("karavan_auth_cookie")).includes(".")){
+                document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+            }else{
+                document.getElementById("email").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+            }
             
         function getCookies(cookieName){
             const cookies = document.cookie.split("; ")
@@ -220,8 +225,13 @@
                     document.getElementById("name").value = data.username;
                     document.getElementById("email").value = data.email;
                 } else {
-                    document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
-                    document.getElementById("email").value = "";
+                    if (!decodeURIComponent(getCookies("karavan_auth_cookie")).includes("@") && !decodeURIComponent(getCookies("karavan_auth_cookie")).includes(".")){
+                        document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+                        document.getElementById("email").value = "";
+                    }else{
+                        document.getElementById("email").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
+                        document.getElementById("name").value = "";
+                    }
                     console.log("Error:", data.error);
                     alert(data.error);
                 }
@@ -231,7 +241,28 @@
             });
         }
 
-        
+        async function checkAdminStatus() {
+        const adminTab = document.getElementById("admin-tab");
+
+        try {
+            const response = await fetch("admin-check.php", {
+                credentials: "same-origin"
+            });
+
+            if (!response.ok) {
+                adminTab.hidden = true;
+                return;
+            }
+
+            const data = await response.json();
+            adminTab.hidden = !(data.success && data.is_admin);
+        } catch (error) {
+            console.error("Admin check failed:", error);
+            adminTab.hidden = true;
+        }
+    }
+
+    checkAdminStatus();
 
         </script>
 

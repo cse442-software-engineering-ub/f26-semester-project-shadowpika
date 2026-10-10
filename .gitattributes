@@ -1,2 +1,0 @@
-# Preserve exact release bytes so Git checkout cannot invalidate manifest hashes.
-deploy/** -text

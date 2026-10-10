@@ -36,18 +36,11 @@ body:has(.ps-page) {
   cursor: pointer;
 }
 
-/* Nav bar sits in the same centered cream frame as the page content */
-.ps-page > .nav {
-  max-width: 1440px;
-  margin: 0 auto;
-  background: var(--ps-cream);
-}
-
+/* Nav bar and page content span the full window on every screen size; content keeps
+   the page's left padding, so it lines up under the logo instead of floating in a frame */
 .ps-frame {
   width: 100%;
-  max-width: 1440px;
   min-height: 1024px;
-  margin: 0 auto;
   padding: 0;
   background: var(--ps-cream);
 }

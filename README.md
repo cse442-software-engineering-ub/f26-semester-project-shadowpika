@@ -1,7 +1,7 @@
 # Karavan Campus Exchange
 
 CSE 442 campus marketplace. This repository contains the application source, tests,
-documentation, and the generated release uploaded to the course servers.
+documentation, and scripts used to create a deployment bundle.
 
 ## Where files belong
 
@@ -9,7 +9,7 @@ documentation, and the generated release uploaded to the course servers.
 | --- | --- |
 | `frontend/` | React app, HTML entry templates, styles, shared navigation, frontend tests |
 | `frontend/src/features/listings/` | Create Listing UI |
-| `frontend/settings/` | Existing account, password, and general-settings HTML/CSS |
+| `frontend/settings/` | Account and password HTML/CSS entry pages |
 | `frontend/public/assets/images/` and `icons/` | Static site images/icons |
 | `frontend/public/uploads/` | Seed listing images; keep existing database image URLs |
 | `backend/endpoints/` | PHP endpoints, with subpaths matching their deployed URLs |
@@ -21,10 +21,10 @@ documentation, and the generated release uploaded to the course servers.
 | `tests/fixtures/` | Test images/documents, including admin-registration fixtures |
 | `scripts/build/`, `local-dev/`, `verify/` | Release generation, local setup, release checks |
 | `docs/` | Feature documentation and task-card notes |
-| `deploy/` | Generated, **tracked** release; upload its contents, not the whole repository |
+| `deploy/` | Generated, ignored local release; upload its contents, never commit it |
 
 Add source changes in the appropriate feature directory, not a personal project copy.
-Do not hand-edit generated HTML or hashed assets in `deploy/`.
+Do not hand-edit generated HTML or hashed assets in `deploy/`; change source and rebuild.
 External page/API URLs have not been renamed: `home.html`, `product-search.html`,
 `sell.html`, `api/search_listings.php`, `listing/api/image.php`, etc. still exist at
 the application's deployed root.
@@ -64,7 +64,7 @@ The build runs Vite, copies PHP and server configuration from `backend/`, and wr
 It checks local references before updating the release. A rebuild refuses to overwrite
 manually edited or conflicting unmanaged files, and removes only unchanged obsolete
 files listed in the previous manifest. Runtime files/configuration are preserved.
-Commit the source changes **and** refreshed `deploy/` files together.
+`deploy/` is ignored by Git: commit only source, tests, documentation, and build scripts.
 
 See [deployment instructions](docs/deployment.md) before uploading.
 
@@ -99,8 +99,8 @@ credentials, user uploads, sessions, or database contents.
 
 ## Team workflow
 
-Work on the task's branch, test, rebuild the release, and review the diff. Push that
-branch and merge completed work into `dev` using a pull request. Deploy one reviewed
-release from `deploy/`; do not mix teammates' individually built bundles on the server.
+Work on the task's branch, test the source, build and verify a local release. Push that
+branch and merge completed work into `dev` using a pull request. After merge, one person
+should build and upload the contents of `deploy/`; do not mix teammates' bundles on the server.
 For the current organization work, reuse card/branch #165 per the PM, keep it In Progress
 while reviewing, and mention **organizing the repo** in the eventual commit message.

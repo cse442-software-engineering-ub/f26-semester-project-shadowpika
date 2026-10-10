@@ -378,6 +378,183 @@ final class EndpointsHttpTest extends TestCase
         return [json_decode(substr($raw, $headerSize), true), $cookies[1] ? end($cookies[1]) : null];
     }
 
+    /**
+     * Sends the given cookies and returns [status, json, cookies the response set].
+     * @param array<string, string> $cookies
+     * @return array{0: int, 1: ?array, 2: array<string, array{value: string, header: string}>}
+     */
+    private function withCookies(string $method, string $path, array $cookies, ?string $body = null): array
+    {
+        $ch = curl_init(self::$baseUrl . '/' . $path);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER         => true,
+            CURLOPT_CUSTOMREQUEST  => $method,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        ]);
+        if ($body !== null) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        }
+        if ($cookies) {
+            curl_setopt($ch, CURLOPT_COOKIE, implode('; ', array_map(fn ($k, $v) => "$k=$v", array_keys($cookies), $cookies)));
+        }
+        $raw = curl_exec($ch);
+        $status = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        preg_match_all('/^Set-Cookie:\s*([^=]+)=([^;\r\n]*)([^\r\n]*)/mi', substr($raw, 0, $headerSize), $matches, PREG_SET_ORDER);
+        $set = [];
+        foreach ($matches as [$header, $name, $value]) {
+            $set[$name] = ['value' => urldecode($value), 'header' => $header];
+        }
+        return [$status, json_decode(substr($raw, $headerSize), true), $set];
+    }
+
+    /** Logs in and returns the cookies a browser would keep: the session and the remember-me token. */
+    private function loginCookies(string $email, string $password): array
+    {
+        [, $json, $set] = $this->withCookies('POST', 'login.php', [], json_encode(['email' => $email, 'password' => $password]));
+        $this->assertTrue($json['success']);
+        return [$set['PHPSESSID']['value'], $set['karavan_remember']['value'], $set['karavan_remember']['header']];
+    }
+
+    private function tokenCount(): int
+    {
+        return (int) $this->pdo->query('SELECT COUNT(*) FROM auth_tokens')->fetchColumn();
+    }
+
+    // Persistent login backend, Test 1
+    public function testLoginIssuesA30DayRememberMeCookieAndStoresOnlyItsHash(): void
+    {
+        $userId = TestDatabase::addUser($this->pdo, 'jamie.student', 'user', 'jamie.student@test.com');
+
+        [, $remember, $header] = $this->loginCookies('jamie.student@test.com', 'Password123!');
+
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{24}:[a-f0-9]{64}$/', $remember);
+        $this->assertStringContainsStringIgnoringCase('HttpOnly', $header);
+        $this->assertStringContainsStringIgnoringCase('SameSite=Lax', $header);
+        $this->assertMatchesRegularExpression('/Max-Age=(\d+)/', $header);
+        preg_match('/Max-Age=(\d+)/', $header, $maxAge);
+        $this->assertEqualsWithDelta(30 * 86400, (int) $maxAge[1], 5);
+
+        [$selector, $validator] = explode(':', $remember);
+        $row = $this->pdo->query('SELECT * FROM auth_tokens')->fetch();
+        $this->assertSame($userId, (int) $row['user_id']);
+        $this->assertSame($selector, $row['selector']);
+        $this->assertSame(hash('sha256', $validator), $row['token_hash']);
+        $this->assertStringNotContainsString($validator, implode('|', $row));
+    }
+
+    // Persistent login backend, Test 2
+    public function testSessionReportsTheLoggedInUser(): void
+    {
+        $userId = TestDatabase::addUser($this->pdo, 'jamie.student', 'user', 'jamie.student@test.com');
+        [$session] = $this->loginCookies('jamie.student@test.com', 'Password123!');
+
+        [$status, $json] = $this->withCookies('GET', 'session.php', ['PHPSESSID' => $session]);
+
+        $this->assertSame(200, $status);
+        $this->assertSame([
+            'success' => true, 'logged_in' => true, 'user_id' => $userId,
+            'username' => 'jamie.student', 'email' => 'jamie.student@test.com', 'role' => 'user',
+        ], $json);
+    }
+
+    // Persistent login backend, Test 3
+    public function testSessionReturns401WhenNotLoggedIn(): void
+    {
+        [$status, $json] = $this->withCookies('GET', 'session.php', []);
+
+        $this->assertSame(401, $status);
+        $this->assertSame(['success' => false, 'logged_in' => false, 'error' => 'You are not logged in.'], $json);
+    }
+
+    // Persistent login backend, Test 4: the browser was closed, so only the remember-me cookie is left
+    public function testRememberMeCookieRestoresTheLoginAfterTheSessionIsGone(): void
+    {
+        TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin', 'alex.landlord@test.com');
+        [, $remember] = $this->loginCookies('alex.landlord@test.com', 'Password123!');
+
+        [$status, $json, $set] = $this->withCookies('GET', 'session.php', ['karavan_remember' => $remember]);
+
+        $this->assertSame(200, $status);
+        $this->assertTrue($json['logged_in']);
+        $this->assertSame('admin', $json['role']);
+        $this->assertArrayHasKey('PHPSESSID', $set, 'A fresh session is started.');
+        $this->assertSame(1, $this->tokenCount());
+
+        [$listStatus] = $this->request('GET', 'get_approved_locations.php', null, $set['PHPSESSID']['value']);
+        $this->assertSame(200, $listStatus, 'Session-based endpoints work again once the login is restored.');
+
+        [$againStatus] = $this->withCookies('GET', 'session.php', ['karavan_remember' => $remember]);
+        $this->assertSame(200, $againStatus, 'The same cookie keeps working, e.g. for every tab a browser restores.');
+    }
+
+    // Persistent login backend, Test 5
+    public function testTamperedRememberMeCookieIsRejectedAndCleared(): void
+    {
+        TestDatabase::addUser($this->pdo, 'jamie.student', 'user', 'jamie.student@test.com');
+        [, $remember] = $this->loginCookies('jamie.student@test.com', 'Password123!');
+        $tampered = substr($remember, 0, 25) . str_repeat('0', 64);
+
+        foreach ([$tampered, 'not-a-token'] as $cookie) {
+            [$status, $json, $set] = $this->withCookies('GET', 'session.php', ['karavan_remember' => $cookie]);
+
+            $this->assertSame(401, $status);
+            $this->assertFalse($json['logged_in']);
+            $this->assertSame('deleted', $set['karavan_remember']['value'], 'The bad cookie is deleted from the browser.');
+        }
+    }
+
+    // Persistent login backend, Test 6
+    public function testExpiredRememberMeTokenIsRejectedAndDeleted(): void
+    {
+        TestDatabase::addUser($this->pdo, 'jamie.student', 'user', 'jamie.student@test.com');
+        [, $remember] = $this->loginCookies('jamie.student@test.com', 'Password123!');
+        $this->pdo->exec("UPDATE auth_tokens SET expires_at = '2020-01-01 00:00:00'");
+
+        [$status] = $this->withCookies('GET', 'session.php', ['karavan_remember' => $remember]);
+
+        $this->assertSame(401, $status);
+        $this->assertSame(0, $this->tokenCount());
+    }
+
+    // Persistent login backend, Test 7
+    public function testLogoutEndsBothTheSessionAndTheRememberMeLogin(): void
+    {
+        TestDatabase::addUser($this->pdo, 'jamie.student', 'user', 'jamie.student@test.com');
+        [$session, $remember] = $this->loginCookies('jamie.student@test.com', 'Password123!');
+        $both = ['PHPSESSID' => $session, 'karavan_remember' => $remember];
+
+        [$logoutStatus, $logout, $set] = $this->withCookies('POST', 'logout.php', $both);
+
+        $this->assertSame(200, $logoutStatus);
+        $this->assertSame(['success' => true], $logout);
+        $this->assertSame('deleted', $set['karavan_remember']['value']);
+        $this->assertSame(0, $this->tokenCount());
+        [$status] = $this->withCookies('GET', 'session.php', $both);
+        $this->assertSame(401, $status, 'An old copy of the cookie cannot log back in.');
+    }
+
+    public function testDeletingAnAccountDeletesItsRememberMeTokens(): void
+    {
+        $userId = TestDatabase::addUser($this->pdo, 'jamie.student', 'user', 'jamie.student@test.com');
+        [, $remember] = $this->loginCookies('jamie.student@test.com', 'Password123!');
+
+        $this->pdo->exec("DELETE FROM users WHERE id = $userId");
+
+        $this->assertSame(0, $this->tokenCount());
+        [$status] = $this->withCookies('GET', 'session.php', ['karavan_remember' => $remember]);
+        $this->assertSame(401, $status);
+    }
+
+    public function testSessionRejectsTheWrongMethod(): void
+    {
+        [$status, $json] = $this->withCookies('POST', 'session.php', []);
+
+        $this->assertSame(405, $status);
+        $this->assertSame(['success' => false, 'error' => 'Method not allowed.'], $json);
+    }
+
     public function testModeratorSignsInFromNormalLoginPageAndCanReview(): void
     {
         TestDatabase::addUser($this->pdo, 'moderator@test.com', 'moderator');
@@ -712,7 +889,7 @@ final class EndpointsHttpTest extends TestCase
         [$listStatus, , $listRaw] = $this->request('GET', 'list_communities.php', null, $session);
         $this->assertSame(200, $listStatus);
         $this->assertSame(
-            '{"success":true,"communities":[{"community_id":' . $keller . ',"name":"Keller Properties LLC"},{"community_id":' . $riverside . ',"name":"Riverside Apartments"}]}',
+            '{"success":true,"communities":[{"community_id":' . $keller . ',"name":"Keller Properties LLC"},{"community_id":' . $riverside . ',"name":"Riverside Apartments"}],"joined_community_id":null}',
             $listRaw
         );
 
@@ -729,6 +906,27 @@ final class EndpointsHttpTest extends TestCase
         [$again] = $this->login('drew.student@test.com', 'Student123!');
         $this->assertSame($riverside, $again['community_id']);
         $this->assertSame('Riverside Apartments', $again['community_name']);
+    }
+
+    // Leave a Community backend
+    public function testStudentLeavesTheirCommunity(): void
+    {
+        $keller = $this->approvedCommunity('Keller Properties LLC', 'morgan.keller.b4@test.com');
+        $this->signUp('drew.student', 'drew.student@test.com', 'Student123!');
+        [, $session] = $this->login('drew.student@test.com', 'Student123!');
+        $this->postJson('join_community.php', json_encode(['community_id' => $keller]), $session);
+        [, $listed] = $this->request('GET', 'list_communities.php', null, $session);
+        $this->assertSame($keller, $listed['joined_community_id']);
+
+        [$leaveStatus, , $leaveRaw] = $this->request('POST', 'leave_community.php', null, $session);
+
+        $this->assertSame(200, $leaveStatus);
+        $this->assertSame('{"success":true,"community_id":null,"community_name":null}', $leaveRaw);
+        $this->assertNull($this->pdo->query("SELECT community_id FROM users WHERE username = 'drew.student'")->fetchColumn());
+        [, $after] = $this->request('GET', 'list_communities.php', null, $session);
+        $this->assertNull($after['joined_community_id']);
+        [$again] = $this->login('drew.student@test.com', 'Student123!');
+        $this->assertNull($again['community_id']);
     }
 
     public function testJoiningANonexistentCommunityReturns404(): void
@@ -753,6 +951,8 @@ final class EndpointsHttpTest extends TestCase
         $this->assertSame('{"success":false,"error":"You do not have permission to perform this action."}', $listRaw);
         $this->assertSame(403, $joinStatus);
         $this->assertSame($listRaw, $joinRaw);
+        [$leaveStatus, , $leaveRaw] = $this->request('POST', 'leave_community.php');
+        $this->assertSame([403, $listRaw], [$leaveStatus, $leaveRaw]);
     }
 
     public function testCommunityEndpointsRejectTheWrongMethod(): void
@@ -761,7 +961,8 @@ final class EndpointsHttpTest extends TestCase
 
         [$listStatus] = $this->postJson('list_communities.php', '{}', $session);
         [$joinStatus] = $this->request('GET', 'join_community.php', null, $session);
+        [$leaveStatus] = $this->request('GET', 'leave_community.php', null, $session);
 
-        $this->assertSame([405, 405], [$listStatus, $joinStatus]);
+        $this->assertSame([405, 405, 405], [$listStatus, $joinStatus, $leaveStatus]);
     }
 }

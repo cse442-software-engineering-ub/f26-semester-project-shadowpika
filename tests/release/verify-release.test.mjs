@@ -35,13 +35,12 @@ test('an overwritten release file is detected by its digest', () => fixture((dir
     assert.throws(() => verifyRelease(directory, repo), /Hash mismatch: home.html/);
 }));
 test('a missing image is detected even if the manifest was refreshed', () => fixture((directory, manifest) => {
-    const file = 'profile.html';
-    update(directory, manifest, file, fs.readFileSync(path.join(directory, file), 'utf8').replace('assets/images/placeholder.png', 'assets/images/missing.png'));
-    assert.throws(() => verifyRelease(directory, repo), /missing \.\/assets\/images\/missing.png/);
-}));
-test('a Profile placeholder cannot overwrite the existing page unnoticed', () => fixture((directory, manifest) => {
-    update(directory, manifest, 'profile.html', '<!doctype html><html><body><h1>Profile</h1></body></html>');
-    assert.throws(() => verifyRelease(directory, repo), /Profile was replaced by a placeholder/);
+    const file = 'home.html';
+    const original = fs.readFileSync(path.join(directory, file), 'utf8');
+    const changed = original.replace(/assets\/icons\/favicon\.svg/, 'assets/icons/missing.svg');
+    assert.notEqual(changed, original, 'home.html should reference the favicon fixture');
+    update(directory, manifest, file, changed);
+    assert.throws(() => verifyRelease(directory, repo), /missing .*assets\/icons\/missing\.svg/);
 }));
 test('manifest traversal is rejected before reading outside the release', () => fixture((directory, manifest) => {
     manifest.files['../outside.txt'] = 'untrusted';

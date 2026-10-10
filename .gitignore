@@ -1,9 +1,10 @@
 # Dependencies
 node_modules/
 
-# Build output
+# Generated build and deployment output
 dist/
 dist-ssr/
+/deploy/
 
 # Environment / local config
 .env
@@ -28,8 +29,4 @@ vendor/
 .phpunit.result.cache
 karavan_uploads/
 scripts/local-dev/runtime/
-deploy/config.local.php
-deploy/karavan_uploads/
-deploy/listing/uploads/*
-!deploy/listing/uploads/.htaccess
 /uploads/

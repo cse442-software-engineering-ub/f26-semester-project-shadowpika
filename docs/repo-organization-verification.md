@@ -1,61 +1,57 @@
-# Organization verification — 2026-10-08
+# Organization verification — 2026-10-09
 
-Baseline: `5f7daaf`, branch `165-frontend-add-price-range-filtering`. The user retains
-all Git branch/commit/push/merge and WinSCP deployment operations. Nothing has been
-uploaded to a course server by these checks.
+Baseline: latest `origin/dev` (`3d9a1a5`) merged into branch
+`165-frontend-add-price-range-filtering`. The user retains all Git
+branch/commit/push/merge and WinSCP deployment operations. Nothing was uploaded to a
+course server by these checks.
 
 ## Implemented
 
-- Source separated into frontend, backend, database, tests, scripts, and docs.
-- Generated release is tracked under `deploy/`; old root wrappers and stale bundles
-  are replaced by one reproducible build and manifest.
-- Existing root page/API routes and seed image URLs remain compatible.
-- Profile preserves its existing handwritten page instead of the React placeholder.
-- Account/password/general settings remain available alongside React admin locations.
-- Shared navigation replaces fixed historical navbar bundles and duplicated wrapper
-  logout injection, including desktop/mobile controls and the existing POST contract.
-- Search, listing, and item-details connections use server configuration rather than
-  embedded database credentials. Check that configuration before deployment.
+- Source is separated into frontend, backend, database, tests, scripts, and docs.
+- The generated `deploy/` bundle is ignored by Git. It is reproduced locally by the
+  release build and uploaded with WinSCP after review.
+- Latest `dev` work was retained in the organized source, including persistent login,
+  responsive navigation, community leaving, account/admin settings, and Manage Listings.
+- Old root wrappers, hashed assets, duplicated PHP includes, personal project copies,
+  and generated settings pages are not source files.
+- Existing public page/API URLs remain compatible through the generated release layout
+  and lightweight redirects for older nested settings URLs.
+- Server credentials, user uploads, sessions, dependencies, caches, and generated
+  deployment files remain outside Git.
 
 ## Evidence
 
-- Frontend: 130 tests pass with the existing npm lockfile; lint has only preexisting
-  warnings in App/NavBar.
-- PHP: 84 syntax checks passed, including source, release, and test files.
-- Backend: 162 tests / 493 assertions passed against the assembled `deploy/`
-  layout, including configuration-alias regressions.
-- Release verifier: 5 tests pass, including tampering, broken-image, placeholder,
-  and unsafe-manifest detection. All 100 managed release files passed reference/hash
-  checks; rebuilding twice produced identical manifests.
-- Build safety: 2 tests pass for deterministic rebuilding, unmanaged runtime-file
-  preservation, and refusal to overwrite a manually edited release page.
-- All six PowerShell build/API scripts parsed successfully; `git diff --check` passed.
-- Headless Chrome: ten desktop pages loaded below a simulated course subdirectory
-  without local 404s or JavaScript exceptions. Four mobile navigation paths and logout
-  were exercised. APIs were mocked: this is not live integrated acceptance testing.
-- Screenshots and the one-time smoke runner are outside the repo at
-  `D:\Download\CSE 442\repo-organization-qa` and
-  `D:\Download\CSE 442\karavan-release-smoke.mjs`.
+- Frontend: 12 test files and 155 tests passed.
+- Production frontend build completed successfully with 80 transformed modules.
+- Lint completed with warnings only and no errors. The warnings are in existing or
+  newly merged App, navigation, and Manage Listings code.
+- Release verifier: 4 tests passed for links/hashes, tampering, a missing image, and
+  unsafe manifest traversal.
+- Build safety: 2 tests passed for deterministic rebuilding, preservation of an
+  unmanaged runtime file, and refusal to overwrite a manually edited release page.
+- The assembled local deployment contains 109 manifest-managed files and passed its
+  local-reference and SHA-256 checks.
+- PHP syntax and PHPUnit could not be rerun in this Codex environment because a PHP
+  executable is not installed. They remain required before deployment.
 
 ## Review before release
 
-- MySQL filtering/Create Listing APIs still need verification with the new server
-  configuration. The SQLite PHPUnit suite is not a MySQL filtering test.
-- Real session-cookie expiry and Cattle integration have not been verified; existing
-  login/logout cookie domain settings target Aptitude.
-- Legacy Profile and static Account Settings still overflow at 390px. Their navigation
-  can be exercised, but they are not certified responsive by this smoke test.
-- npm audit reports one preexisting high-severity development dependency advisory
-  in `source-map-js` (`GHSA-68fv-2mgg-jv7q`). No dependency upgrade/audit fix is included.
-- Check for newer legitimate server-only teammate changes before replacing a live
-  release. Preserve secrets, user uploads, sessions, and database contents.
+- The missing Manage Listings endpoints were recovered from the server copy and
+  rewritten to use the repository's database configuration and authenticated user.
+  Updates, status changes, and deletion are restricted to listings owned by that user.
+  Their PHP and MySQL behavior still requires server-side verification before release.
+- MySQL filtering/Create Listing APIs still need verification with the server
+  configuration. The local release verifier is not a MySQL integration test.
+- Real session-cookie expiry and Cattle/Aptitude behavior require server testing.
+- Preserve server-only secrets, user uploads, sessions, and database contents when
+  replacing the live application files.
 - PM/card review and actual server/UI acceptance remain required. Keep #165 In Progress
-  while reviewing; do not treat these local checks as authorization to merge/deploy.
+  until the reorganized source and deployment are reviewed.
 
-Old generated wrappers/assets are recoverable in the local backup:
-`D:\Download\CSE 442\repo-organization-backup-5f7daaf`.
+Old generated wrappers/assets remain recoverable from Git history and the local backup
+at `D:\Download\CSE 442\repo-organization-backup-5f7daaf`; they are not duplicated in
+the organized source tree.
 
 The [Sprint 2 rubric](https://webdev.cse.buffalo.edu/cse404/442rubric2/) requires clear
-directory organization and release files in the repo but does not prescribe this
-specific layout. An unmerged development branch is an appropriate review stage, not
-by itself the finished rubric release.
+directory organization. Per the PM's feedback, generated deployment copies are not
+tracked when the same files are reproducible from source.

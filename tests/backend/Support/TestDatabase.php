@@ -55,6 +55,32 @@ final class TestDatabase
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )"
         );
+        // Mirrors sql/005_auth_tokens.sql.
+        $pdo->exec(
+            "CREATE TABLE auth_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+                selector TEXT NOT NULL UNIQUE,
+                token_hash TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )"
+        );
+        $pdo->exec(
+            "CREATE TABLE listings (
+                listing_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                owner_id INTEGER NULL REFERENCES users (id) ON DELETE SET NULL,
+                name TEXT NOT NULL,
+                price NUMERIC NOT NULL,
+                `condition` TEXT NOT NULL,
+                image_url TEXT NULL,
+                category TEXT NOT NULL DEFAULT 'Other',
+                related_course TEXT NULL,
+                meeting_location TEXT NULL,
+                description TEXT NULL,
+                status TEXT NOT NULL DEFAULT 'active'
+            )"
+        );
 
         return $pdo;
     }
@@ -99,6 +125,32 @@ final class TestDatabase
             password_hash($row['password'], PASSWORD_BCRYPT),
             $row['proof_file_name'], $row['proof_original_name'], $row['proof_mime_type'], $row['status'],
             $row['user_id'] ?? null,
+        ]);
+        return (int) $pdo->lastInsertId();
+    }
+
+    public static function addListing(PDO $pdo, ?int $ownerId, array $overrides = []): int
+    {
+        $row = array_merge([
+            'name'             => 'Calculus Textbook',
+            'price'            => '35.00',
+            'condition'        => 'Good',
+            'image_url'        => 'uploads/calculus-textbook.jpg',
+            'category'         => 'Textbooks',
+            'related_course'   => 'MTH 141',
+            'meeting_location' => 'Capen Hall · Main entrance',
+            'description'      => 'Used for one semester.',
+            'status'           => 'active',
+        ], $overrides);
+        $stmt = $pdo->prepare(
+            'INSERT INTO listings
+                (owner_id, name, price, `condition`, image_url, category, related_course, meeting_location, description, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([
+            $ownerId, $row['name'], $row['price'], $row['condition'], $row['image_url'],
+            $row['category'], $row['related_course'], $row['meeting_location'],
+            $row['description'], $row['status'],
         ]);
         return (int) $pdo->lastInsertId();
     }

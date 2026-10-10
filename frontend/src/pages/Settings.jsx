@@ -5,10 +5,10 @@ import { fetchApprovedLocations } from '../api.js';
 import '../ProductSearch.css';
 import '../styles/settings.css';
 
-const TABS = ['General', 'Account', 'Customization'];
+// Account settings is Cristino's page in settings/; its Admin tab links back here.
+export const ACCOUNT_SETTINGS_HREF = './settings/account-settings.html';
 
 export default function Settings() {
-    const [activeTab, setActiveTab] = useState('Account');
     // null while checking; the Admin tab only appears once the server confirms the admin role.
     const [adminLocations, setAdminLocations] = useState(null);
 
@@ -16,15 +16,17 @@ export default function Settings() {
         let cancelled = false;
         fetchApprovedLocations()
             .then((result) => {
-                if (!cancelled && result.success && Array.isArray(result.locations)) setAdminLocations(result.locations);
+                if (cancelled) return;
+                if (result.success && Array.isArray(result.locations)) setAdminLocations(result.locations);
+                else window.location.replace(ACCOUNT_SETTINGS_HREF);
             })
-            .catch(() => {});
+            .catch(() => {
+                if (!cancelled) window.location.replace(ACCOUNT_SETTINGS_HREF);
+            });
         return () => {
             cancelled = true;
         };
     }, []);
-
-    const tabs = adminLocations ? [...TABS, 'Admin'] : TABS;
 
     return (
         <div className="ps-page">
@@ -35,35 +37,35 @@ export default function Settings() {
 
                 <section className="kv-settings-card">
                     <div className="kv-settings-tabs" role="tablist" aria-label="Settings sections">
-                        {tabs.map((tab) => (
+                        <button
+                            type="button"
+                            role="tab"
+                            id="settings-tab-Account"
+                            aria-selected="false"
+                            className="kv-settings-tab"
+                            onClick={() => window.location.assign(ACCOUNT_SETTINGS_HREF)}
+                        >
+                            Account
+                        </button>
+                        {adminLocations ? (
                             <button
-                                key={tab}
                                 type="button"
                                 role="tab"
-                                id={`settings-tab-${tab}`}
-                                aria-selected={activeTab === tab}
+                                id="settings-tab-Admin"
+                                aria-selected="true"
                                 aria-controls="settings-panel"
-                                className={`kv-settings-tab${activeTab === tab ? ' is-active' : ''}`}
-                                onClick={() => setActiveTab(tab)}
+                                className="kv-settings-tab is-active"
                             >
-                                {tab}
+                                Admin
                             </button>
-                        ))}
+                        ) : null}
                     </div>
 
-                    <div id="settings-panel" className="kv-settings-content" role="tabpanel" aria-labelledby={`settings-tab-${activeTab}`}>
-                        {activeTab === 'Admin' && adminLocations ? (
+                    {adminLocations ? (
+                        <div id="settings-panel" className="kv-settings-content" role="tabpanel" aria-labelledby="settings-tab-Admin">
                             <ApprovedLocationsAdmin initialLocations={adminLocations} />
-                        ) : (
-                            activeTab === 'Account' ? (
-                                <a href="./settings/account-settings.html">Open account settings</a>
-                            ) : activeTab === 'General' ? (
-                                <a href="./settings/general-settings.html">Open general settings</a>
-                            ) : (
-                                <p className="kv-settings-section__hint">This section is coming soon.</p>
-                            )
-                        )}
-                    </div>
+                        </div>
+                    ) : null}
                 </section>
             </main>
         </div>
