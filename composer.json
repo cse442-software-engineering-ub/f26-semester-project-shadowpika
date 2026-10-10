@@ -14,7 +14,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Karavan\\Tests\\": "tests/"
+            "Karavan\\Tests\\": "tests/backend/"
         }
     },
     "scripts": {
