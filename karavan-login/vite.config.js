@@ -24,6 +24,7 @@ export default defineConfig({
                 sell: 'sell.html',
                 profile: 'profile.html',
                 notFound: '404.html',
+                manageListings: 'manage-listings.html'
                 // The static settings/ pages load this by a fixed name, so it can't be hashed.
                 navbar: 'src/navbar-main.jsx'
             },
