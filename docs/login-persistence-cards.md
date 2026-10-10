@@ -29,11 +29,11 @@ Use any account you can log in with as `[TEST_EMAIL]` / `[TEST_PASSWORD]` (e.g. 
 
 ## Frontend: Block pages when logged out
 
-Automated: `karavan-login/src/__tests__/RequireLogin.test.jsx` (`npm test` in `karavan-login`).
+Automated: `frontend/src/__tests__/RequireLogin.test.jsx` (`npm test` in `frontend`).
 
 ### Test 1 — Detects failure to show a page to a logged-in user
 1. Log in at `[APTITUDE_BASE_URL]` with `[TEST_EMAIL]` / `[TEST_PASSWORD]`.
-2. Open each of these: `home.html`, `product-search.html`, `sell.html`, `settings.html`, `profile.html`.
+2. Open each of these: `home.html`, `product-search.html`, `sell.html`, `manage-listings.html`, and `settings.html`.
 3. Verify each page loads with the navigation bar and stays on its own URL.
 
 ### Test 2 — Detects failure to block a logged-out visitor
@@ -42,7 +42,7 @@ Automated: `karavan-login/src/__tests__/RequireLogin.test.jsx` (`npm test` in `k
 3. Open `[APTITUDE_BASE_URL]/home.html`.
 4. Verify a GET to `session.php` returns 401 with `{"success":false,"logged_in":false,"error":"You are not logged in."}`.
 5. Verify the browser ends on the login page (`[APTITUDE_BASE_URL]/`) and the home page content and navigation bar were never shown.
-6. Repeat steps 3–5 with `product-search.html`, `sell.html`, `settings.html`, `profile.html`, `item.html?id=1`, `meet.html?listing_id=1` and `#/moderator`.
+6. Repeat steps 3–5 with `product-search.html`, `sell.html`, `manage-listings.html`, `settings.html`, `item.html?id=1`, `meet.html?listing_id=1` and `#/moderator`.
 7. Verify `[APTITUDE_BASE_URL]/register.html`, `[APTITUDE_BASE_URL]/#/admin-register` and `[APTITUDE_BASE_URL]/404.html` still open without logging in.
 
 ### Test 3 — Detects failure to block a page after logging out
@@ -56,7 +56,7 @@ Automated: `karavan-login/src/__tests__/RequireLogin.test.jsx` (`npm test` in `k
 
 ## Frontend: Go straight home when already logged in
 
-Automated: the "Persistent login" tests in `karavan-login/src/__tests__/Login.test.jsx`.
+Automated: the "Persistent login" tests in `frontend/src/__tests__/Login.test.jsx`.
 
 ### Test 1 — Detects failure to skip the login form for a logged-in user
 1. Log in with `[TEST_EMAIL]` / `[TEST_PASSWORD]`.
