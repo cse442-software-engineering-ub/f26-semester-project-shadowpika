@@ -18,6 +18,7 @@ header("Content-Type: application/json");
 // -----------------------------
 
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 // try {
 //     $pdo = karavan_pdo();
@@ -180,13 +181,7 @@ try {
     if ($stmt->rowCount() === 1) {
 
         // Delete authentication cookie
-        setcookie(
-            "karavan_auth_cookie",
-            "",
-            time() - 3600,
-            "/",
-            ".aptitude.cse.buffalo.edu"
-        );
+        karavan_set_auth_cookie('', time() - 3600);
 
         // Destroy session
         $_SESSION = [];

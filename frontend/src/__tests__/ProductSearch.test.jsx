@@ -98,6 +98,20 @@ describe('ProductSearch category filtering', () => {
         expect(screen.getByText('Showing no matches on campus')).toBeInTheDocument();
     });
 
+    it('finds listings by their related course number', async () => {
+        render(<ProductSearch />);
+        await finishSearch();
+
+        fireEvent.change(screen.getByRole('textbox', { name: 'Search products' }), {
+            target: { value: 'MTH 141' },
+        });
+        await finishSearch();
+
+        expect(screen.getByText('1 item found')).toBeInTheDocument();
+        expect(screen.getByText('Calculus Textbook')).toBeInTheDocument();
+        expect(screen.queryByText('Calculus Workbook')).not.toBeInTheDocument();
+    });
+
     it('clears categories without clearing the product-name query', async () => {
         render(<ProductSearch />);
         await finishSearch();
@@ -578,6 +592,12 @@ describe('listing search helpers', () => {
         expect(results.length).toBeGreaterThan(0);
         expect(results.every((listing) => listing.category === 'Textbooks')).toBe(true);
         expect(results.some((listing) => listing.listing_id === 91004)).toBe(false);
+    });
+
+    it('matches local listings by related course without returning the course field', () => {
+        const results = searchLocalListings('CSE 331');
+        expect(results.map((listing) => listing.name)).toEqual(['Introduction to Algorithms']);
+        expect(results[0]).not.toHaveProperty('related_course');
     });
 
     it('filters local listings by condition and intersects condition with category', () => {

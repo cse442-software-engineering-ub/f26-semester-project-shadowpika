@@ -1,9 +1,9 @@
 <?php
 // GET /api/search_listings.php?q=<text>&categories=Textbooks,Dorm%20Living&conditions=Good,Like%20New&min_price=10.00&max_price=75.00
 // Returns ACTIVE listings. The optional text query matches the start of any word in the product
-// name or the start of the category. Optional category values are exact-match and use OR with one
-// another. Optional condition values are also exact-match and use OR with one another. Different
-// filter types are combined with AND. Optional price bounds are inclusive.
+// name or related course, or the start of the category. Optional category values are exact-match
+// and use OR with one another. Optional condition values are also exact-match and use OR with one
+// another. Different filter types are combined with AND. Optional price bounds are inclusive.
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: GET");
@@ -175,9 +175,11 @@ try {
         $wordStartsWith = '% ' . $escaped . '%';
         $sql .= " AND (LOWER(name) LIKE LOWER(?) ESCAPE '\\\\'
                        OR LOWER(name) LIKE LOWER(?) ESCAPE '\\\\'
-                       OR LOWER(category) LIKE LOWER(?) ESCAPE '\\\\')";
-        $types .= 'sss';
-        array_push($parameters, $startsWith, $wordStartsWith, $startsWith);
+                       OR LOWER(category) LIKE LOWER(?) ESCAPE '\\\\'
+                       OR LOWER(related_course) LIKE LOWER(?) ESCAPE '\\\\'
+                       OR LOWER(related_course) LIKE LOWER(?) ESCAPE '\\\\')";
+        $types .= 'sssss';
+        array_push($parameters, $startsWith, $wordStartsWith, $startsWith, $startsWith, $wordStartsWith);
     }
 
     if (count($storedCategories) > 0) {

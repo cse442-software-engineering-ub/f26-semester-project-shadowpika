@@ -13,17 +13,7 @@ karavan_start_session();
 
 $_SESSION = [];
 
-if (ini_get('session.use_cookies')) {
-    $params = session_get_cookie_params();
-
-    setcookie(
-        "karavan_auth_cookie",
-        "",
-        time() - 3600,
-        "/",
-        ".aptitude.cse.buffalo.edu"
-    );
-}
+karavan_set_auth_cookie('', time() - 3600);
 
 session_destroy();
 
