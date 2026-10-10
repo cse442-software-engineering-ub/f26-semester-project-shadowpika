@@ -1,15 +1,15 @@
 // LOCAL PREVIEW MODE data: mirrors the seed rows in database/seeds/listings.sql so search can be
 // tried with `npm run dev` (which can't run PHP). Production always calls api/search_listings.php.
 const LOCAL_LISTINGS = [
-    { listing_id: 91001, name: 'Calculus Textbook', price: '35.00', condition: 'Good', image_url: 'uploads/calculus-textbook.jpg', category: 'Books', status: 'active', description: 'Used for one semester. No writing or highlighting.' },
-    { listing_id: 91002, name: 'Calculus Workbook', price: '20.00', condition: 'Like New', image_url: 'uploads/calculus-workbook.jpg', category: 'Books', status: 'active' },
+    { listing_id: 91001, name: 'Calculus Textbook', price: '35.00', condition: 'Good', image_url: 'uploads/calculus-textbook.jpg', category: 'Books', related_course: 'MTH 141', status: 'active', description: 'Used for one semester. No writing or highlighting.' },
+    { listing_id: 91002, name: 'Calculus Workbook', price: '20.00', condition: 'Like New', image_url: 'uploads/calculus-workbook.jpg', category: 'Books', related_course: 'MTH 142', status: 'active' },
     { listing_id: 91003, name: 'Desk Lamp', price: '15.00', condition: 'Good', image_url: 'uploads/desk-lamp.jpg', category: 'Dorm Living', status: 'active' },
-    { listing_id: 91004, name: 'Calculus Notes', price: '5.00', condition: 'Fair', image_url: 'uploads/calculus-notes.jpg', category: 'Books', status: 'sold' },
-    { listing_id: 91005, name: 'Physical Chemistry', price: '60.00', condition: 'Good', image_url: 'uploads/physical-chemistry.jpg', category: 'Books', status: 'active' },
-    { listing_id: 91006, name: 'Genetics: A Conceptual Approach', price: '45.00', condition: 'Like New', image_url: 'uploads/genetics.jpg', category: 'Books', status: 'active' },
-    { listing_id: 91007, name: 'Campbell Biology', price: '55.00', condition: 'Acceptable', image_url: 'uploads/campbell-biology.jpg', category: 'Books', status: 'active' },
-    { listing_id: 91008, name: 'Organic Chemistry Textbook', price: '50.00', condition: 'Good', image_url: 'uploads/organic-chemistry.jpg', category: 'Books', status: 'active' },
-    { listing_id: 91009, name: 'Introduction to Algorithms', price: '40.00', condition: 'Like New', image_url: 'uploads/intro-algorithms.jpg', category: 'Books', status: 'active' },
+    { listing_id: 91004, name: 'Calculus Notes', price: '5.00', condition: 'Fair', image_url: 'uploads/calculus-notes.jpg', category: 'Books', related_course: 'MTH 141', status: 'sold' },
+    { listing_id: 91005, name: 'Physical Chemistry', price: '60.00', condition: 'Good', image_url: 'uploads/physical-chemistry.jpg', category: 'Books', related_course: 'CHE 203', status: 'active' },
+    { listing_id: 91006, name: 'Genetics: A Conceptual Approach', price: '45.00', condition: 'Like New', image_url: 'uploads/genetics.jpg', category: 'Books', related_course: 'BIO 201', status: 'active' },
+    { listing_id: 91007, name: 'Campbell Biology', price: '55.00', condition: 'Acceptable', image_url: 'uploads/campbell-biology.jpg', category: 'Books', related_course: 'BIO 200', status: 'active' },
+    { listing_id: 91008, name: 'Organic Chemistry Textbook', price: '50.00', condition: 'Good', image_url: 'uploads/organic-chemistry.jpg', category: 'Books', related_course: 'CHE 201', status: 'active' },
+    { listing_id: 91009, name: 'Introduction to Algorithms', price: '40.00', condition: 'Like New', image_url: 'uploads/intro-algorithms.jpg', category: 'Books', related_course: 'CSE 331', status: 'active' },
     { listing_id: 91010, name: 'Dorm Fridge', price: '80.00', condition: 'Good', image_url: 'uploads/dorm-fridge.jpg', category: 'Dorm Living', status: 'active' },
 ];
 
@@ -46,7 +46,8 @@ export function findLocalListing(listingId) {
     return { listing_id, name, price, condition, category: canonicalCategory(category), description };
 }
 
-// Same rules as the PHP endpoint: active only, optional case-insensitive keyword matching,
+// Same rules as the PHP endpoint: active only, optional case-insensitive keyword matching by
+// product name, category, or related course,
 // exact category and condition filtering, inclusive price bounds, OR within each multi-select filter
 // type, and AND between different filter types.
 export function searchLocalListings(query = '', categories = [], conditions = [], minPrice = '', maxPrice = '') {
@@ -58,11 +59,14 @@ export function searchLocalListings(query = '', categories = [], conditions = []
     const matches = (l) => {
         const name = l.name.toLowerCase();
         const category = canonicalCategory(l.category);
+        const relatedCourse = (l.related_course || '').toLowerCase();
         const price = Number(l.price);
         const matchesQuery = q === ''
             || name.startsWith(q)
             || name.includes(' ' + q)
-            || category.toLowerCase().startsWith(q);
+            || category.toLowerCase().startsWith(q)
+            || relatedCourse.startsWith(q)
+            || relatedCourse.includes(' ' + q);
         const matchesCategory = selectedCategories.size === 0 || selectedCategories.has(category);
         const matchesCondition = selectedConditions.size === 0 || selectedConditions.has(l.condition);
         const matchesMinimum = minimum === null || price >= minimum;

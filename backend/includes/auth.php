@@ -18,15 +18,18 @@ function karavan_set_auth_cookie(string $value, int $expires): void
     if (headers_sent()) {
         return;
     }
+    $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
     setcookie(KARAVAN_AUTH_COOKIE, $value, [
         'expires'  => $expires,
         'path'     => '/',
-        'domain'   => 'aptitude.cse.buffalo.edu',
-        'secure'   => true,
+        // No domain option: keep the cookie on whichever host is serving the app
+        // (Aptitude, Cattle, or localhost) instead of tying it to one server.
+        'secure'   => $secure,
         // The settings pages read it from JavaScript, and it must also be sent inside the Figma iframe.
         'httponly' => false,
-        'samesite' => 'None',
+        'samesite' => $secure ? 'None' : 'Lax',
     ]);
+
 }
 
 // Every Aptitude team shares this host, so the cookie is scoped to this deployment's folder.

@@ -102,6 +102,7 @@ if (empty($curr_pass)) {
 // -----------------------------
 
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 try {
     $pdo = karavan_pdo();
@@ -259,13 +260,7 @@ try {
         "email" => $new_email
     ]);
 
-    setcookie(
-        "karavan_auth_cookie",
-        $new_username,
-        time() + 86400,
-        "/",
-        ".aptitude.cse.buffalo.edu"
-    );
+    karavan_set_auth_cookie($new_username, time() + KARAVAN_REMEMBER_SECONDS);
 
     http_response_code(200);
 
