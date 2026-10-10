@@ -16,7 +16,7 @@ try {
     ]);
 
 } catch (Throwable $e) {
-    error_log('admin-check.php failed: ' . $e->getMessage());
+    error_log('admin-check.php failed: ' . "Not an admin.");
 
     http_response_code(500);
 

@@ -20,24 +20,12 @@ header("Content-Type: application/json");
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 
-// try {
-//     $pdo = karavan_pdo();
-// } catch (\Throwable $e) {
-//     echo json_encode([
-//         "success" => false,
-//         "error" => "Database connection failed."
-//     ]);
-
-//     http_response_code(500);
-//     exit;
-// }
-
 try {
     $pdo = karavan_pdo();
 } catch (\Throwable $e) {
     echo json_encode([
         "success" => false,
-        "error" => $e->getMessage()
+        "error" => "Database connection failed."
     ]);
 
     http_response_code(500);
