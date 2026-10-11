@@ -4,13 +4,15 @@ import ItemCover from './ItemCover.jsx';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
-import { STATUS_LABELS, fetchMyMeetingRequests, formatMeetingDate, formatMeetingTime } from './meetingRequests.js';
+import { STATUS_LABELS, cancelMeetingRequest, fetchMyMeetingRequests, formatMeetingDate, formatMeetingTime } from './meetingRequests.js';
 
 // Home page: the logged-in buyer's meeting requests, in the order the server sends them.
 function Home() {
     const [requests, setRequests] = useState([]);
     const [status, setStatus] = useState('loading'); // loading | done | error
     const [error, setError] = useState('');
+    const [message, setMessage] = useState(null); // result of the last cancel: { kind, text }
+    const [cancellingId, setCancellingId] = useState(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -37,6 +39,25 @@ function Home() {
         };
     }, []);
 
+    // Only a pending request can be canceled; the server refuses anything else and its error is shown.
+    async function handleCancel(listingId) {
+        setMessage(null);
+        setCancellingId(listingId);
+        try {
+            const data = await cancelMeetingRequest(listingId);
+            if (data.success) {
+                setRequests((current) => current.filter((request) => !(request.listing_id === listingId && request.status === 'pending')));
+                setMessage({ kind: 'success', text: 'Your meeting request was canceled.' });
+            } else {
+                setMessage({ kind: 'error', text: data.error || 'Unable to cancel your meeting request.' });
+            }
+        } catch {
+            setMessage({ kind: 'error', text: 'Could not connect to the server.' });
+        } finally {
+            setCancellingId(null);
+        }
+    }
+
     return (
         <div className="ps-page">
             <NavBar />
@@ -48,6 +69,14 @@ function Home() {
 
                     {status === 'loading' && <p className="id-message">Loading your purchase requests...</p>}
                     {status === 'error' && <p className="id-message id-error" role="alert">{error}</p>}
+                    {message && (
+                        <p
+                            className={`mr-message mr-cancel-message ${message.kind === 'error' ? 'id-error' : 'mr-success'}`}
+                            role={message.kind === 'error' ? 'alert' : 'status'}
+                        >
+                            {message.text}
+                        </p>
+                    )}
                     {status === 'done' && requests.length === 0 && (
                         <p className="id-message">You have no purchase requests yet.</p>
                     )}
@@ -69,6 +98,16 @@ function Home() {
                                         <span className={`mr-status mr-status-${request.status}`}>
                                             {STATUS_LABELS[request.status] ?? request.status}
                                         </span>
+                                        {request.status === 'pending' && (
+                                            <button
+                                                type="button"
+                                                className="mr-cancel"
+                                                disabled={cancellingId === request.listing_id}
+                                                onClick={() => handleCancel(request.listing_id)}
+                                            >
+                                                Cancel Request
+                                            </button>
+                                        )}
                                     </div>
                                 </li>
                             ))}

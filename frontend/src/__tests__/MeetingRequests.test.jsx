@@ -186,7 +186,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
 
         const cards = [...container.querySelectorAll('.mr-request')].map((card) => card.querySelector('.mr-request-body').textContent);
         expect(cards).toEqual([
-            'Physics Lab Manual$7.50Jan 3, 9:05 AMCapen Hall Main EntrancePending',
+            'Physics Lab Manual$7.50Jan 3, 9:05 AMCapen Hall Main EntrancePendingCancel Request',
             'Graphing Calculator$60.00Jan 4, 12:00 PMStudent Union Main EntranceApproved',
             'Desk Chair$25.00Jan 5, 6:45 PMLockwood Memorial Library Main EntranceDenied',
             'Mini Fridge$50.00Jan 6, 12:30 AMStudent Union Main EntranceLocation Change Requested',
@@ -215,6 +215,63 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(alert).toHaveTextContent('Unable to load your purchase requests.');
         expect(alert).toHaveClass('id-error');
         expect(second.container.querySelector('.mr-request')).toBeNull();
+    });
+
+    const homeRequest = (listing_id, name, status) => ({
+        listing_id, name, price: '20.00', image_url: null, meeting_date: '2026-12-12', meeting_time: '16:00', location: 'Capen Hall Main Entrance', status,
+    });
+
+    it('Test 3: cancels a pending request, sending exactly its listing, and removes it from the list', async () => {
+        open('home.html');
+        const fetchMock = serve({
+            'get_my_meeting_requests.php': () => json(200, {
+                success: true,
+                requests: [homeRequest(91001, 'Calculus Textbook', 'approved'), homeRequest(91002, 'Calculus Workbook', 'pending')],
+            }),
+            'cancel_meeting_request.php': () => json(200, { success: true }),
+        });
+        render(<Home />);
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Cancel Request' }));
+
+        expect(await screen.findByText('Your meeting request was canceled.')).toBeInTheDocument();
+        const [[url, options]] = callsTo(fetchMock, 'cancel_meeting_request.php');
+        expect(url).toBe('./api/cancel_meeting_request.php');
+        expect(options.method).toBe('POST');
+        expect(options.body).toBe('{"listing_id":91002}');
+        expect(screen.queryByRole('heading', { name: 'Calculus Workbook' })).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Calculus Textbook' })).toBeInTheDocument();
+    });
+
+    it("Test 10: shows Cancel Request only on pending requests and the server's error when a cancel is refused", async () => {
+        open('home.html');
+        const fetchMock = serve({
+            'get_my_meeting_requests.php': () => json(200, {
+                success: true,
+                requests: [
+                    homeRequest(91001, 'Calculus Textbook', 'pending'),
+                    homeRequest(91002, 'Calculus Workbook', 'approved'),
+                    homeRequest(91007, 'Campbell Biology', 'location_change_requested'),
+                    homeRequest(91003, 'Desk Lamp', 'denied'),
+                ],
+            }),
+            'cancel_meeting_request.php': () => json(404, { success: false, error: 'You have no pending meeting request for this item.' }),
+        });
+        const { container } = render(<Home />);
+
+        await screen.findByRole('heading', { name: 'Calculus Textbook' });
+        const buttons = screen.getAllByRole('button', { name: 'Cancel Request' });
+        expect(buttons).toHaveLength(1);
+        expect(container.querySelector('.mr-request').contains(buttons[0])).toBe(true);
+
+        fireEvent.click(buttons[0]);
+
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('You have no pending meeting request for this item.');
+        expect(alert).toHaveClass('id-error');
+        expect(callsTo(fetchMock, 'cancel_meeting_request.php')[0][1].body).toBe('{"listing_id":91001}');
+        expect(screen.queryByText('Your meeting request was canceled.')).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Calculus Textbook' })).toBeInTheDocument();
     });
 });
 
