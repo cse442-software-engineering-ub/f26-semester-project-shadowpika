@@ -207,3 +207,25 @@ function karavan_create_meeting_request(PDO $pdo, ?int $userId, $input): array
 
     return [201, ['success' => true, 'request' => karavan_format_meeting_request($row)]];
 }
+
+/** Deletes the buyer's pending request for the listing. Approved, denied, and changed requests are left alone. */
+function karavan_cancel_meeting_request(PDO $pdo, ?int $userId, $input): array
+{
+    if ($userId === null) {
+        return karavan_not_logged_in();
+    }
+    $input = is_array($input) ? $input : [];
+
+    $listingId = karavan_parse_positive_id($input['listing_id'] ?? null);
+    if ($listingId === null) {
+        return [400, ['success' => false, 'error' => 'A valid listing_id is required.']];
+    }
+
+    $delete = $pdo->prepare("DELETE FROM meeting_requests WHERE buyer_id = ? AND listing_id = ? AND status = 'pending'");
+    $delete->execute([$userId, $listingId]);
+    if ($delete->rowCount() === 0) {
+        return [404, ['success' => false, 'error' => 'You have no pending meeting request for this item.']];
+    }
+
+    return [200, ['success' => true]];
+}
