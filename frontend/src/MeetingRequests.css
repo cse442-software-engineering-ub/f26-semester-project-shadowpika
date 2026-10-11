@@ -213,6 +213,31 @@
   color: #3f6fa0;
 }
 
+.mr-cancel-message {
+  margin-top: 12px;
+}
+
+.ps-page .mr-cancel {
+  margin-top: 8px;
+  padding: 5px 12px;
+  border: 1px solid #b4532a;
+  border-radius: 8px;
+  background: transparent;
+  color: #b4532a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ps-page .mr-cancel:hover,
+.ps-page .mr-cancel:focus-visible {
+  background: rgba(180, 83, 42, 0.1);
+}
+
+.ps-page .mr-cancel:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 @media (max-width: 768px) {
   .mr-meet {
     grid-template-columns: minmax(0, 1fr);

@@ -46,6 +46,16 @@ export async function createMeetingRequest({ listingId, date, time, locationId }
     return response.json();
 }
 
+export async function cancelMeetingRequest(listingId) {
+    const response = await fetch('./api/cancel_meeting_request.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ listing_id: Number(listingId) }),
+    });
+    return response.json();
+}
+
 // "Today" is the campus date, matching the backend's future-date check.
 export const campusToday = (now = new Date()) =>
     new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(now);
