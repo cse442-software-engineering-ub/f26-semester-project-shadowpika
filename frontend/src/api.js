@@ -58,9 +58,33 @@ export async function removeApprovedLocation(locationId) {
     return { status: response.status, ...(await readJson(response)) };
 }
 
+// The navbar and Sell form both need this list when Sell first opens. Share only
+// an in-flight request so the page sends one GET, while later picker refreshes
+// still reach the server.
+let communitiesRequest = null;
+
 // Doubles as the logged-in check for the nav: signed-out visitors get a 403.
 export async function fetchCommunities() {
-    const response = await fetch(apiUrl('list_communities.php'), { credentials: 'same-origin' });
+    if (communitiesRequest) return communitiesRequest;
+
+    const request = (async () => {
+        const response = await fetch(apiUrl('list_communities.php'), { credentials: 'same-origin' });
+        return { status: response.status, ...(await readJson(response)) };
+    })();
+    communitiesRequest = request;
+
+    try {
+        return await request;
+    } finally {
+        if (communitiesRequest === request) communitiesRequest = null;
+    }
+}
+
+export async function fetchMeetingLocations(community) {
+    const query = new URLSearchParams({ community });
+    const response = await fetch(apiUrl(`api/get_meeting_locations.php?${query.toString()}`), {
+        credentials: 'same-origin',
+    });
     return { status: response.status, ...(await readJson(response)) };
 }
 
