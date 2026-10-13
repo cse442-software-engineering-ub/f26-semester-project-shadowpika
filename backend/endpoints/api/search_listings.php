@@ -162,7 +162,7 @@ try {
     }
     $conn->set_charset('utf8mb4');
 
-    $sql = "SELECT listing_id, name, price, `condition`, image_url, category
+    $sql = "SELECT listing_id, name, price, `condition`, image_url, category, community
               FROM listings
              WHERE status = 'active'";
     $types = '';
@@ -228,6 +228,7 @@ try {
             "condition"  => $row['condition'],
             "image_url"  => $row['image_url'],
             "category"   => canonical_category($row['category']),
+            "community"  => $row['community'],
         ];
     }
 

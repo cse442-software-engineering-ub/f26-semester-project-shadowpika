@@ -74,16 +74,41 @@ function karavan_list_my_meeting_requests(PDO $pdo, ?int $userId): array
     return [200, ['success' => true, 'requests' => array_map('karavan_format_meeting_request', $stmt->fetchAll())]];
 }
 
-function karavan_list_meeting_locations(PDO $pdo, ?int $userId): array
+function karavan_list_meeting_locations(PDO $pdo, ?int $userId, $communityInput): array
 {
     if ($userId === null) {
         return karavan_not_logged_in();
     }
 
-    $stmt = $pdo->query('SELECT id, label FROM approved_locations ORDER BY created_at ASC, id ASC');
+    $communityLength = is_string($communityInput)
+        ? (function_exists('mb_strlen') ? mb_strlen($communityInput, 'UTF-8') : strlen($communityInput))
+        : 0;
+    if (!is_string($communityInput) || trim($communityInput) === '' || $communityLength > 255) {
+        return [400, ['success' => false, 'error' => 'A valid community is required.']];
+    }
+    $community = trim($communityInput);
+
+    // Compare in PHP so exact case-sensitive matching is enforced even when MySQL uses a
+    // case-insensitive collation. A pending "all of ub" must not match approved "All of UB".
+    $approved = $pdo->query("SELECT business_name FROM admin_requests WHERE status = 'approved'");
+    $communityExists = false;
+    foreach ($approved->fetchAll() as $row) {
+        if ((string) $row['business_name'] === $community) {
+            $communityExists = true;
+            break;
+        }
+    }
+    if (!$communityExists) {
+        return [404, ['success' => false, 'error' => 'Community not found.']];
+    }
+
+    $stmt = $pdo->query('SELECT id, label, community FROM approved_locations ORDER BY created_at ASC, id ASC');
 
     $locations = [];
     foreach ($stmt->fetchAll() as $row) {
+        if (($row['community'] ?? null) !== $community) {
+            continue;
+        }
         $locations[] = ['location_id' => (int) $row['id'], 'label' => $row['label']];
     }
 

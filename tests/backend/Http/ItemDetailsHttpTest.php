@@ -62,16 +62,17 @@ final class ItemDetailsHttpTest extends TestCase
                 `condition` TEXT NOT NULL,
                 image_url   TEXT,
                 category    TEXT NOT NULL DEFAULT 'Other',
+                community   TEXT,
                 description TEXT,
                 status      TEXT NOT NULL DEFAULT 'active'
             )"
         );
         // 91001 keeps the legacy "Books" label some shared databases still have.
         $pdo->exec(
-            "INSERT INTO listings (listing_id, name, price, `condition`, image_url, category, description, status) VALUES
-                (91001, 'Calculus Textbook', 35.00, 'Good',     'uploads/calculus-textbook.jpg', 'Books',     NULL, 'active'),
-                (91002, 'Calculus Workbook', 20.00, 'Like New', 'uploads/calculus-workbook.jpg', 'Textbooks', NULL, 'active'),
-                (91004, 'Calculus Notes',     5.00, 'Fair',     'uploads/calculus-notes.jpg',    'Textbooks', NULL, 'sold')"
+            "INSERT INTO listings (listing_id, name, price, `condition`, image_url, category, community, description, status) VALUES
+                (91001, 'Calculus Textbook', 35.00, 'Good',     'uploads/calculus-textbook.jpg', 'Books',     'All of UB', NULL, 'active'),
+                (91002, 'Calculus Workbook', 20.00, 'Like New', 'uploads/calculus-workbook.jpg', 'Textbooks', 'All of UB', NULL, 'active'),
+                (91004, 'Calculus Notes',     5.00, 'Fair',     'uploads/calculus-notes.jpg',    'Textbooks', 'All of UB', NULL, 'sold')"
         );
         // Same statement as database/migrations/item_details.sql
         $pdo->exec("UPDATE listings SET description = 'Used for one semester. No writing or highlighting.' WHERE listing_id = 91001");
@@ -110,6 +111,7 @@ final class ItemDetailsHttpTest extends TestCase
             'condition'   => 'Good',
             'image_url'   => 'uploads/calculus-textbook.jpg',
             'category'    => 'Textbooks',
+            'community'   => 'All of UB',
             'description' => 'Used for one semester. No writing or highlighting.',
         ]], '?listing_id=91001');
     }
@@ -123,6 +125,7 @@ final class ItemDetailsHttpTest extends TestCase
             'condition'   => 'Like New',
             'image_url'   => 'uploads/calculus-workbook.jpg',
             'category'    => 'Textbooks',
+            'community'   => 'All of UB',
             'description' => null,
         ]], '?listing_id=91002');
     }

@@ -51,6 +51,7 @@ final class TestDatabase
                 lat REAL NOT NULL,
                 lng REAL NOT NULL,
                 label TEXT NOT NULL,
+                community TEXT NULL,
                 created_by INTEGER NULL REFERENCES users (id) ON DELETE SET NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )"
@@ -76,6 +77,7 @@ final class TestDatabase
                 image_url TEXT NULL,
                 category TEXT NOT NULL DEFAULT 'Other',
                 related_course TEXT NULL,
+                community TEXT NULL,
                 meeting_location TEXT NULL,
                 description TEXT NULL,
                 status TEXT NOT NULL DEFAULT 'active'
@@ -85,10 +87,17 @@ final class TestDatabase
         return $pdo;
     }
 
-    public static function addLocation(PDO $pdo, float $lat, float $lng, string $label, ?int $createdBy = null): int
+    public static function addLocation(
+        PDO $pdo,
+        float $lat,
+        float $lng,
+        string $label,
+        ?int $createdBy = null,
+        ?string $community = null
+    ): int
     {
-        $stmt = $pdo->prepare('INSERT INTO approved_locations (lat, lng, label, created_by) VALUES (?, ?, ?, ?)');
-        $stmt->execute([$lat, $lng, $label, $createdBy]);
+        $stmt = $pdo->prepare('INSERT INTO approved_locations (lat, lng, label, created_by, community) VALUES (?, ?, ?, ?, ?)');
+        $stmt->execute([$lat, $lng, $label, $createdBy, $community]);
         return (int) $pdo->lastInsertId();
     }
 
@@ -138,18 +147,19 @@ final class TestDatabase
             'image_url'        => 'uploads/calculus-textbook.jpg',
             'category'         => 'Textbooks',
             'related_course'   => 'MTH 141',
+            'community'        => 'All of UB',
             'meeting_location' => 'Capen Hall · Main entrance',
             'description'      => 'Used for one semester.',
             'status'           => 'active',
         ], $overrides);
         $stmt = $pdo->prepare(
             'INSERT INTO listings
-                (owner_id, name, price, `condition`, image_url, category, related_course, meeting_location, description, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                (owner_id, name, price, `condition`, image_url, category, related_course, community, meeting_location, description, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $ownerId, $row['name'], $row['price'], $row['condition'], $row['image_url'],
-            $row['category'], $row['related_course'], $row['meeting_location'],
+            $row['category'], $row['related_course'], $row['community'], $row['meeting_location'],
             $row['description'], $row['status'],
         ]);
         return (int) $pdo->lastInsertId();

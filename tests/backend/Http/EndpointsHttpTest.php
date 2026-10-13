@@ -965,4 +965,64 @@ final class EndpointsHttpTest extends TestCase
 
         $this->assertSame([405, 405, 405], [$listStatus, $joinStatus, $leaveStatus]);
     }
+
+    public function testMeetingLocationsAreFilteredByExactApprovedCommunityName(): void
+    {
+        $this->approvedCommunity('All of UB', 'all-of-ub@test.com');
+        TestDatabase::addRequest($this->pdo, [
+            'business_name' => 'all of ub',
+            'email' => 'counterfeit-all-of-ub@test.com',
+            'status' => 'pending',
+        ]);
+        $capen = TestDatabase::addLocation(
+            $this->pdo,
+            43.000822,
+            -78.789203,
+            'Capen Hall Main Entrance',
+            null,
+            'All of UB'
+        );
+        TestDatabase::addLocation(
+            $this->pdo,
+            42.999,
+            -78.788,
+            'Other Community Office',
+            null,
+            'Keller Properties LLC'
+        );
+        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'community-listing-student'));
+
+        [$status, $body] = $this->request(
+            'GET',
+            'api/get_meeting_locations.php?community=' . rawurlencode('All of UB'),
+            null,
+            $session
+        );
+
+        $this->assertSame(200, $status);
+        $this->assertSame([
+            'success' => true,
+            'locations' => [[
+                'location_id' => $capen,
+                'label' => 'Capen Hall Main Entrance',
+            ]],
+        ], $body);
+
+        [$pendingStatus] = $this->request(
+            'GET',
+            'api/get_meeting_locations.php?community=' . rawurlencode('all of ub'),
+            null,
+            $session
+        );
+        [$missingStatus] = $this->request('GET', 'api/get_meeting_locations.php', null, $session);
+        [$methodStatus] = $this->request('POST', 'api/get_meeting_locations.php?community=All%20of%20UB', null, $session);
+        [$loggedOutStatus] = $this->request('GET', 'api/get_meeting_locations.php?community=All%20of%20UB');
+
+        $this->assertSame([404, 400, 405, 401], [
+            $pendingStatus,
+            $missingStatus,
+            $methodStatus,
+            $loggedOutStatus,
+        ]);
+    }
 }

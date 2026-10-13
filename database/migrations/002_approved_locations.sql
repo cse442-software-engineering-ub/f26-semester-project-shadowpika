@@ -14,8 +14,10 @@ SET @migration_sql = CONCAT(
         lat        DECIMAL(9,6)  NOT NULL,
         lng        DECIMAL(9,6)  NOT NULL,
         label      VARCHAR(100)  NOT NULL,
+        community  VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
         created_by ', @users_id_type, ' NULL,
         created_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_approved_locations_community (community),
         CONSTRAINT fk_approved_locations_created_by
             FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
