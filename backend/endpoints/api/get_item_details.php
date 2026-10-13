@@ -1,7 +1,8 @@
 <?php
 // GET /api/get_item_details.php?listing_id=<id>
 // Returns the details shown on item.html for one ACTIVE listing: name, price, condition,
-// image, category, and description. Sold, inactive, and missing listings are all "Listing not found."
+// image, category, community, and description. Sold, inactive, and missing listings are all
+// "Listing not found."
 header("Content-Type: application/json");
 
 // Suppress all warnings/notices so nothing (SQL errors, stack traces) leaks into the JSON payload
@@ -45,7 +46,7 @@ if ($listingId === false) {
 
 try {
     $stmt = item_details_pdo()->prepare(
-        "SELECT listing_id, name, price, `condition`, image_url, category, description
+        "SELECT listing_id, name, price, `condition`, image_url, category, community, description
            FROM listings
           WHERE listing_id = ? AND status = 'active'"
     );
@@ -68,6 +69,7 @@ try {
             "condition"   => $row['condition'],
             "image_url"   => ($imageUrl === null || trim($imageUrl) === '') ? null : $imageUrl,
             "category"    => LEGACY_CATEGORY_LABELS[$row['category']] ?? $row['category'],
+            "community"   => $row['community'],
             "description" => ($description === null || trim($description) === '') ? null : $description,
         ],
     ]);

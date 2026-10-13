@@ -51,6 +51,7 @@ function manage_listings_format(array $row): array
         'image_url'        => $row['image_url'],
         'category'         => $row['category'],
         'related_course'   => $row['related_course'],
+        'community'        => $row['community'],
         'meeting_location' => $row['meeting_location'],
         'description'      => $row['description'],
         'status'           => $row['status'],
@@ -65,7 +66,7 @@ function get_my_listings(PDO $pdo, ?int $userId): array
 
     $stmt = $pdo->prepare(
         'SELECT listing_id, name, price, `condition`, image_url, category,
-                related_course, meeting_location, description, status
+                related_course, community, meeting_location, description, status
            FROM listings
           WHERE owner_id = ?
           ORDER BY listing_id'

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS listings (
     image_url        VARCHAR(255)  DEFAULT NULL,
     category         VARCHAR(100)  NOT NULL DEFAULT 'Other',
     related_course   VARCHAR(100)  DEFAULT NULL,
+    community        VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
     meeting_location VARCHAR(150)  DEFAULT NULL,
     description      TEXT          NULL,
     status           ENUM('active', 'sold', 'inactive') NOT NULL DEFAULT 'active',
@@ -17,6 +18,7 @@ CREATE TABLE IF NOT EXISTS listings (
     updated_at       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (listing_id),
     KEY idx_listings_status (status),
+    KEY idx_listings_community (community),
     KEY idx_listings_owner_status (owner_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -40,6 +42,32 @@ SET @column_exists = (
 SET @migration_sql = IF(
     @column_exists = 0,
     'ALTER TABLE listings ADD COLUMN related_course VARCHAR(100) DEFAULT NULL AFTER category',
+    'SELECT 1'
+);
+PREPARE migration_statement FROM @migration_sql;
+EXECUTE migration_statement;
+DEALLOCATE PREPARE migration_statement;
+
+SET @column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'listings' AND COLUMN_NAME = 'community'
+);
+SET @migration_sql = IF(
+    @column_exists = 0,
+    'ALTER TABLE listings ADD COLUMN community VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL AFTER related_course',
+    'SELECT 1'
+);
+PREPARE migration_statement FROM @migration_sql;
+EXECUTE migration_statement;
+DEALLOCATE PREPARE migration_statement;
+
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'listings' AND INDEX_NAME = 'idx_listings_community'
+);
+SET @migration_sql = IF(
+    @index_exists = 0,
+    'ALTER TABLE listings ADD INDEX idx_listings_community (community)',
     'SELECT 1'
 );
 PREPARE migration_statement FROM @migration_sql;

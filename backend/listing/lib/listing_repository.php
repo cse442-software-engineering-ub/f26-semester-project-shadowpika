@@ -14,6 +14,7 @@ function create_listing(mysqli $connection, array $listing, ?int $ownerId): arra
     $condition = $listing['condition'];
     $price = $listing['price'];
     $relatedCourse = $listing['related_course'];
+    $community = $listing['community'];
     $meetingLocation = $listing['meeting_location'];
     $description = $listing['description'];
     $imageUrl = $listing['image_url'];
@@ -21,17 +22,18 @@ function create_listing(mysqli $connection, array $listing, ?int $ownerId): arra
     if ($ownerId !== null && $ownerId > 0) {
         $statement = $connection->prepare(
             "INSERT INTO listings
-                (owner_id, name, category, `condition`, price, related_course, meeting_location, description, image_url, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
+                (owner_id, name, category, `condition`, price, related_course, community, meeting_location, description, image_url, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
         );
         $statement->bind_param(
-            'issssssss',
+            'isssssssss',
             $ownerId,
             $title,
             $category,
             $condition,
             $price,
             $relatedCourse,
+            $community,
             $meetingLocation,
             $description,
             $imageUrl
@@ -39,16 +41,17 @@ function create_listing(mysqli $connection, array $listing, ?int $ownerId): arra
     } else {
         $statement = $connection->prepare(
             "INSERT INTO listings
-                (name, category, `condition`, price, related_course, meeting_location, description, image_url, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')"
+                (name, category, `condition`, price, related_course, community, meeting_location, description, image_url, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
         );
         $statement->bind_param(
-            'ssssssss',
+            'sssssssss',
             $title,
             $category,
             $condition,
             $price,
             $relatedCourse,
+            $community,
             $meetingLocation,
             $description,
             $imageUrl
@@ -77,7 +80,7 @@ function find_listing_by_id(mysqli $connection, int $listingId): ?array
 {
     $select = $connection->prepare(
         "SELECT listing_id, owner_id, name, category, `condition`, price,
-                related_course, meeting_location, description, image_url, status,
+                related_course, community, meeting_location, description, image_url, status,
                 created_at, updated_at
            FROM listings
           WHERE listing_id = ?"
@@ -100,6 +103,7 @@ function find_listing_by_id(mysqli $connection, int $listingId): ?array
         'condition' => $createdListing['condition'],
         'price' => number_format((float) $createdListing['price'], 2, '.', ''),
         'related_course' => $createdListing['related_course'],
+        'community' => $createdListing['community'],
         'meeting_location' => $createdListing['meeting_location'],
         'description' => $createdListing['description'],
         'image_url' => $createdListing['image_url'],

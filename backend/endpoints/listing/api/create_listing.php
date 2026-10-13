@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../lib/database.php';
 require_once __DIR__ . '/../lib/listing_validation.php';
 require_once __DIR__ . '/../lib/listing_repository.php';
+require_once __DIR__ . '/../lib/community_repository.php';
 require_once __DIR__ . '/../lib/image_storage.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -71,6 +72,22 @@ $ownerId = isset($_SESSION['user_id']) && (int) $_SESSION['user_id'] > 0
 
 try {
     $connection = listing_database();
+    $communitySelection = validate_listing_community_location(
+        $connection,
+        $validation['data']['community'],
+        $validation['data']['meeting_location_id']
+    );
+    if (!empty($communitySelection['errors'])) {
+        $connection->close();
+        listing_json_response(422, [
+            'success' => false,
+            'error' => 'Correct the highlighted listing fields and try again.',
+            'errors' => $communitySelection['errors'],
+        ]);
+    }
+
+    // Never trust a label supplied by the browser. Store the label attached to the selected ID.
+    $validation['data']['meeting_location'] = $communitySelection['location']['label'];
     $connection->begin_transaction();
     $createdListing = create_listing($connection, $validation['data'], $ownerId);
     $connection->commit();

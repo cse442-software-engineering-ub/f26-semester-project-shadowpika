@@ -1,5 +1,6 @@
 <?php
-// GET /api/get_meeting_locations.php — the approved meeting locations a logged-in buyer can choose.
+// GET /api/get_meeting_locations.php?community=<exact approved business name>
+// Returns only meeting locations assigned to that community.
 require_once __DIR__ . '/../includes/http.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/meeting_requests.php';
@@ -22,7 +23,7 @@ if ($userId === null) {
 
 try {
     $pdo = karavan_pdo();
-    $response = karavan_list_meeting_locations($pdo, $userId);
+    $response = karavan_list_meeting_locations($pdo, $userId, $_GET['community'] ?? null);
 } catch (Throwable $e) {
     // Never expose the underlying PHP/SQL error to the client
     karavan_send_meeting_json(500, ['success' => false, 'error' => 'Server error.']);
