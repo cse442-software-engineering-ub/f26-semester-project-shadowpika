@@ -18,12 +18,21 @@ const NAV_LINKS = [
 ];
 
 const SEARCH_PAGE = 'product-search.html';
+const FAVORITES_PAGE = 'favorites.html';
 
 function SearchIcon() {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
             <circle cx="10.5" cy="10.5" r="7" />
             <line x1="15.8" y1="15.8" x2="21" y2="21" />
+        </svg>
+    );
+}
+
+function HeartIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.7 4.5 6.4 4.5c2.1 0 3.8 1.2 5.6 3.2 1.8-2 3.5-3.2 5.6-3.2 3.7 0 5.5 3.9 4 7.3C19.5 16.4 12 21 12 21z" />
         </svg>
     );
 }
@@ -247,6 +256,9 @@ function NavBar() {
                     <div className="nav-icons">
                         <a className="nav-icon-btn nav-search" href={base + SEARCH_PAGE} aria-label="Search">
                             <SearchIcon />
+                        </a>
+                        <a className="nav-icon-btn nav-favorites" href={base + FAVORITES_PAGE} aria-label="Favorites" title="Favorites">
+                            <HeartIcon />
                         </a>
                         {/* Desktop only */}
                         {community.signedIn ? (

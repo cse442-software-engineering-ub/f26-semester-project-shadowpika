@@ -1,0 +1,19 @@
+/* Favorites page. Shares the product search page's colors, nav frame, and book cards. */
+
+.ps-frame.fav-frame {
+  padding: 32px 40px 48px;
+}
+
+.fav-title {
+  margin: 0;
+  font-family: 'League Spartan', 'DM Sans', sans-serif;
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .ps-frame.fav-frame {
+    padding: 20px 15px 40px;
+  }
+}

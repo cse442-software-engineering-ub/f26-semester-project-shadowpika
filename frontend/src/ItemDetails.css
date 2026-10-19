@@ -32,6 +32,7 @@
 
 .id-item {
   display: grid;
+  position: relative;
   grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
   gap: 40px;
   max-width: 1040px;
@@ -48,6 +49,43 @@
   padding: 28px 40px;
   background: #efe6d8;
   border-radius: 12px;
+}
+
+.id-heart {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ps-navy);
+  cursor: pointer;
+}
+
+.id-heart svg {
+  width: 26px;
+  height: 26px;
+}
+
+.id-heart:hover,
+.id-heart:focus-visible {
+  background: rgba(31, 45, 68, 0.08);
+}
+
+.id-heart.is-saved {
+  color: #b4532a;
+  cursor: default;
+}
+
+.id-save-error {
+  margin: 8px 0 0;
+  font-size: 14px;
 }
 
 .id-cover .ps-book-title {
