@@ -7,6 +7,15 @@ require_once __DIR__ . '/meeting_requests.php';
 
 const KARAVAN_INVALID_LISTING_ID_ERROR = 'A valid listing_id is required.';
 
+// Older rows store retired category names; clients always receive the Create Listing label.
+// Kept in sync with LEGACY_CATEGORY_LABELS in api/get_item_details.php.
+const KARAVAN_FAVORITE_CATEGORY_LABELS = [
+    'Books'       => 'Textbooks',
+    'Electronics' => 'Tech & Electronics',
+    'Furniture'   => 'Dorm Living',
+    'Clothing'    => 'Clothing & Gear',
+];
+
 function karavan_format_favorite(array $row): array
 {
     $imageUrl = $row['image_url'] ?? null;
@@ -17,7 +26,7 @@ function karavan_format_favorite(array $row): array
         'price'      => number_format((float) $row['price'], 2, '.', ''),
         'condition'  => $row['condition'],
         'image_url'  => ($imageUrl === null || trim($imageUrl) === '') ? null : $imageUrl,
-        'category'   => $row['category'],
+        'category'   => KARAVAN_FAVORITE_CATEGORY_LABELS[$row['category']] ?? $row['category'],
     ];
 }
 
