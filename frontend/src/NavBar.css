@@ -110,6 +110,11 @@
   height: 19px;
 }
 
+.nav-favorites svg {
+  width: 20px;
+  height: 20px;
+}
+
 .nav-icon-btn:hover {
   background: rgba(31, 45, 68, 0.08);
 }
@@ -232,6 +237,11 @@
   }
 
   .nav-search svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .nav-favorites svg {
     width: 22px;
     height: 22px;
   }

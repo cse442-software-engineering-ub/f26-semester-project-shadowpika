@@ -5,6 +5,7 @@ import './ItemDetails.css';
 import './MeetingRequests.css';
 import ItemCover from './ItemCover.jsx';
 import { fetchListingOwnership, loadListing, meetPageUrl } from './meetingRequests.js';
+import { fetchFavoriteStatus, saveFavorite } from './favorites.js';
 
 const SEARCH_HREF = './product-search.html';
 
@@ -23,12 +24,22 @@ function BackToSearch() {
     );
 }
 
+function HeartIcon({ filled }) {
+    return (
+        <svg viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.7 4.5 6.4 4.5c2.1 0 3.8 1.2 5.6 3.2 1.8-2 3.5-3.2 5.6-3.2 3.7 0 5.5 3.9 4 7.3C19.5 16.4 12 21 12 21z" />
+        </svg>
+    );
+}
+
 function ItemDetails() {
     const [listing, setListing] = useState(null);
     const [status, setStatus] = useState('loading'); // loading | done | error
     const [error, setError] = useState('');
     // Buy Now only appears once the server confirms the item belongs to someone else.
     const [canBuy, setCanBuy] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [saveError, setSaveError] = useState('');
 
     useEffect(() => {
         const listingId = new URLSearchParams(window.location.search).get('listing_id') ?? '';
@@ -37,6 +48,12 @@ function ItemDetails() {
         fetchListingOwnership(listingId)
             .then((data) => {
                 if (!cancelled) setCanBuy(data.success === true && data.is_owner === false);
+            })
+            .catch(() => {});
+
+        fetchFavoriteStatus(listingId)
+            .then((data) => {
+                if (!cancelled) setSaved(data.success === true && data.saved === true);
             })
             .catch(() => {});
 
@@ -63,6 +80,19 @@ function ItemDetails() {
         };
     }, []);
 
+    // The heart only fills in once the server confirms the save. Removing is a separate task.
+    const handleHeartClick = async () => {
+        if (saved) return;
+        setSaveError('');
+        try {
+            const data = await saveFavorite(listing.listing_id);
+            if (data.success === true) setSaved(true);
+            else setSaveError(data.error || 'Could not save this item.');
+        } catch {
+            setSaveError('Could not connect to the server.');
+        }
+    };
+
     return (
         <div className="ps-page">
             <NavBar />
@@ -74,6 +104,18 @@ function ItemDetails() {
 
                 {status === 'done' && listing && (
                     <article className="id-item">
+                        {canBuy && (
+                            <button
+                                type="button"
+                                className={`id-heart${saved ? ' is-saved' : ''}`}
+                                aria-label="Save to Favorites"
+                                aria-pressed={saved}
+                                title={saved ? 'Remove from Favorites' : 'Add to Favorites'}
+                                onClick={handleHeartClick}
+                            >
+                                <HeartIcon filled={saved} />
+                            </button>
+                        )}
                         <div className="id-cover">
                             <ItemCover name={listing.name} imageUrl={listing.image_url} />
                         </div>
@@ -82,6 +124,7 @@ function ItemDetails() {
                             {listing.category && <span className="id-category">{listing.category.toUpperCase()}</span>}
                             <h1 className="id-name">{listing.name}</h1>
                             <p className="id-price">${listing.price}</p>
+                            {saveError && <p className="id-error id-save-error" role="alert">{saveError}</p>}
 
                             {canBuy && (
                                 <button

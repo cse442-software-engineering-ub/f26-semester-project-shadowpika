@@ -1,0 +1,76 @@
+import React, { useEffect, useState } from 'react';
+import NavBar from './NavBar.jsx';
+import './ProductSearch.css';
+import './Favorites.css';
+import ItemCover from './ItemCover.jsx';
+import { fetchFavorites } from './favorites.js';
+import { itemPageUrl } from './localListings.js';
+
+function Favorites() {
+    const [favorites, setFavorites] = useState([]);
+    const [status, setStatus] = useState('loading'); // loading | done | error
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        let cancelled = false;
+
+        fetchFavorites()
+            .then((data) => {
+                if (cancelled) return;
+                if (data.success && Array.isArray(data.favorites)) {
+                    setFavorites(data.favorites);
+                    setStatus('done');
+                } else {
+                    setError(data.error || 'Could not load your saved items.');
+                    setStatus('error');
+                }
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setError('Could not connect to the server.');
+                setStatus('error');
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    return (
+        <div className="ps-page">
+            <NavBar />
+            <main className="ps-frame fav-frame">
+                <h1 className="fav-title">Favorites</h1>
+
+                {status === 'loading' && <p className="ps-results-message">Loading your saved items...</p>}
+                {status === 'error' && <p className="ps-results-message ps-results-error" role="alert">{error}</p>}
+                {status === 'done' && favorites.length === 0 && (
+                    <p className="ps-results-message">You have no saved items yet.</p>
+                )}
+
+                {status === 'done' && favorites.length > 0 && (
+                    <div className="ps-book-grid">
+                        {favorites.map((item) => (
+                            <article className="ps-book-card" key={item.listing_id}>
+                                <div className="ps-book-cover">
+                                    <ItemCover name={item.name} imageUrl={item.image_url} />
+                                </div>
+                                <div className="ps-book-body">
+                                    <h3 className="ps-book-name" title={item.name}>
+                                        <a className="ps-book-link" href={itemPageUrl(item.listing_id)}>{item.name}</a>
+                                    </h3>
+                                    <div className="ps-book-meta">
+                                        <span className="ps-book-price">${item.price}</span>
+                                        <span className="ps-book-condition">{item.condition}</span>
+                                    </div>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                )}
+            </main>
+        </div>
+    );
+}
+
+export default Favorites;
