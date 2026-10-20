@@ -1,0 +1,43 @@
+.ps-frame.id-frame{padding:32px 40px 48px}.id-back{color:var(--ps-navy);align-items:center;gap:6px;font-size:13px;font-weight:700;text-decoration:none;display:inline-flex}.id-back:hover,.id-back:focus-visible{text-decoration:underline}.id-message{color:var(--ps-muted);margin:24px 0 0;font-size:14px}.id-error{color:#b4532a;font-weight:700}.id-item{background:var(--ps-white);border-radius:16px;grid-template-columns:minmax(220px,340px) minmax(0,1fr);gap:40px;max-width:1040px;margin-top:24px;padding:32px;display:grid;position:relative;box-shadow:0 1px 3px #1f2d440f}.id-cover{aspect-ratio:4/5;background:#efe6d8;border-radius:12px;padding:28px 40px;display:flex}.id-heart{width:40px;height:40px;color:var(--ps-navy);cursor:pointer;background:0 0;border:none;border-radius:50%;justify-content:center;align-items:center;padding:0;display:flex;position:absolute;top:16px;right:16px}.id-heart svg{width:26px;height:26px}.id-heart:hover,.id-heart:focus-visible{background:#1f2d4414}.id-heart.is-saved{color:#b4532a;cursor:pointer}.id-save-error{margin:8px 0 0;font-size:14px}.id-cover .ps-book-title{-webkit-line-clamp:6;font-size:20px}.id-info{flex-direction:column;min-width:0;display:flex}.id-category{color:var(--ps-muted);letter-spacing:.09em;font-size:12px;font-weight:800;line-height:16px}.id-name{overflow-wrap:anywhere;margin:8px 0 0;font-family:League Spartan,DM Sans,sans-serif;font-size:32px;font-weight:700;line-height:38px}.id-price{margin:12px 0 0;font-size:28px;font-weight:700;line-height:34px}.id-facts{margin:20px 0 0}.id-facts>div{align-items:center;gap:12px;display:flex}.id-facts dt{color:var(--ps-muted);font-size:13px;font-weight:700}.id-facts dd{margin:0}.id-condition{color:#8a6a2f;background:#c9a15e2e;border-radius:12px;padding:4px 12px;font-size:13px;font-weight:700;line-height:18px;display:inline-block}.id-description{border-top:1px solid #ebe6dc;margin-top:28px;padding-top:20px}.id-description h2{letter-spacing:.09em;text-transform:uppercase;margin:0;font-size:12px;font-weight:800;line-height:16px}.id-description p{white-space:pre-line;overflow-wrap:anywhere;margin:10px 0 0;font-size:15px;line-height:24px}.id-muted{color:var(--ps-muted)}@media (width<=768px){.ps-frame.id-frame{padding:20px 15px 40px}.id-item{grid-template-columns:minmax(0,1fr);gap:24px;padding:20px}.id-cover{width:min(100%,260px);margin:0 auto}.id-name{font-size:26px;line-height:32px}}.ps-page .id-buy,.ps-page .mr-submit{background:var(--ps-navy);color:var(--ps-cream);border-radius:10px;align-self:flex-start;margin-top:20px;padding:12px 28px;font-size:15px;font-weight:700}.ps-page .id-buy:hover,.ps-page .id-buy:focus-visible,.ps-page .mr-submit:hover,.ps-page .mr-submit:focus-visible{background:#2c3f5e}.ps-page .mr-submit:disabled{opacity:.6;cursor:default}.mr-title{margin-top:16px}.mr-meet{background:var(--ps-white);border-radius:16px;grid-template-columns:minmax(200px,280px) minmax(0,420px);gap:40px;max-width:1040px;margin-top:24px;padding:32px;display:grid;box-shadow:0 1px 3px #1f2d440f}.mr-item-cover{aspect-ratio:4/5;background:#efe6d8;border-radius:12px;padding:24px 32px;display:flex}.mr-item-name{overflow-wrap:anywhere;margin:16px 0 0;font-family:League Spartan,DM Sans,sans-serif;font-size:22px;line-height:28px}.mr-item-price{margin:6px 0 0;font-size:20px;font-weight:700}.mr-form{flex-direction:column;gap:16px;display:flex}.mr-field{flex-direction:column;gap:6px;font-size:13px;font-weight:700;display:flex}.mr-field input,.mr-field select{background:var(--ps-white);height:42px;color:var(--ps-navy);font:inherit;border:1px solid #d8d1c4;border-radius:8px;padding:0 12px;font-weight:400}.mr-field input:focus,.mr-field select:focus{border-color:var(--ps-gold);outline:none}.mr-message{margin:0;font-size:14px}.mr-success{color:#2f7a4b;font-weight:700}.mr-requests{margin-top:28px}.mr-section-title{letter-spacing:.09em;text-transform:uppercase;margin:0;font-size:12px;font-weight:800;line-height:16px}.mr-request-list{grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr));gap:12px;margin:12px 0 0;padding:0;list-style:none;display:grid}.mr-request{background:var(--ps-white);border-radius:12px;gap:16px;padding:14px;display:flex;box-shadow:0 1px 3px #1f2d440f}.mr-request-cover{aspect-ratio:4/5;background:#efe6d8;border-radius:8px;flex:none;width:72px;padding:6px 8px;display:flex}.mr-request-cover .ps-book-title{font-size:9px}.mr-request-cover .ps-book-face{gap:4px;padding:4px}.mr-request-body{flex-direction:column;align-items:flex-start;gap:2px;min-width:0;display:flex}.mr-request-name{overflow-wrap:anywhere;margin:0;font-size:15px;line-height:20px}.mr-request-price,.mr-request-when,.mr-request-where{margin:0;font-size:13px;line-height:18px}.mr-request-price{font-weight:700}.mr-request-where{color:var(--ps-muted)}.mr-status{color:#8a6a2f;background:#c9a15e2e;border-radius:10px;margin-top:6px;padding:3px 10px;font-size:12px;font-weight:700;line-height:16px}.mr-status-approved{color:#2f7a4b;background:#2f7a4b24}.mr-status-denied{color:#b4532a;background:#b4532a24}.mr-status-location_change_requested{color:#3f6fa0;background:#3f6fa024}.mr-cancel-message{margin-top:12px}.ps-page .mr-cancel{color:#b4532a;background:0 0;border:1px solid #b4532a;border-radius:8px;margin-top:8px;padding:5px 12px;font-size:12px;font-weight:700}.ps-page .mr-cancel:hover,.ps-page .mr-cancel:focus-visible{background:#b4532a1a}.ps-page .mr-cancel:disabled{opacity:.6;cursor:default}.mr-request-buyer{margin:0;font-size:13px;line-height:18px}.mr-actions{flex-wrap:wrap;gap:8px;display:flex}.mr-picker{flex-direction:column;align-self:stretch;gap:8px;margin-top:8px;display:flex}@media (width<=768px){.mr-meet{grid-template-columns:minmax(0,1fr);gap:24px;padding:20px}.mr-item-cover{width:min(100%,220px)}}
+
+.id-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.ps-page .id-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-height: 44px;
+    margin-top: 20px;
+    padding: 12px 24px;
+    border: 1.5px solid #1f2d44;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* Buy Now */
+.ps-page .id-buy {
+    background: #1f2d44;
+    color: #f6f1ea;
+}
+
+/* Message Seller */
+.ps-page .id-message-seller {
+    background: transparent;
+    color: #1f2d44;
+}
+
+.ps-page .id-message-seller:hover,
+.ps-page .id-message-seller:focus-visible {
+    background: #1f2d44;
+    color: #fff;
+}
