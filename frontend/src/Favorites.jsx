@@ -3,13 +3,17 @@ import NavBar from './NavBar.jsx';
 import './ProductSearch.css';
 import './Favorites.css';
 import ItemCover from './ItemCover.jsx';
-import { fetchFavorites } from './favorites.js';
+import HeartIcon from './HeartIcon.jsx';
+import { fetchFavorites, removeFavorite } from './favorites.js';
 import { itemPageUrl } from './localListings.js';
 
 function Favorites() {
     const [favorites, setFavorites] = useState([]);
     const [status, setStatus] = useState('loading'); // loading | done | error
     const [error, setError] = useState('');
+    const [removeMessage, setRemoveMessage] = useState('');
+    const [removeError, setRemoveError] = useState('');
+    const [removing, setRemoving] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -36,12 +40,34 @@ function Favorites() {
         };
     }, []);
 
+    const handleRemove = async (listingId) => {
+        if (removing) return;
+        setRemoveMessage('');
+        setRemoveError('');
+        setRemoving(true);
+        try {
+            const data = await removeFavorite(listingId);
+            if (data.success === true) {
+                setFavorites((current) => current.filter((item) => item.listing_id !== listingId));
+                setRemoveMessage('Removed from your favorites.');
+            } else {
+                setRemoveError(data.error || 'Could not remove this item.');
+            }
+        } catch {
+            setRemoveError('Could not connect to the server.');
+        } finally {
+            setRemoving(false);
+        }
+    };
+
     return (
         <div className="ps-page">
             <NavBar />
             <main className="ps-frame fav-frame">
                 <h1 className="fav-title">Favorites</h1>
 
+                {removeMessage && <p className="ps-results-message">{removeMessage}</p>}
+                {removeError && <p className="ps-results-message ps-results-error" role="alert">{removeError}</p>}
                 {status === 'loading' && <p className="ps-results-message">Loading your saved items...</p>}
                 {status === 'error' && <p className="ps-results-message ps-results-error" role="alert">{error}</p>}
                 {status === 'done' && favorites.length === 0 && (
@@ -52,6 +78,15 @@ function Favorites() {
                     <div className="ps-book-grid">
                         {favorites.map((item) => (
                             <article className="ps-book-card" key={item.listing_id}>
+                                <button
+                                    type="button"
+                                    className="fav-heart"
+                                    aria-label="Remove from Favorites"
+                                    title="Remove from Favorites"
+                                    onClick={() => handleRemove(item.listing_id)}
+                                >
+                                    <HeartIcon filled />
+                                </button>
                                 <div className="ps-book-cover">
                                     <ItemCover name={item.name} imageUrl={item.image_url} />
                                 </div>

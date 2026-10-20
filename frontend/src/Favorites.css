@@ -12,6 +12,38 @@
   font-weight: 700;
 }
 
+.fav-frame .ps-book-card {
+  position: relative;
+}
+
+.fav-heart {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #b4532a;
+  cursor: pointer;
+}
+
+.fav-heart svg {
+  width: 24px;
+  height: 24px;
+}
+
+.fav-heart:hover,
+.fav-heart:focus-visible {
+  background: rgba(31, 45, 68, 0.08);
+}
+
 @media (max-width: 768px) {
   .ps-frame.fav-frame {
     padding: 20px 15px 40px;

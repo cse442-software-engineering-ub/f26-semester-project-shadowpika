@@ -147,3 +147,103 @@ describe('Frontend: Favorites Tab (#99) - Favorites page', () => {
         expect(second.container.querySelector('.ps-book-card')).toBeNull();
     });
 });
+
+const TEXTBOOK = { listing_id: 91001, name: 'Calculus Textbook', price: '35.00', condition: 'Good', image_url: null, category: 'Textbooks' };
+const WORKBOOK_FAV = { listing_id: 91002, name: 'Calculus Workbook', price: '20.00', condition: 'Like New', image_url: null, category: 'Textbooks' };
+const twoFavorites = { success: true, favorites: [WORKBOOK_FAV, TEXTBOOK] };
+const removeBodies = (fetchMock) => fetchMock.mock.calls.filter(([url]) => url === './api/remove_favorite.php').map(([, init]) => init.body);
+
+describe('Frontend: Remove Favorite (#180) - Favorites page', () => {
+    it('Test 1: sends the removal and drops the item with a confirmation message', async () => {
+        const fetchMock = mockApi({
+            'get_favorites.php': twoFavorites,
+            'remove_favorite.php': { success: true, listing_id: 91002 },
+        });
+        render(<Favorites />);
+
+        const hearts = await screen.findAllByRole('button', { name: 'Remove from Favorites' });
+        expect(hearts).toHaveLength(2);
+        expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual(['Calculus Workbook', 'Calculus Textbook']);
+
+        fireEvent.click(hearts[0]);
+
+        expect(await screen.findByText('Removed from your favorites.')).toBeInTheDocument();
+        expect(removeBodies(fetchMock)).toEqual(['{"listing_id":91002}']);
+        expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual(['Calculus Textbook']);
+        expect(screen.getAllByRole('button', { name: 'Remove from Favorites' })).toHaveLength(1);
+    });
+
+    it('Test 2: shows the empty message after the last saved item is removed', async () => {
+        mockApi({
+            'get_favorites.php': twoFavorites,
+            'remove_favorite.php': { success: true },
+        });
+        const { container } = render(<Favorites />);
+
+        fireEvent.click((await screen.findAllByRole('button', { name: 'Remove from Favorites' }))[0]);
+        await waitFor(() => expect(screen.getAllByRole('button', { name: 'Remove from Favorites' })).toHaveLength(1));
+        fireEvent.click(screen.getByRole('button', { name: 'Remove from Favorites' }));
+
+        expect(await screen.findByText('You have no saved items yet.')).toBeInTheDocument();
+        expect(screen.getByText('Removed from your favorites.')).toBeInTheDocument();
+        expect(container.querySelector('.ps-book-card')).toBeNull();
+    });
+
+    it("Test 3: shows the server's error in orange-red and keeps the item when removing fails", async () => {
+        const fetchMock = mockApi({
+            'get_favorites.php': twoFavorites,
+            'remove_favorite.php': () => (removeBodies(fetchMock).length === 1
+                ? { success: true }
+                : { success: false, error: 'This item is not in your favorites.' }),
+        });
+        render(<Favorites />);
+
+        fireEvent.click((await screen.findAllByRole('button', { name: 'Remove from Favorites' }))[0]);
+        await screen.findByText('Removed from your favorites.');
+        fireEvent.click(screen.getByRole('button', { name: 'Remove from Favorites' }));
+
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('This item is not in your favorites.');
+        expect(alert).toHaveClass('ps-results-error');
+        expect(removeBodies(fetchMock)).toEqual(['{"listing_id":91002}', '{"listing_id":91001}']);
+        expect(screen.getByRole('link', { name: 'Calculus Textbook' })).toBeInTheDocument();
+    });
+});
+
+describe('Frontend: Remove Favorite (#180) - heart on the item page', () => {
+    beforeEach(() => openItem(91002));
+
+    it('Test 4: removes the item when the filled heart is clicked and outlines the heart', async () => {
+        const fetchMock = mockApi(itemRoutes({
+            'get_favorite_status.php': { success: true, listing_id: 91002, saved: true },
+            'remove_favorite.php': { success: true, listing_id: 91002 },
+        }));
+        render(<ItemDetails />);
+
+        const heart = await screen.findByRole('button', { name: 'Save to Favorites' });
+        await waitFor(() => expect(heart).toHaveAttribute('aria-pressed', 'true'));
+
+        fireEvent.click(heart);
+
+        await waitFor(() => expect(heart).toHaveAttribute('aria-pressed', 'false'));
+        expect(removeBodies(fetchMock)).toEqual(['{"listing_id":91002}']);
+    });
+
+    it("Test 5: shows the server's error and keeps the heart filled when removing fails", async () => {
+        mockApi(itemRoutes({
+            'get_favorite_status.php': { success: true, listing_id: 91002, saved: true },
+            'remove_favorite.php': { success: false, error: 'This item is not in your favorites.' },
+        }));
+        render(<ItemDetails />);
+
+        const heart = await screen.findByRole('button', { name: 'Save to Favorites' });
+        await waitFor(() => expect(heart).toHaveAttribute('aria-pressed', 'true'));
+
+        fireEvent.click(heart);
+
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('This item is not in your favorites.');
+        expect(alert).toHaveClass('id-error');
+        expect(heart).toHaveAttribute('aria-pressed', 'true');
+    });
+});
