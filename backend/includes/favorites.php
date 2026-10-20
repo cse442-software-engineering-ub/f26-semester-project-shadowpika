@@ -48,6 +48,9 @@ function karavan_save_favorite(PDO $pdo, ?int $userId, $input): array
     if ($listing['owner_id'] !== null && (int) $listing['owner_id'] === $userId) {
         return [403, ['success' => false, 'error' => 'You cannot save your own item.']];
     }
+    if (!karavan_can_shop_listing($pdo, $userId, $listing)) {
+        return [403, ['success' => false, 'error' => KARAVAN_NOT_A_MEMBER_ERROR]];
+    }
 
     // INSERT IGNORE skips the row when (user_id, listing_id) already exists: 1 row = new, 0 = already saved.
     $insert = $pdo->prepare('INSERT IGNORE INTO favorites (user_id, listing_id) VALUES (?, ?)');
@@ -86,7 +89,7 @@ function karavan_list_favorites(PDO $pdo, ?int $userId): array
 
     // Two saves can land in the same second, so favorite_id breaks the tie.
     $stmt = $pdo->prepare(
-        "SELECT l.listing_id, l.name, l.price, l.`condition`, l.image_url, l.category
+        "SELECT l.listing_id, l.name, l.price, l.`condition`, l.image_url, l.category, l.community
            FROM favorites f
            JOIN listings l ON l.listing_id = f.listing_id
           WHERE f.user_id = ? AND l.status = 'active'
@@ -94,7 +97,11 @@ function karavan_list_favorites(PDO $pdo, ?int $userId): array
     );
     $stmt->execute([$userId]);
 
-    return [200, ['success' => true, 'favorites' => array_map('karavan_format_favorite', $stmt->fetchAll())]];
+    // Items saved before leaving their community stay saved but are hidden until the user rejoins.
+    $visible = karavan_member_listing_communities($pdo, $userId);
+    $favorites = array_filter($stmt->fetchAll(), fn ($row) => in_array((string) $row['community'], $visible, true));
+
+    return [200, ['success' => true, 'favorites' => array_values(array_map('karavan_format_favorite', $favorites))]];
 }
 
 function karavan_get_favorite_status(PDO $pdo, ?int $userId, $listingIdInput): array

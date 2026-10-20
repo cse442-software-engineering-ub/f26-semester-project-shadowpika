@@ -1,6 +1,8 @@
 <?php
 // GET /api/search_listings.php?q=<text>&categories=Textbooks,Dorm%20Living&conditions=Good,Like%20New&min_price=10.00&max_price=75.00
-// Returns ACTIVE listings. The optional text query matches the start of any word in the product
+// Requires a login. Returns ACTIVE listings from the communities the shopper chose to shop from
+// (set_shopping_communities.php); listings from communities they aren't in are never returned.
+// The optional text query matches the start of any word in the product
 // name or related course, or the start of the category. Optional category values are exact-match
 // and use OR with one another. Optional condition values are also exact-match and use OR with one
 // another. Different filter types are combined with AND. Optional price bounds are inclusive.
@@ -18,6 +20,9 @@ const MAX_QUERY_LENGTH = 50;
 
 require_once __DIR__ . '/../listing/lib/listing_validation.php';
 require_once __DIR__ . '/../listing/lib/database.php';
+require_once __DIR__ . '/../includes/http.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/communities.php';
 
 // Earlier marketplace prototypes stored shorter labels. Keep those rows searchable without
 // rewriting shared development data; API clients always receive the canonical Create Listing label.
@@ -37,6 +42,11 @@ function respond(int $status, array $payload) {
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     respond(405, ["success" => false, "error" => "Method not allowed."]);
+}
+
+$userId = karavan_session_user_id();
+if ($userId === null) {
+    respond(401, ["success" => false, "error" => "You must be logged in."]);
 }
 
 // --- INPUT VALIDATION ---
@@ -156,6 +166,11 @@ if ($minPrice !== null && $maxPrice !== null && $minPrice > $maxPrice) {
 
 // --- DATABASE CONNECTION CONFIGURATION ---
 try {
+    $shoppingCommunities = karavan_member_listing_communities(karavan_pdo(), $userId, true);
+    if (count($shoppingCommunities) === 0) {
+        respond(200, ["success" => true, "results" => []]);
+    }
+
     $conn = listing_database();
     if ($conn->connect_error) {
         respond(500, ["success" => false, "error" => "Database connection failure."]);
@@ -165,8 +180,11 @@ try {
     $sql = "SELECT listing_id, name, price, `condition`, image_url, category, community
               FROM listings
              WHERE status = 'active'";
-    $types = '';
-    $parameters = [];
+    // listings.community is case-sensitive (006), so only exact community names match.
+    $placeholders = implode(', ', array_fill(0, count($shoppingCommunities), '?'));
+    $sql .= " AND community IN ($placeholders)";
+    $types = str_repeat('s', count($shoppingCommunities));
+    $parameters = $shoppingCommunities;
 
     if ($query !== '') {
         // Escape LIKE wildcards so "%" and "_" are searched literally.
