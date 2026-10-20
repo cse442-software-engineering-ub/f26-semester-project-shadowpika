@@ -2,7 +2,11 @@
 // Every Aptitude team shares this origin, so keys are prefixed.
 const NEW_ACCOUNT_KEY = 'karavan_new_account';
 const PROMPT_KEY = 'karavan_community_prompt';
-const COMMUNITY_KEY = 'karavan_community';
+const COMMUNITIES_KEY = 'karavan_communities';
+
+// The nav owns the picker; the search page listens so its results follow joins and leaves.
+const CHANGED_EVENT = 'karavan:communities-changed';
+const OPEN_EVENT = 'karavan:open-communities';
 
 const normalize = (email) => String(email ?? '').trim().toLowerCase();
 
@@ -30,10 +34,7 @@ export function markNewAccount(email) {
 
 /** Called with login.php's response after every successful login. */
 export function recordLogin(email, response) {
-    const community = response?.community_id
-        ? { community_id: response.community_id, name: response.community_name }
-        : null;
-    saveJoinedCommunity(community);
+    saveJoinedCommunities(Array.isArray(response?.communities) ? response.communities : []);
 
     if (read(NEW_ACCOUNT_KEY) === normalize(email)) {
         write(NEW_ACCOUNT_KEY, null);
@@ -48,16 +49,33 @@ export function takeCommunityPrompt() {
     return pending;
 }
 
-/** @returns {{community_id: number, name: string} | null} */
-export function readJoinedCommunity() {
+/** Communities the user joined (not the automatic All of UB). @returns {{community_id: number, name: string}[]} */
+export function readJoinedCommunities() {
     try {
-        const stored = JSON.parse(read(COMMUNITY_KEY));
-        return stored && stored.community_id && stored.name ? stored : null;
+        const stored = JSON.parse(read(COMMUNITIES_KEY));
+        return Array.isArray(stored) ? stored.filter((c) => c && c.community_id && c.name) : [];
     } catch {
-        return null;
+        return [];
     }
 }
 
-export function saveJoinedCommunity(community) {
-    write(COMMUNITY_KEY, community ? JSON.stringify(community) : null);
+export function saveJoinedCommunities(communities) {
+    write(COMMUNITIES_KEY, communities && communities.length > 0
+        ? JSON.stringify(communities.map(({ community_id, name }) => ({ community_id, name })))
+        : null);
+}
+
+export const announceCommunitiesChanged = () => window.dispatchEvent(new Event(CHANGED_EVENT));
+export const openCommunityPicker = () => window.dispatchEvent(new Event(OPEN_EVENT));
+
+/** @returns {() => void} unsubscribe */
+export function onCommunitiesChanged(listener) {
+    window.addEventListener(CHANGED_EVENT, listener);
+    return () => window.removeEventListener(CHANGED_EVENT, listener);
+}
+
+/** @returns {() => void} unsubscribe */
+export function onOpenCommunityPicker(listener) {
+    window.addEventListener(OPEN_EVENT, listener);
+    return () => window.removeEventListener(OPEN_EVENT, listener);
 }
