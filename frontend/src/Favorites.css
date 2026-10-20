@@ -16,7 +16,8 @@
   position: relative;
 }
 
-.fav-heart {
+/* .ps-page prefix: outranks the `.ps-page button` reset in ProductSearch.css */
+.ps-page .fav-heart {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -24,24 +25,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: transparent;
+  /* White circle keeps the heart visible on any cover photo */
+  background: var(--ps-white);
+  box-shadow: 0 2px 6px rgba(31, 45, 68, 0.25);
   color: #b4532a;
   cursor: pointer;
 }
 
 .fav-heart svg {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
-.fav-heart:hover,
-.fav-heart:focus-visible {
-  background: rgba(31, 45, 68, 0.08);
+.ps-page .fav-heart:hover,
+.ps-page .fav-heart:focus-visible {
+  background: #f8f4ec;
 }
 
 @media (max-width: 768px) {
