@@ -41,3 +41,14 @@
     background: #1f2d44;
     color: #fff;
 }
+
+button.id-message-seller {
+    background:var(--ps-navy);
+    color:var(--ps-cream);
+    border-radius:10px;
+    align-self:flex-start;
+    margin-top:20px;
+    padding:12px 28px;
+    font-size:15px;
+    font-weight:700
+}
