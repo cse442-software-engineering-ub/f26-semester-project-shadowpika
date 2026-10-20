@@ -27,12 +27,28 @@ function OrganizeMeet() {
     useEffect(() => {
         let cancelled = false;
 
+        const loadLocations = (community) => {
+            fetchMeetingLocations(community)
+                .then((data) => {
+                    if (cancelled) return;
+                    if (data.success && Array.isArray(data.locations)) {
+                        setLocations(data.locations);
+                    } else {
+                        setLocationsError(data.error || 'The meeting locations could not be loaded.');
+                    }
+                })
+                .catch(() => {
+                    if (!cancelled) setLocationsError(CONNECTION_ERROR);
+                });
+        };
+
         loadListing(listingId)
             .then((data) => {
                 if (cancelled) return;
                 if (data.success && data.listing) {
                     setListing(data.listing);
                     setStatus('done');
+                    loadLocations(data.listing.community);
                 } else {
                     setLoadError(data.error || 'This item could not be loaded.');
                     setStatus('error');
@@ -42,19 +58,6 @@ function OrganizeMeet() {
                 if (cancelled) return;
                 setLoadError(CONNECTION_ERROR);
                 setStatus('error');
-            });
-
-        fetchMeetingLocations()
-            .then((data) => {
-                if (cancelled) return;
-                if (data.success && Array.isArray(data.locations)) {
-                    setLocations(data.locations);
-                } else {
-                    setLocationsError(data.error || 'The meeting locations could not be loaded.');
-                }
-            })
-            .catch(() => {
-                if (!cancelled) setLocationsError(CONNECTION_ERROR);
             });
 
         return () => {

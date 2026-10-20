@@ -238,6 +238,26 @@
   cursor: default;
 }
 
+.mr-request-buyer {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.mr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mr-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  align-self: stretch;
+}
+
 @media (max-width: 768px) {
   .mr-meet {
     grid-template-columns: minmax(0, 1fr);

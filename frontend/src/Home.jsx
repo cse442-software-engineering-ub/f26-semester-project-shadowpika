@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import NavBar from './NavBar.jsx';
 import ItemCover from './ItemCover.jsx';
+import IncomingRequests from './IncomingRequests.jsx';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
@@ -114,6 +115,8 @@ function Home() {
                         </ul>
                     )}
                 </section>
+
+                <IncomingRequests />
             </main>
         </div>
     );

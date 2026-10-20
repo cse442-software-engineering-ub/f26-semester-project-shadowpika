@@ -21,13 +21,19 @@ export async function fetchListingOwnership(listingId) {
     return response.json();
 }
 
-export async function fetchMeetingLocations() {
-    const response = await fetch('./api/get_meeting_locations.php', { credentials: 'same-origin' });
+export async function fetchMeetingLocations(community) {
+    const query = new URLSearchParams({ community: community ?? '' });
+    const response = await fetch(`./api/get_meeting_locations.php?${query}`, { credentials: 'same-origin' });
     return response.json();
 }
 
 export async function fetchMyMeetingRequests() {
     const response = await fetch('./api/get_my_meeting_requests.php', { credentials: 'same-origin' });
+    return response.json();
+}
+
+export async function fetchIncomingMeetingRequests() {
+    const response = await fetch('./api/get_incoming_meeting_requests.php', { credentials: 'same-origin' });
     return response.json();
 }
 
@@ -52,6 +58,19 @@ export async function cancelMeetingRequest(listingId) {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({ listing_id: Number(listingId) }),
+    });
+    return response.json();
+}
+
+// Seller answer (card #178): approve, deny, or change_location (which also sends the new location's id).
+export async function respondMeetingRequest(requestId, action, locationId) {
+    const body = { request_id: Number(requestId), action };
+    if (action === 'change_location') body.location_id = Number(locationId);
+    const response = await fetch('./api/respond_meeting_request.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(body),
     });
     return response.json();
 }
