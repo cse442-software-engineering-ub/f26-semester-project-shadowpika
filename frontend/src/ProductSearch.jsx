@@ -489,7 +489,7 @@ function ProductSearch() {
                                 <div>
                                     <h2 className="ps-results-label">Active Listings</h2>
                                     <p className="ps-results-context">
-                                        {term ? `Matches for “${term}”` : 'Showing active items on campus'}
+                                        {term ? `Matches for “${term}”` : 'Showing active items from your communities'}
                                     </p>
                                 </div>
                                 {status === 'done' && (

@@ -3,11 +3,13 @@
  * @vitest-environment-options {"url": "https://aptitude.cse.buffalo.edu/CSE442/2026-Fall/cse-442j/product-search.html"}
  */
 // Story 1: as a shopper, select the communities you want to shop from.
+// Story 2: shoppers only see items from communities they're part of.
 import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProductSearch from '../ProductSearch.jsx';
+import ItemDetails from '../ItemDetails.jsx';
 
 vi.mock('../NavBar.jsx', () => ({
     default: () => <nav aria-label="Main">Karavan navigation</nav>,
@@ -161,3 +163,37 @@ describe('Story 1: select the communities you want to shop from', () => {
     });
 });
 
+describe('Story 2: shoppers only see items from communities they are part of', () => {
+    it('Test 1: the search page shows only what the server returns for the shopper\'s communities', async () => {
+        mockBackend();
+        render(<ProductSearch />);
+
+        expect(await screen.findByRole('heading', { name: 'Keller Desk Lamp' })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Riverside Mini Fridge' })).not.toBeInTheDocument();
+        expect(screen.getByText('Showing active items from your communities')).toBeInTheDocument();
+    });
+
+    it('Test 2: the item page explains why a non-member cannot open an item and offers no Buy Now', async () => {
+        window.history.replaceState({}, '', '/CSE442/2026-Fall/cse-442j/item.html?listing_id=93001');
+        vi.stubGlobal('fetch', vi.fn((url) => (url.includes('get_item_details.php')
+            ? jsonResponse(403, { success: false, error: 'This item is only available to members of its community.' })
+            : jsonResponse(200, { success: true, listing_id: 93001, is_owner: false, saved: false }))));
+
+        render(<ItemDetails />);
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('This item is only available to members of its community.');
+        expect(screen.queryByRole('button', { name: 'Buy Now' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Save to Favorites' })).not.toBeInTheDocument();
+    });
+
+    it('Test 3: a signed-out visitor sees the login error instead of listings', async () => {
+        vi.stubGlobal('fetch', vi.fn((url) => (url.includes('search_listings.php')
+            ? jsonResponse(401, { success: false, error: 'You must be logged in.' })
+            : jsonResponse(403, { success: false, error: 'You do not have permission to perform this action.' }))));
+
+        render(<ProductSearch />);
+
+        expect(await screen.findByText('You must be logged in.')).toBeInTheDocument();
+        expect(screen.queryByRole('region', { name: 'Shopping from' })).not.toBeInTheDocument();
+    });
+});
