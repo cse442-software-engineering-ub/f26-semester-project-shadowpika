@@ -57,6 +57,27 @@ function karavan_save_favorite(PDO $pdo, ?int $userId, $input): array
     return [$status, ['success' => true, 'listing_id' => $listingId, 'saved' => true]];
 }
 
+function karavan_remove_favorite(PDO $pdo, ?int $userId, $input): array
+{
+    if ($userId === null) {
+        return karavan_not_logged_in();
+    }
+
+    $listingId = is_array($input) ? karavan_parse_positive_id($input['listing_id'] ?? null) : null;
+    if ($listingId === null) {
+        return [400, ['success' => false, 'error' => KARAVAN_INVALID_LISTING_ID_ERROR]];
+    }
+
+    // No active-listing check: sold favorites must stay removable. A missing listing just deletes 0 rows.
+    $delete = $pdo->prepare('DELETE FROM favorites WHERE user_id = ? AND listing_id = ?');
+    $delete->execute([$userId, $listingId]);
+    if ($delete->rowCount() === 0) {
+        return [404, ['success' => false, 'error' => 'This item is not in your favorites.']];
+    }
+
+    return [200, ['success' => true, 'listing_id' => $listingId]];
+}
+
 function karavan_list_favorites(PDO $pdo, ?int $userId): array
 {
     if ($userId === null) {
