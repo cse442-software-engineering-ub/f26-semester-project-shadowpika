@@ -51,7 +51,7 @@ const locations = {
 async function openMeetPage(extraRoutes = {}) {
     open('meet.html?listing_id=91002');
     const fetchMock = serve({
-        'get_item_details.php': () => json(200, { success: true, listing: workbook }),
+        'get_item_details.php': () => json(200, { success: true, listing: { ...workbook, community: 'All of UB' } }),
         'get_meeting_locations.php': () => json(200, locations),
         ...extraRoutes,
     });
@@ -96,6 +96,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(screen.getByRole('option', { name: 'Student Union Main Entrance' })).toBeInTheDocument();
         expect(screen.getByRole('option', { name: 'Lockwood Memorial Library Main Entrance' })).toBeInTheDocument();
         expect(callsTo(fetchMock, 'get_meeting_locations.php')).toHaveLength(1);
+        expect(callsTo(fetchMock, 'get_meeting_locations.php')[0][0]).toContain('community=All+of+UB');
     });
 
     it("Test 2: hides Buy Now on the user's own item", async () => {

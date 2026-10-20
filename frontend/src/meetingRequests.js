@@ -21,8 +21,9 @@ export async function fetchListingOwnership(listingId) {
     return response.json();
 }
 
-export async function fetchMeetingLocations() {
-    const response = await fetch('./api/get_meeting_locations.php', { credentials: 'same-origin' });
+export async function fetchMeetingLocations(community) {
+    const query = new URLSearchParams({ community: community ?? '' });
+    const response = await fetch(`./api/get_meeting_locations.php?${query}`, { credentials: 'same-origin' });
     return response.json();
 }
 
