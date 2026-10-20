@@ -1,8 +1,8 @@
 const initialConversations = [
     {
         id: 1,
-        name: "Alex Morgan",
-        listing: "Vintage Denim Jacket",
+        name: "User123",
+        listing: "32-inch Class 60Hz 720p HD LED TV Flat Screen",
         messages: [
             { from: "them", text: "Hi! Is this still available?" },
             {
@@ -13,16 +13,16 @@ const initialConversations = [
     },
     {
         id: 2,
-        name: "Jamie Lee",
-        listing: "Canvas Backpack",
+        name: "moderator",
+        listing: "32-inch Class 60Hz 720p HD LED TV Flat Screen",
         messages: [
             { from: "them", text: "Thanks for the offer!" }
         ]
     },
     {
         id: 3,
-        name: "Taylor Smith",
-        listing: "Running Shoes",
+        name: "Judith Smith",
+        listing: "32-inch Class 60Hz 720p HD LED TV Flat Screen",
         messages: [
             { from: "them", text: "Where can we meet?" }
         ]
@@ -190,7 +190,7 @@ function renderChat() {
 }
 
 function initializeMessages() {
-    const root = document.getElementById("root");
+    const root = document.getElementById("message-root");
 
     root.innerHTML = `
         <main class="messages-page">
