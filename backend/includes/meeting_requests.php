@@ -2,6 +2,8 @@
 // Business logic for buyer meeting requests. Every function returns
 // [httpStatus, responseBody] so the endpoints in api/ stay thin.
 
+require_once __DIR__ . '/communities.php';
+
 const KARAVAN_NOT_LOGGED_IN_ERROR = 'You must be logged in.';
 const KARAVAN_LISTING_NOT_FOUND_ERROR = 'Listing not found.';
 
@@ -34,7 +36,7 @@ function karavan_parse_positive_id($value): ?int
 /** Only active listings can be viewed or requested; sold, inactive, and missing ones return null. */
 function karavan_find_active_listing(PDO $pdo, int $listingId): ?array
 {
-    $stmt = $pdo->prepare("SELECT listing_id, owner_id FROM listings WHERE listing_id = ? AND status = 'active'");
+    $stmt = $pdo->prepare("SELECT listing_id, owner_id, community FROM listings WHERE listing_id = ? AND status = 'active'");
     $stmt->execute([$listingId]);
     $row = $stmt->fetch();
     return $row ?: null;
@@ -182,6 +184,9 @@ function karavan_create_meeting_request(PDO $pdo, ?int $userId, $input): array
     }
     if ($listing['owner_id'] !== null && (int) $listing['owner_id'] === $userId) {
         return [403, ['success' => false, 'error' => 'You cannot request your own item.']];
+    }
+    if (!karavan_can_shop_listing($pdo, $userId, $listing)) {
+        return [403, ['success' => false, 'error' => KARAVAN_NOT_A_MEMBER_ERROR]];
     }
 
     $locationInput = $input['location_id'] ?? null;

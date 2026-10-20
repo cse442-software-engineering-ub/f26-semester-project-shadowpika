@@ -391,6 +391,20 @@ final class CommunitiesTest extends TestCase
         );
     }
 
+    public function testNonMembersCannotRequestOrFavoriteAnItem(): void
+    {
+        $this->approvedCommunity('All of UB');
+        $keller = $this->approvedCommunity('Keller Properties LLC');
+        $sellerId = TestDatabase::addUser($this->pdo, 'sam.seller', 'user', 'sam.seller@test.com');
+        $listingId = TestDatabase::addListing($this->pdo, $sellerId, ['community' => 'Keller Properties LLC']);
+
+        $this->assertSame([403, self::NOT_A_MEMBER], karavan_create_meeting_request($this->pdo, $this->studentId, ['listing_id' => $listingId]));
+        $this->assertSame([403, self::NOT_A_MEMBER], karavan_save_favorite($this->pdo, $this->studentId, ['listing_id' => $listingId]));
+
+        $this->join($keller);
+        $this->assertSame(400, karavan_create_meeting_request($this->pdo, $this->studentId, ['listing_id' => $listingId])[0], 'Members get past the check to the location validation.');
+    }
+
     // ---- Access ----
 
     public static function everyRole(): array

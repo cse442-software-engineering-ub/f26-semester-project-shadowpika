@@ -2,11 +2,12 @@
 namespace Karavan\Tests\Http;
 
 use Karavan\Tests\Support\Fixtures;
-use PDO;
+use Karavan\Tests\Support\TestDatabase;
 use PHPUnit\Framework\TestCase;
 
 // Backend task card #152 (View Item Details): boots `php -S` against api/get_item_details.php,
-// backed by a throwaway SQLite copy of the search seed books.
+// backed by a throwaway SQLite copy of the search seed books. Requests are made as a logged-in
+// student, who is automatically in All of UB (the seed books' community).
 final class ItemDetailsHttpTest extends TestCase
 {
     private const ENDPOINT = '/api/get_item_details.php';
@@ -16,17 +17,21 @@ final class ItemDetailsHttpTest extends TestCase
     private static string $baseUrl;
     private static string $workDir;
     private static string $dbFile;
+    private static string $sessionDir;
+    private string $sessionId;
 
     public static function setUpBeforeClass(): void
     {
         self::$workDir = Fixtures::tempDir('karavan_item_');
         self::$dbFile = self::$workDir . '/test.sqlite';
+        self::$sessionDir = self::$workDir . '/sessions';
+        mkdir(self::$sessionDir);
 
         $port = self::freePort();
         self::$baseUrl = "http://127.0.0.1:$port";
         $docRoot = dirname(__DIR__, 3) . '/deploy';
 
-        $command = [PHP_BINARY, '-S', "127.0.0.1:$port", '-t', $docRoot];
+        $command = [PHP_BINARY, '-d', 'session.save_path=' . self::$sessionDir, '-S', "127.0.0.1:$port", '-t', $docRoot];
         $env = array_merge(getenv(), ['KARAVAN_DB_DSN' => 'sqlite:' . self::$dbFile]);
         $null = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
 
@@ -53,20 +58,10 @@ final class ItemDetailsHttpTest extends TestCase
     protected function setUp(): void
     {
         @unlink(self::$dbFile);
-        $pdo = new PDO('sqlite:' . self::$dbFile);
-        $pdo->exec(
-            "CREATE TABLE listings (
-                listing_id  INTEGER PRIMARY KEY,
-                name        TEXT NOT NULL,
-                price       NUMERIC NOT NULL,
-                `condition` TEXT NOT NULL,
-                image_url   TEXT,
-                category    TEXT NOT NULL DEFAULT 'Other',
-                community   TEXT,
-                description TEXT,
-                status      TEXT NOT NULL DEFAULT 'active'
-            )"
-        );
+        $pdo = TestDatabase::create('sqlite:' . self::$dbFile);
+        $userId = TestDatabase::addUser($pdo, 'item.viewer@test.com');
+        $this->sessionId = bin2hex(random_bytes(16));
+        file_put_contents(self::$sessionDir . "/sess_{$this->sessionId}", "user_id|i:$userId;");
         // 91001 keeps the legacy "Books" label some shared databases still have.
         $pdo->exec(
             "INSERT INTO listings (listing_id, name, price, `condition`, image_url, category, community, description, status) VALUES
@@ -89,7 +84,11 @@ final class ItemDetailsHttpTest extends TestCase
     /** @return array{0: int, 1: string} status code and raw body */
     private function request(string $method, string $query): array
     {
-        $context = stream_context_create(['http' => ['method' => $method, 'ignore_errors' => true]]);
+        $context = stream_context_create(['http' => [
+            'method' => $method,
+            'ignore_errors' => true,
+            'header' => "Cookie: PHPSESSID={$this->sessionId}",
+        ]]);
         $body = file_get_contents(self::$baseUrl . self::ENDPOINT . $query, false, $context);
         preg_match('{HTTP/\S+ (\d{3})}', $http_response_header[0], $match);
         return [(int) $match[1], $body];

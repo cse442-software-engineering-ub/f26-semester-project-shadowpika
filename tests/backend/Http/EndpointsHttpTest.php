@@ -978,6 +978,35 @@ final class EndpointsHttpTest extends TestCase
     }
 
     // Story 2: shoppers only see items from communities they're part of
+    public function testItemDetailsAreOnlyShownToMembersOfTheListingsCommunity(): void
+    {
+        $this->approvedCommunity('All of UB', 'all-of-ub@test.com');
+        $keller = $this->approvedCommunity('Keller Properties LLC', 'morgan.keller.s2@test.com');
+        $sellerId = TestDatabase::addUser($this->pdo, 'sam.seller');
+        $kellerItem = TestDatabase::addListing($this->pdo, $sellerId, ['name' => 'Keller Desk Lamp', 'community' => 'Keller Properties LLC']);
+        $campusItem = TestDatabase::addListing($this->pdo, $sellerId, ['name' => 'Calculus Textbook', 'community' => 'All of UB']);
+        $shopper = $this->sessionFor(TestDatabase::addUser($this->pdo, 'drew.student'));
+
+        [$blockedStatus, , $blockedRaw] = $this->request('GET', "api/get_item_details.php?listing_id=$kellerItem", null, $shopper);
+        $this->assertSame(403, $blockedStatus);
+        $this->assertSame('{"success":false,"error":"This item is only available to members of its community."}', $blockedRaw);
+
+        [$campusStatus, $campus] = $this->request('GET', "api/get_item_details.php?listing_id=$campusItem", null, $shopper);
+        $this->assertSame(200, $campusStatus, 'Everyone is in All of UB.');
+        $this->assertSame('All of UB', $campus['listing']['community']);
+
+        [$ownerStatus] = $this->request('GET', "api/get_item_details.php?listing_id=$kellerItem", null, $this->sessionFor($sellerId));
+        $this->assertSame(200, $ownerStatus, 'Sellers always see their own listing.');
+
+        $this->postJson('join_community.php', json_encode(['community_id' => $keller]), $shopper);
+        [$memberStatus, $member] = $this->request('GET', "api/get_item_details.php?listing_id=$kellerItem", null, $shopper);
+        $this->assertSame(200, $memberStatus);
+        $this->assertSame('Keller Desk Lamp', $member['listing']['name']);
+
+        [$loggedOutStatus, , $loggedOutRaw] = $this->request('GET', "api/get_item_details.php?listing_id=$campusItem");
+        $this->assertSame([401, '{"success":false,"error":"You must be logged in."}'], [$loggedOutStatus, $loggedOutRaw]);
+    }
+
     public function testJoiningANonexistentCommunityReturns404(): void
     {
         $this->signUp('avery.student', 'avery.student@test.com', 'Student123!');

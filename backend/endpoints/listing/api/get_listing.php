@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../lib/database.php';
 require_once __DIR__ . '/../lib/listing_repository.php';
+require_once __DIR__ . '/../../includes/http.php';
+require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../includes/communities.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
@@ -27,6 +30,14 @@ if ($method !== 'GET') {
     ]);
 }
 
+$userId = karavan_session_user_id();
+if ($userId === null) {
+    listing_json_response(401, [
+        'success' => false,
+        'error' => 'You must be logged in.',
+    ]);
+}
+
 $listingId = filter_input(INPUT_GET, 'listing_id', FILTER_VALIDATE_INT, [
     'options' => ['min_range' => 1],
 ]);
@@ -46,6 +57,13 @@ try {
         listing_json_response(404, [
             'success' => false,
             'error' => 'Listing not found.',
+        ]);
+    }
+
+    if (!karavan_can_shop_listing(karavan_pdo(), $userId, $listing)) {
+        listing_json_response(403, [
+            'success' => false,
+            'error' => KARAVAN_NOT_A_MEMBER_ERROR,
         ]);
     }
 
