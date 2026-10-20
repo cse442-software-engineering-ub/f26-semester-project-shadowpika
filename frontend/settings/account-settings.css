@@ -5,7 +5,7 @@
         }
 
         body {
-            font-family: Arial, Helvetica, sans-serif;
+            font-family: DM Sans,system-ui,sans-serif;
             background: #f6f1ea;
             color: #1f3048;
         }
@@ -120,7 +120,7 @@
             border-radius: 6px;
             background: #24364f;
             color: white;
-            font-size: 9px;
+            font-size: 14px;
             font-weight: bold;
         }
 
@@ -146,7 +146,7 @@
         .page-description {
             margin-top: 4px;
             font-family: 'DM Sans', system-ui, sans-serif;
-            font-size: 13px;
+            font-size: 14px;
             line-height: 18px;
             color: #8a94a6;
             margin-bottom: 24px;
@@ -185,7 +185,7 @@
             display: flex;
             align-items: center;
             padding: 0 16px;
-            font-size: 9px;
+            font-size: 14px;
             color: #52647b;
             position: relative;
         }
@@ -214,7 +214,7 @@
         }
 
         .section-title {
-            font-size: 10px;
+            font-size: 16px;
             font-weight: 700;
             color: #24364f;
             margin-bottom: 20px;
@@ -233,8 +233,8 @@
 
         .field-label {
             width: 132px;
-            font-size: 8px;
-            color: #607188;
+            font-size: 14px;
+            color: #8A94A6;
         }
 
         .field-input {
@@ -245,7 +245,7 @@
             border-radius: 6px;
             padding: 0 10px;
             color: #334258;
-            font-size: 9px;
+            font-size: 14px;
             outline: none;
         }
 
@@ -259,7 +259,7 @@
 
         .photo-field {
             align-items: flex-start;
-            margin-top: 9px;
+            margin-top: 14px;
         }
 
         .photo-label {
@@ -311,7 +311,7 @@
         }
 
         .upload-text {
-            font-size: 8px;
+            font-size: 14px;
             color: #718197;
         }
 
@@ -331,25 +331,24 @@
 
         .password-label {
             width: 132px;
-            font-size: 8px;
-            color: #607188;
+            font-size: 14px;
+            color: #8A94A6;
         }
 
         .change-password {
-            height: 29px;
-            padding: 0 12px;
-            border: none;
-            border-radius: 5px;
-            background: #24364f;
-            color: white;
-            font-size: 9px;
+            border-radius: 6px;
+            height: 38px;
+            padding: 0 18px;
+            font-size: 12px;
             font-weight: 600;
+            background: #24364f;
+            font-family: DM Sans,system-ui,sans-serif;
             cursor: pointer;
         }
 
         .password-description {
             margin-left: 9px;
-            font-size: 8px;
+            font-size: 14px;
             color: #718197;
         }
 
@@ -372,25 +371,24 @@
 
         .delete-label {
             width: 132px;
-            font-size: 8px;
-            color: #607188;
+            font-size: 14px;
+            color: #8A94A6;
         }
 
         .delete-button {
-            height: 29px;
-            padding: 0 12px;
-            border: none;
-            border-radius: 5px;
-            background: #e32d25;
-            color: white;
-            font-size: 9px;
+            border-radius: 6px;
+            height: 38px;
+            padding: 0 18px;
+            font-size: 12px;
             font-weight: 600;
+            background: #e32d25;
+            font-family: DM Sans,system-ui,sans-serif;
             cursor: pointer;
         }
 
         .delete-description {
             margin-left: 9px;
-            font-size: 8px;
+            font-size: 14px;
             color: #718197;
         }
 
@@ -405,20 +403,19 @@
         }
 
         .save-button {
-            height: 30px;
-            padding: 0 13px;
-            border: none;
-            border-radius: 5px;
-            background: #24364f;
-            color: white;
-            font-size: 9px;
+            border-radius: 6px;
+            height: 38px;
+            padding: 0 18px;
+            font-size: 12px;
             font-weight: 600;
+            background: #24364f;
+            font-family: DM Sans,system-ui,sans-serif;
             cursor: pointer;
-        }
+         }
 
         .save-description {
             margin-left: 9px;
-            font-size: 8px;
+            font-size: 14px;
             color: #718197;
         }
 
