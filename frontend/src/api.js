@@ -98,8 +98,23 @@ export async function joinCommunity(communityId) {
     return { status: response.status, ...(await readJson(response)) };
 }
 
-export async function leaveCommunity() {
-    const response = await fetch(apiUrl('leave_community.php'), { method: 'POST', credentials: 'same-origin' });
+export async function leaveCommunity(communityId) {
+    const response = await fetch(apiUrl('leave_community.php'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ community_id: communityId }),
+    });
+    return { status: response.status, ...(await readJson(response)) };
+}
+
+export async function setShoppingCommunities(communityIds) {
+    const response = await fetch(apiUrl('set_shopping_communities.php'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ community_ids: communityIds }),
+    });
     return { status: response.status, ...(await readJson(response)) };
 }
 

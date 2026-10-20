@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import NavBar from './NavBar.jsx';
+import ShoppingCommunities from './components/ShoppingCommunities.jsx';
 import './ProductSearch.css';
 import { buildSearchUrl, itemPageUrl, searchLocalListings } from './localListings.js';
 
@@ -214,6 +215,9 @@ function ProductSearch() {
     const [priceError, setPriceError] = useState('');
     const [publishedListing, setPublishedListing] = useState(null);
     const [publishedStatus, setPublishedStatus] = useState('idle');
+    // Bumped when the shopper changes which communities they shop from, to rerun the search.
+    const [shoppingVersion, setShoppingVersion] = useState(0);
+    const refreshForCommunities = useCallback(() => setShoppingVersion((version) => version + 1), []);
     const requestId = useRef(0);
     const minimumPriceRef = useRef(null);
     const maximumPriceRef = useRef(null);
@@ -302,7 +306,7 @@ function ProductSearch() {
             appliedMaxPrice,
         ), SEARCH_DELAY_MS);
         return () => clearTimeout(timer);
-    }, [query, appliedCategories, appliedConditions, appliedMinPrice, appliedMaxPrice, runSearch]);
+    }, [query, appliedCategories, appliedConditions, appliedMinPrice, appliedMaxPrice, runSearch, shoppingVersion]);
 
     useEffect(() => {
         saveSearchInAddress(
@@ -452,6 +456,8 @@ function ProductSearch() {
                             <span className="ps-search-notice">{inputNotice}</span>
                             {charCount > 0 && <span className="ps-search-count">{charCount}/{MAX_QUERY_LENGTH}</span>}
                         </div>
+
+                        {!isLocalPreview() && <ShoppingCommunities onChange={refreshForCommunities} />}
 
                         {publishedStatus !== 'idle' && (
                             <section className="ps-published-section" aria-live="polite">

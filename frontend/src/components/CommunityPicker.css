@@ -82,6 +82,14 @@
   font-weight: 600;
 }
 
+.kv-communities-tag {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4a5870;
+}
+
 .kv-communities-join {
   flex: none;
   min-width: 76px;

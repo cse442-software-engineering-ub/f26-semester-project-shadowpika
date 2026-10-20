@@ -3,26 +3,49 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import NavBar from '../NavBar.jsx';
 import App from '../App.jsx';
-import { markNewAccount, recordLogin } from '../community.js';
+import { markNewAccount, openCommunityPicker, recordLogin } from '../community.js';
 
-const KELLER = { community_id: 1, name: 'Keller Properties LLC' };
-const RIVERSIDE = { community_id: 2, name: 'Riverside Apartments' };
+const ALL_OF_UB = { community_id: 91070, name: 'All of UB', automatic: true };
+const KELLER = { community_id: 1, name: 'Keller Properties LLC', automatic: false };
+const RIVERSIDE = { community_id: 2, name: 'Riverside Apartments', automatic: false };
 const FORBIDDEN = { success: false, error: 'You do not have permission to perform this action.' };
 
 const jsonResponse = (status, body) =>
     Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }));
 
-// Mirrors the DevTools network overrides in the manual cards; each call can be changed mid-test.
-function mockBackend() {
+// Behaves like the real endpoints: joins and leaves change what list_communities.php returns.
+// Any response can be replaced mid-test, like the DevTools network overrides in the manual cards.
+function mockBackend({ communities = [ALL_OF_UB, KELLER], joined = [] } = {}) {
     const backend = {
-        list: [200, { success: true, communities: [KELLER] }],
-        join: (id) => [200, { success: true, community_id: id, community_name: id === 2 ? RIVERSIDE.name : KELLER.name }],
-        leave: [200, { success: true, community_id: null, community_name: null }],
+        communities,
+        joined: new Set(joined),
+        list: null,
+        join: null,
+        leave: null,
     };
+    const listBody = () => ({
+        success: true,
+        communities: backend.communities.map((c) => {
+            const isIn = c.automatic || backend.joined.has(c.community_id);
+            return { ...c, joined: isIn, shopping: isIn };
+        }),
+    });
     backend.fetch = vi.fn((url, options = {}) => {
-        if (url.endsWith('list_communities.php')) return jsonResponse(...backend.list);
-        if (url.endsWith('join_community.php')) return jsonResponse(...backend.join(JSON.parse(options.body).community_id));
-        if (url.endsWith('leave_community.php')) return jsonResponse(...backend.leave);
+        if (url.endsWith('list_communities.php')) return jsonResponse(...(backend.list ?? [200, listBody()]));
+        if (url.endsWith('join_community.php')) {
+            if (backend.join) return jsonResponse(...backend.join);
+            const id = JSON.parse(options.body).community_id;
+            backend.joined.add(id);
+            const community = backend.communities.find((c) => c.community_id === id);
+            return jsonResponse(200, { success: true, community_id: id, community_name: community.name });
+        }
+        if (url.endsWith('leave_community.php')) {
+            if (backend.leave) return jsonResponse(...backend.leave);
+            const id = JSON.parse(options.body).community_id;
+            backend.joined.delete(id);
+            const community = backend.communities.find((c) => c.community_id === id);
+            return jsonResponse(200, { success: true, community_id: id, community_name: community.name });
+        }
         return jsonResponse(404, { success: false });
     });
     vi.stubGlobal('fetch', backend.fetch);
@@ -36,7 +59,7 @@ const navButton = (name) => navBar().findByRole('button', { name });
 
 function firstLoginAfterSignUp(email = 'riley.student@test.com') {
     markNewAccount(email);
-    recordLogin(email, { success: true, role: 'user', community_id: null, community_name: null });
+    recordLogin(email, { success: true, role: 'user', communities: [] });
 }
 
 beforeEach(() => localStorage.clear());
@@ -74,7 +97,7 @@ describe('Join a Community', () => {
     it('does not show the suggestions for an account that did not just sign up', async () => {
         mockBackend();
         markNewAccount('someone.else@test.com');
-        recordLogin('riley.student@test.com', { success: true, role: 'user' });
+        recordLogin('riley.student@test.com', { success: true, role: 'user', communities: [] });
         render(<NavBar />);
 
         await navButton('Join a Community');
@@ -112,13 +135,12 @@ describe('Join a Community', () => {
     });
 
     it('Test 4: the nav button reopens the picker and reloads the list', async () => {
-        const backend = mockBackend();
-        backend.list = [200, { success: true, communities: [] }];
+        const backend = mockBackend({ communities: [] });
         const user = userEvent.setup();
         render(<NavBar />);
         const button = await navButton('Join a Community');
 
-        backend.list = [200, { success: true, communities: [KELLER] }];
+        backend.communities = [KELLER];
         await user.click(button);
 
         const dialog = await screen.findByRole('dialog', { name: 'Join a Community' });
@@ -127,52 +149,77 @@ describe('Join a Community', () => {
     });
 
     it('Test 4: the nav button still works while the first-login suggestions are open', async () => {
-        const backend = mockBackend();
-        backend.list = [200, { success: true, communities: [] }];
+        const backend = mockBackend({ communities: [] });
         firstLoginAfterSignUp('sam.reopen@test.com');
         const user = userEvent.setup();
         render(<NavBar />);
         await screen.findByRole('dialog', { name: 'Suggested communities' });
 
-        backend.list = [200, { success: true, communities: [KELLER] }];
+        backend.communities = [KELLER];
         await user.click(await navButton('Join a Community'));
 
         const dialog = await screen.findByRole('dialog', { name: 'Join a Community' });
         expect(await within(dialog).findByText('Keller Properties LLC')).toBeInTheDocument();
     });
 
-    it('Test 5: switching communities updates the nav button', async () => {
-        const backend = mockBackend();
+    it('Test 5: joining a second community keeps the first and the nav button counts both', async () => {
+        const backend = mockBackend({ communities: [ALL_OF_UB, KELLER, RIVERSIDE] });
         const user = userEvent.setup();
         render(<NavBar />);
 
         await user.click(await navButton('Join a Community'));
         await user.click(await screen.findByRole('button', { name: 'Join Keller Properties LLC' }));
-        expect(await navButton('Keller Properties LLC')).toBeInTheDocument();
-
-        backend.list = [200, { success: true, communities: [KELLER, RIVERSIDE] }];
         await user.click(await navButton('Keller Properties LLC'));
         const dialog = await screen.findByRole('dialog');
-        expect(within(dialog).getByRole('button', { name: 'Joined Keller Properties LLC' })).toBeDisabled();
-        await user.click(await within(dialog).findByRole('button', { name: 'Join Riverside Apartments' }));
+        expect(await within(dialog).findByRole('button', { name: 'Joined Keller Properties LLC' })).toBeDisabled();
+        await user.click(within(dialog).getByRole('button', { name: 'Join Riverside Apartments' }));
 
-        expect(await navButton('Riverside Apartments')).toBeInTheDocument();
-        expect(navBar().queryByRole('button', { name: 'Keller Properties LLC' })).not.toBeInTheDocument();
+        expect(await navButton('2 Communities')).toBeInTheDocument();
+        await user.click(await navButton('2 Communities'));
+        const reopened = await screen.findByRole('dialog');
+        expect(await within(reopened).findByRole('button', { name: 'Joined Keller Properties LLC' })).toBeDisabled();
+        expect(within(reopened).getByRole('button', { name: 'Joined Riverside Apartments' })).toBeDisabled();
         expect(callsTo(backend.fetch, 'join_community.php').map(([, o]) => JSON.parse(o.body))).toEqual([{ community_id: 1 }, { community_id: 2 }]);
     });
 
-    it('shows the joined community from the last login on every page load', async () => {
+    it('shows All of UB as a community everyone is in, with no Join or Leave', async () => {
         mockBackend();
-        recordLogin('casey.switch@test.com', { success: true, role: 'user', community_id: 2, community_name: 'Riverside Apartments' });
+        const user = userEvent.setup();
+        render(<NavBar />);
+
+        await user.click(await navButton('Join a Community'));
+        const dialog = await screen.findByRole('dialog');
+
+        expect(await within(dialog).findByText('Everyone is a member')).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: 'Joined All of UB' })).toBeDisabled();
+        expect(within(dialog).queryByRole('button', { name: 'Leave All of UB' })).not.toBeInTheDocument();
+    });
+
+    it('shows the joined communities from the last login on every page load', async () => {
+        mockBackend({ communities: [ALL_OF_UB, KELLER, RIVERSIDE], joined: [2] });
+        recordLogin('casey.switch@test.com', { success: true, role: 'user', communities: [{ community_id: 2, name: 'Riverside Apartments' }] });
 
         render(<NavBar />);
 
         expect(await navButton('Riverside Apartments')).toBeInTheDocument();
     });
 
+    it('forgets the joined communities when the user logs out', async () => {
+        mockBackend({ communities: [ALL_OF_UB, KELLER, RIVERSIDE], joined: [2] });
+        recordLogin('casey.switch@test.com', { success: true, role: 'user', communities: [{ community_id: 2, name: 'Riverside Apartments' }] });
+        const user = userEvent.setup();
+        render(<NavBar />);
+        await navButton('Riverside Apartments');
+        expect(localStorage.getItem('karavan_communities')).not.toBeNull();
+
+        await user.click(navBar().getByRole('button', { name: 'Log Out' }));
+
+        await waitFor(() => expect(localStorage.getItem('karavan_communities')).toBeNull());
+    });
+
     it('keeps the dialog open with the error when joining fails', async () => {
         const backend = mockBackend();
-        backend.join = () => [404, { success: false, error: 'Community not found.' }];
+        backend.join = [404, { success: false, error: 'Community not found.' }];
         const user = userEvent.setup();
         render(<NavBar />);
 
@@ -195,42 +242,61 @@ describe('Join a Community', () => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
+    it('opens when another page asks for it (the search page\'s "Join a community")', async () => {
+        mockBackend();
+        render(<NavBar />);
+        await navButton('Join a Community');
+
+        openCommunityPicker();
+
+        expect(await screen.findByRole('dialog', { name: 'Join a Community' })).toBeInTheDocument();
+    });
+
     // Leave a Community frontend
-    it('leaving from the picker clears the nav button and lets the user join again', async () => {
-        const backend = mockBackend();
-        recordLogin('casey.leave@test.com', { success: true, role: 'user', community_id: 1, community_name: KELLER.name });
+    it('leaving one community keeps the others and sends which one to leave', async () => {
+        const backend = mockBackend({ communities: [ALL_OF_UB, KELLER, RIVERSIDE], joined: [1, 2] });
+        const user = userEvent.setup();
+        render(<NavBar />);
+
+        await user.click(await navButton('2 Communities'));
+        const dialog = await screen.findByRole('dialog', { name: 'Join a Community' });
+        await user.click(await within(dialog).findByRole('button', { name: 'Leave Keller Properties LLC' }));
+
+        expect(await navButton('Riverside Apartments')).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: 'Join Keller Properties LLC' })).toBeEnabled();
+        expect(within(dialog).getByRole('button', { name: 'Leave Riverside Apartments' })).toBeInTheDocument();
+        const [[, options]] = callsTo(backend.fetch, 'leave_community.php');
+        expect(options.method).toBe('POST');
+        expect(JSON.parse(options.body)).toEqual({ community_id: 1 });
+    });
+
+    it('leaving the last joined community goes back to "Join a Community"', async () => {
+        mockBackend({ joined: [1] });
         const user = userEvent.setup();
         render(<NavBar />);
 
         await user.click(await navButton('Keller Properties LLC'));
-        const dialog = await screen.findByRole('dialog', { name: 'Join a Community' });
-        backend.list = [200, { success: true, communities: [KELLER], joined_community_id: null }];
-        await user.click(within(dialog).getByRole('button', { name: 'Leave Keller Properties LLC' }));
+        await user.click(await screen.findByRole('button', { name: 'Leave Keller Properties LLC' }));
 
         expect(await navButton('Join a Community')).toBeInTheDocument();
-        expect(within(dialog).getByRole('button', { name: 'Join Keller Properties LLC' })).toBeEnabled();
-        expect(within(dialog).queryByRole('button', { name: /^Leave/ })).not.toBeInTheDocument();
-        const [[, options]] = callsTo(backend.fetch, 'leave_community.php');
-        expect(options.method).toBe('POST');
-        expect(localStorage.getItem('karavan_community')).toBeNull();
+        expect(localStorage.getItem('karavan_communities')).toBeNull();
     });
 
-    it('only offers Leave for the community the user is in', async () => {
-        mockBackend().list = [200, { success: true, communities: [KELLER, RIVERSIDE], joined_community_id: 2 }];
+    it('only offers Leave for communities the user joined', async () => {
+        mockBackend({ communities: [ALL_OF_UB, KELLER, RIVERSIDE], joined: [2] });
         const user = userEvent.setup();
         render(<NavBar />);
 
         await user.click(await navButton('Riverside Apartments'));
         const dialog = await screen.findByRole('dialog');
 
-        expect(within(dialog).getByRole('button', { name: 'Leave Riverside Apartments' })).toBeInTheDocument();
+        expect(await within(dialog).findByRole('button', { name: 'Leave Riverside Apartments' })).toBeInTheDocument();
         expect(within(dialog).queryByRole('button', { name: 'Leave Keller Properties LLC' })).not.toBeInTheDocument();
     });
 
     it('keeps the community and shows the error when leaving fails', async () => {
-        const backend = mockBackend();
+        const backend = mockBackend({ joined: [1] });
         backend.leave = [500, { success: false, error: 'Could not leave the community.' }];
-        recordLogin('casey.leave@test.com', { success: true, role: 'user', community_id: 1, community_name: KELLER.name });
         const user = userEvent.setup();
         render(<NavBar />);
 
@@ -241,19 +307,18 @@ describe('Join a Community', () => {
         expect(navBar().getByRole('button', { name: 'Keller Properties LLC' })).toBeInTheDocument();
     });
 
-    it('trusts the server about which community the user is in', async () => {
-        mockBackend().list = [200, { success: true, communities: [KELLER], joined_community_id: null }];
-        recordLogin('casey.stale@test.com', { success: true, role: 'user', community_id: 1, community_name: KELLER.name });
+    it('trusts the server about which communities the user is in', async () => {
+        mockBackend();
+        recordLogin('casey.stale@test.com', { success: true, role: 'user', communities: [{ community_id: 1, name: KELLER.name }] });
 
         render(<NavBar />);
 
         expect(await navButton('Join a Community')).toBeInTheDocument();
-        expect(localStorage.getItem('karavan_community')).toBeNull();
+        expect(localStorage.getItem('karavan_communities')).toBeNull();
     });
 
     it('says so when there are no communities yet', async () => {
-        const backend = mockBackend();
-        backend.list = [200, { success: true, communities: [] }];
+        mockBackend({ communities: [] });
         const user = userEvent.setup();
         render(<NavBar />);
 
@@ -281,7 +346,7 @@ describe('Sign up and log in remember the account for the community picker', () 
         unmount();
 
         window.history.replaceState({}, '', '/index.html');
-        vi.stubGlobal('fetch', vi.fn(() => jsonResponse(200, { success: true, role: 'user', community_id: null, community_name: null })));
+        vi.stubGlobal('fetch', vi.fn(() => jsonResponse(200, { success: true, role: 'user', communities: [] })));
         render(<App />);
         await user.type(await screen.findByLabelText('Email'), 'riley.student@test.com');
         await user.type(screen.getByLabelText('Password'), 'Student123!');
