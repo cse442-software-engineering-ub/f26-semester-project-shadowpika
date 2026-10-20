@@ -158,7 +158,7 @@
 
         /* Fills the page width inside the margins, like the Sell page's form card */
         .settings-card {
-            width: 50%;
+            width: 100%;
             min-height: 689px;
             border: 1px solid #e3e0d9;
             overflow: hidden;
@@ -501,10 +501,4 @@
             flex: 0 0 auto;
             white-space: nowrap;
         }
-    }
-
-    button {
-        font-size: 12px;
-        font-family: DM Sans,system-ui,sans-serif;
-        padding: 12px 28px;
     }
