@@ -3,13 +3,18 @@ declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 
-require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/../includes/db.php';
 
 function respond(int $status, array $data): never {
     http_response_code($status);
     echo json_encode($data);
     exit;
 }
+
+error_log(
+    'mb_strlen available: ' .
+    (function_exists('mb_strlen') ? 'yes' : 'no')
+);
 
 try {
     $pdo = karavan_pdo();
@@ -25,7 +30,7 @@ try {
     }
 
     $stmt = $pdo->prepare(
-        'SELECT id
+        'SELECT id, username
          FROM users
          WHERE username = :username OR email = :email
          LIMIT 1'
@@ -46,6 +51,7 @@ try {
     }
 
     $userId = (int) $user['id'];
+    $currentUsername = $user['username'];
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
     // Retrieve messages for one user and one listing.
@@ -67,6 +73,23 @@ try {
             respond(400, [
                 'success' => false,
                 'error' => 'A valid user ID and listing ID are required.'
+            ]);
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT username
+            FROM users
+            WHERE id = :id
+            LIMIT 1'
+        );
+
+        $stmt->execute(['id' => $otherUserId]);
+        $otherUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$otherUser) {
+            respond(404, [
+                'success' => false,
+                'error' => 'User not found.'
             ]);
         }
 
@@ -99,6 +122,7 @@ try {
         respond(200, [
             'success' => true,
             'current_user_id' => $userId,
+            'other_username' => $otherUser['username'],
             'messages' => $stmt->fetchAll(PDO::FETCH_ASSOC)
         ]);
     }

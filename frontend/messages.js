@@ -1,4 +1,4 @@
-const API_URL = "api/messages.php";
+const API_URL = "api/message.php";
 const CONVERSATIONS_URL = "api/conversations.php";
 
 let conversations = [];
@@ -70,15 +70,19 @@ function getConversationKey(userId, listingId) {
 
 // Load the inbox from conversations.php.
 async function loadConversations() {
+    const params = new URLSearchParams(window.location.search);
+    const requestedUserId = Number(params.get("with"));
+    const requestedListingId = Number(params.get("listing_id"));
+    const requestedListingName = params.get("listing_name") || "";
+
     const data = await apiRequest(CONVERSATIONS_URL);
 
     if (data.current_user_id !== undefined) {
         currentUserId = Number(data.current_user_id);
     }
 
-    conversations = data.conversations.map(conversation => {
+    conversations = (data.conversations || []).map(conversation => {
         const id = Number(conversation.id);
-
         const listingId = conversation.listing_id == null
             ? null
             : Number(conversation.listing_id);
@@ -91,9 +95,82 @@ async function loadConversations() {
             listing: conversation.listing || "",
             lastMessage: conversation.last_message || "",
             lastTimestamp: conversation.last_timestamp || "",
-            messages: []
+            messages: [],
+            isDraft: false
         };
     });
+
+    // If Message Seller supplied a seller and listing, open that chat.
+    if (
+        Number.isSafeInteger(requestedUserId) &&
+        requestedUserId > 0 &&
+        Number.isSafeInteger(requestedListingId) &&
+        requestedListingId > 0
+    ) {
+        if (
+            currentUserId !== null &&
+            requestedUserId === currentUserId
+        ) {
+            throw new Error("You cannot start a chat with yourself.");
+        }
+
+        const key = getConversationKey(
+            requestedUserId,
+            requestedListingId
+        );
+
+        let conversation = conversations.find(
+            item => item.key === key
+        );
+
+        if (!conversation) {
+            conversation = {
+                id: requestedUserId,
+                listingId: requestedListingId,
+                key,
+                name: "Seller",
+                listing: requestedListingName,
+                lastMessage: "",
+                lastTimestamp: "",
+                messages: [],
+                isDraft: true
+            };
+
+            conversations.unshift(conversation);
+        } else {
+            conversation.isDraft = false;
+
+            if (requestedListingName && !conversation.listing) {
+                conversation.listing = requestedListingName;
+            }
+        }
+
+        selectedId = conversation.key;
+
+        renderConversationList();
+
+        if (conversation.isDraft) {
+            renderChat();
+        } else {
+            await loadChat(selectedId);
+        }
+
+        return;
+    }
+
+    // Normal inbox behavior when no seller/listing was requested.
+    renderConversationList();
+
+    if (conversations.length > 0) {
+        if (!conversations.some(item => item.key === selectedId)) {
+            selectedId = conversations[0].key;
+        }
+
+        await loadChat(selectedId);
+    } else {
+        selectedId = null;
+        renderChat();
+    }
 
     renderConversationList();
 
@@ -147,6 +224,10 @@ async function loadChat(conversationKey) {
             selectedId !== conversation.key
         ) {
             return;
+        }
+
+        if (data.other_username) {
+            conversation.name = data.other_username;
         }
 
         if (data.current_user_id !== undefined) {
@@ -404,6 +485,7 @@ function renderChat(loading = false) {
             // Don't update a different conversation if the user switched
             // chats while the request was being processed.
             const saved = data.message;
+            selected.isDraft = false;
 
             selected.messages.push({
                 senderId: Number(saved.sender_id),
