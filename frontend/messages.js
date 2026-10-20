@@ -1,43 +1,14 @@
-const initialConversations = [
-    {
-        id: 1,
-        name: "User123",
-        listing: "32-inch Class 60Hz 720p HD LED TV Flat Screen",
-        messages: [
-            { from: "them", text: "Hi! Is this still available?" },
-            {
-                from: "me",
-                text: "Yes, it is! Let me know if you're interested."
-            }
-        ]
-    },
-    {
-        id: 2,
-        name: "moderator",
-        listing: "32-inch Class 60Hz 720p HD LED TV Flat Screen",
-        messages: [
-            { from: "them", text: "Thanks for the offer!" }
-        ]
-    },
-    {
-        id: 3,
-        name: "Judith Smith",
-        listing: "32-inch Class 60Hz 720p HD LED TV Flat Screen",
-        messages: [
-            { from: "them", text: "Where can we meet?" }
-        ]
-    }
-];
+const API_URL = "api/message.php";
+const CONVERSATIONS_URL = "api/conversations.php";
 
-const conversations = initialConversations.map(conversation => ({
-    ...conversation,
-    messages: conversation.messages.map(message => ({ ...message }))
-}));
+let conversations = [];
+let selectedId = null;
+let currentUserId = null;
+let chatRequestId = 0;
 
-let selectedId = 1;
-
+// Escape text before inserting it into HTML.
 function escapeHTML(value) {
-    return String(value).replace(/[&<>"']/g, character => ({
+    return String(value ?? "").replace(/[&<>"']/g, character => ({
         "&": "&amp;",
         "<": "&lt;",
         ">": "&gt;",
@@ -49,12 +20,9 @@ function escapeHTML(value) {
 function MessageIcon() {
     return `
         <svg viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true">
+            fill="none" stroke="currentColor"
+            stroke-width="1.8" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
             <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8
                 8.5 8.5 0 0 1-7.6 4.7
                 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7
@@ -66,33 +34,324 @@ function MessageIcon() {
     `;
 }
 
+// Make API requests and handle invalid JSON/PHP errors.
+async function apiRequest(url, options = {}) {
+    const response = await fetch(url, {
+        credentials: "same-origin",
+        ...options
+    });
+
+    let data;
+
+    try {
+        data = await response.json();
+    } catch {
+        throw new Error(
+            `The server returned an invalid response (HTTP ${response.status}).`
+        );
+    }
+
+    if (!response.ok || !data.success) {
+        throw new Error(data.error || "Request failed.");
+    }
+
+    return data;
+}
+
+function getSelectedConversation() {
+    return conversations.find(
+        conversation => conversation.key === selectedId
+    );
+}
+
+function getConversationKey(userId, listingId) {
+    return `${Number(userId)}:${listingId == null ? "null" : Number(listingId)}`;
+}
+
+// Load the inbox from conversations.php.
+async function loadConversations() {
+    const params = new URLSearchParams(window.location.search);
+    const requestedUserId = Number(params.get("with"));
+    const requestedListingId = Number(params.get("listing_id"));
+    const requestedListingName = params.get("listing_name") || "";
+
+    const data = await apiRequest(CONVERSATIONS_URL);
+
+    if (data.current_user_id !== undefined) {
+        currentUserId = Number(data.current_user_id);
+    }
+
+    conversations = (data.conversations || []).map(conversation => {
+        const id = Number(conversation.id);
+        const listingId = conversation.listing_id == null
+            ? null
+            : Number(conversation.listing_id);
+
+        return {
+            id,
+            listingId,
+            key: getConversationKey(id, listingId),
+            name: conversation.name || "User",
+            listing: conversation.listing || "",
+            lastMessage: conversation.last_message || "",
+            lastTimestamp: conversation.last_timestamp || "",
+            messages: [],
+            isDraft: false
+        };
+    });
+
+    // If Message Seller supplied a seller and listing, open that chat.
+    if (
+        Number.isSafeInteger(requestedUserId) &&
+        requestedUserId > 0 &&
+        Number.isSafeInteger(requestedListingId) &&
+        requestedListingId > 0
+    ) {
+        if (
+            currentUserId !== null &&
+            requestedUserId === currentUserId
+        ) {
+            throw new Error("You cannot start a chat with yourself.");
+        }
+
+        const key = getConversationKey(
+            requestedUserId,
+            requestedListingId
+        );
+
+        let conversation = conversations.find(
+            item => item.key === key
+        );
+
+        if (!conversation) {
+            conversation = {
+                id: requestedUserId,
+                listingId: requestedListingId,
+                key,
+                name: "Seller",
+                listing: requestedListingName,
+                lastMessage: "",
+                lastTimestamp: "",
+                messages: [],
+                isDraft: true
+            };
+
+            conversations.unshift(conversation);
+        } else {
+            conversation.isDraft = false;
+
+            if (requestedListingName && !conversation.listing) {
+                conversation.listing = requestedListingName;
+            }
+        }
+
+        selectedId = conversation.key;
+
+        renderConversationList();
+
+        if (conversation.isDraft) {
+            renderChat();
+        } else {
+            await loadChat(selectedId);
+        }
+
+        return;
+    }
+
+    // Normal inbox behavior when no seller/listing was requested.
+    renderConversationList();
+
+    if (conversations.length > 0) {
+        if (!conversations.some(item => item.key === selectedId)) {
+            selectedId = conversations[0].key;
+        }
+
+        await loadChat(selectedId);
+    } else {
+        selectedId = null;
+        renderChat();
+    }
+
+    renderConversationList();
+
+    if (conversations.length > 0) {
+        const stillExists = conversations.some(
+            conversation => conversation.key === selectedId
+        );
+
+        if (!stillExists) {
+            selectedId = conversations[0].key;
+        }
+
+        await loadChat(selectedId);
+    } else {
+        selectedId = null;
+        renderChat();
+    }
+}
+
+// Retrieve messages for the selected user AND listing.
+async function loadChat(conversationKey) {
+    const conversation = conversations.find(
+        item => item.key === conversationKey
+    );
+
+    if (!conversation) return;
+
+    // A NULL listing ID represents an older conversation.
+    if (conversation.listingId == null) {
+        showChatError(
+            "This conversation has no listing assigned. " +
+            "Please assign a listing to its messages before opening it."
+        );
+        return;
+    }
+
+    const requestId = ++chatRequestId;
+
+    renderChat(true);
+
+    try {
+        const url =
+            `${API_URL}?with=${encodeURIComponent(conversation.id)}` +
+            `&listing_id=${encodeURIComponent(conversation.listingId)}`;
+
+        const data = await apiRequest(url);
+
+        // Ignore responses from a chat that is no longer selected.
+        if (
+            requestId !== chatRequestId ||
+            selectedId !== conversation.key
+        ) {
+            return;
+        }
+
+        if (data.other_username) {
+            conversation.name = data.other_username;
+        }
+
+        if (data.current_user_id !== undefined) {
+            currentUserId = Number(data.current_user_id);
+        }
+
+        conversation.messages = data.messages.map(message => ({
+            senderId: Number(message.sender_id),
+            receiverId: Number(message.receiver_id),
+            listingId: message.listing_id == null
+                ? null
+                : Number(message.listing_id),
+            position: Number(message.position),
+            timestamp: message.timestamp || "",
+            text: message.message,
+            from: Number(message.sender_id) === currentUserId
+                ? "me"
+                : "them"
+        }));
+
+        const latest = conversation.messages.at(-1);
+
+        if (latest) {
+            conversation.lastMessage = latest.text;
+            conversation.lastTimestamp = latest.timestamp;
+        }
+
+        renderConversationList();
+    } catch (error) {
+        if (
+            requestId === chatRequestId &&
+            selectedId === conversation.key
+        ) {
+            showChatError(error.message);
+            return;
+        }
+    }
+
+    if (
+        requestId === chatRequestId &&
+        selectedId === conversation.key
+    ) {
+        renderChat();
+    }
+}
+
+function formatTimestamp(timestamp) {
+    if (!timestamp) return "";
+
+    // MySQL timestamps are commonly returned as "YYYY-MM-DD HH:MM:SS".
+    const normalized = timestamp.includes("T")
+        ? timestamp
+        : timestamp.replace(" ", "T");
+
+    const date = new Date(normalized);
+
+    if (Number.isNaN(date.getTime())) {
+        return timestamp;
+    }
+
+    return date.toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+    });
+}
+
 function renderConversationList() {
     const list = document.querySelector(".conversation-list");
+    if (!list) return;
 
-    list.innerHTML = `
-        <h2>Inbox</h2>
+    // Always display the Inbox heading.
+    list.innerHTML = `<h2>Inbox</h2>`;
+
+    // Handle the case where the user has no conversations.
+    if (conversations.length === 0) {
+        list.innerHTML += `
+            <div class="empty-conversations">
+                <p>No conversations yet.</p>
+                <p>Message a seller to start a conversation.</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Render existing conversations.
+    list.innerHTML += `
         <div class="conversation-items">
             ${conversations.map(conversation => {
                 const lastMessage =
-                    conversation.messages[conversation.messages.length - 1];
+                    conversation.messages.at(-1)?.text ??
+                    conversation.lastMessage;
+
+                const timestamp =
+                    conversation.messages.at(-1)?.timestamp ||
+                    conversation.lastTimestamp;
 
                 return `
                     <button
                         type="button"
                         class="conversation ${
-                            selectedId === conversation.id ? "active" : ""
+                            selectedId === conversation.key ? "active" : ""
                         }"
-                        data-id="${conversation.id}"
-                        aria-pressed="${selectedId === conversation.id}">
+                        data-key="${escapeHTML(conversation.key)}"
+                        aria-pressed="${selectedId === conversation.key}">
 
                         <span class="conversation-avatar">
-                            ${escapeHTML(conversation.name.charAt(0))}
+                            ${escapeHTML(
+                                conversation.name.charAt(0).toUpperCase()
+                            )}
                         </span>
 
                         <span class="conversation-info">
                             <strong>${escapeHTML(conversation.name)}</strong>
-                            <span>${escapeHTML(lastMessage?.text || "")}</span>
+                            <span>${escapeHTML(lastMessage)}</span>
                             <small>${escapeHTML(conversation.listing)}</small>
+                            ${
+                                timestamp
+                                    ? `<time>${escapeHTML(
+                                        formatTimestamp(timestamp)
+                                    )}</time>`
+                                    : ""
+                            }
                         </span>
                     </button>
                 `;
@@ -101,24 +360,47 @@ function renderConversationList() {
     `;
 
     list.querySelectorAll(".conversation").forEach(button => {
-        button.addEventListener("click", () => {
-            selectedId = Number(button.dataset.id);
+        button.addEventListener("click", async () => {
+            const key = button.dataset.key;
+
+            if (key === selectedId) return;
+
+            selectedId = key;
             renderConversationList();
-            renderChat();
+            await loadChat(key);
         });
     });
 }
 
-function renderChat() {
+function renderChat(loading = false) {
     const panel = document.querySelector(".chat-panel");
-    const selected = conversations.find(
-        conversation => conversation.id === selectedId
-    );
+    if (!panel) return;
+
+    const selected = getSelectedConversation();
 
     if (!selected) {
-        panel.innerHTML = "";
+        panel.innerHTML = `
+            <div class="empty-chat">
+                <p>Select a conversation to start messaging.</p>
+            </div>
+        `;
         return;
     }
+
+    const messagesHTML = selected.messages.map(message => `
+        <div class="message-row ${
+            message.from === "me" ? "sent" : "received"
+        }">
+            <p class="message-bubble">${escapeHTML(message.text)}</p>
+            ${
+                message.timestamp
+                    ? `<time class="message-time">${escapeHTML(
+                        formatTimestamp(message.timestamp)
+                    )}</time>`
+                    : ""
+            }
+        </div>
+    `).join("");
 
     panel.innerHTML = `
         <header class="chat-header">
@@ -129,15 +411,9 @@ function renderChat() {
         </header>
 
         <div class="chat-messages" aria-live="polite">
-            ${selected.messages.map(message => `
-                <div class="message-row ${
-                    message.from === "me" ? "sent" : "received"
-                }">
-                    <p class="message-bubble">
-                        ${escapeHTML(message.text)}
-                    </p>
-                </div>
-            `).join("")}
+            ${loading && selected.messages.length === 0
+                ? `<p class="chat-loading">Loading messages...</p>`
+                : messagesHTML}
         </div>
 
         <form class="message-form">
@@ -147,50 +423,143 @@ function renderChat() {
                 placeholder="Write a message..."
                 aria-label="Write a message"
                 autocomplete="off"
-                required>
+                maxlength="5000"
+                required
+                ${loading ? "disabled" : ""}>
 
-            <button type="submit" aria-label="Send message">
+            <button
+                type="submit"
+                aria-label="Send message"
+                ${loading ? "disabled" : ""}>
                 <svg viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true">
+                    fill="none" stroke="currentColor"
+                    stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
                     <path d="M22 2 11 13"/>
                     <path d="m22 2-7 20-4-9-9-4 20-7Z"/>
                 </svg>
             </button>
         </form>
+
+        <p class="message-error" role="alert"></p>
     `;
-
-    const form = panel.querySelector(".message-form");
-    const input = form.querySelector("input");
-
-    form.addEventListener("submit", event => {
-        event.preventDefault();
-
-        const text = input.value.trim();
-        if (!text) return;
-
-        selected.messages.push({
-            from: "me",
-            text: text
-        });
-
-        renderConversationList();
-        renderChat();
-
-        const messageInput = panel.querySelector('input[name="message"]');
-        messageInput.focus();
-    });
 
     const messagesContainer = panel.querySelector(".chat-messages");
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    const form = panel.querySelector(".message-form");
+    const input = form.querySelector('input[name="message"]');
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const text = input.value.trim();
+        if (!text || loading) return;
+
+        if (selected.listingId == null) {
+            panel.querySelector(".message-error").textContent =
+                "This conversation needs a listing assigned before you can reply.";
+            return;
+        }
+
+        const sendButton = form.querySelector('button[type="submit"]');
+        const errorElement = panel.querySelector(".message-error");
+
+        sendButton.disabled = true;
+        input.disabled = true;
+        errorElement.textContent = "";
+
+        try {
+            const data = await apiRequest(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    receiver_id: selected.id,
+                    listing_id: selected.listingId,
+                    message: text
+                })
+            });
+
+            // Don't update a different conversation if the user switched
+            // chats while the request was being processed.
+            const saved = data.message;
+            selected.isDraft = false;
+
+            selected.messages.push({
+                senderId: Number(saved.sender_id),
+                receiverId: Number(saved.receiver_id),
+                listingId: saved.listing_id == null
+                    ? null
+                    : Number(saved.listing_id),
+                position: Number(saved.position),
+                timestamp: saved.timestamp || "",
+                text: saved.message,
+                from: "me"
+            });
+
+            selected.lastMessage = saved.message;
+            selected.lastTimestamp = saved.timestamp || "";
+
+            // Re-sort locally by timestamp so the latest conversation
+            // moves to the top immediately.
+            conversations.sort((a, b) => {
+                const timeA = new Date(
+                    (a.lastTimestamp || "").replace(" ", "T")
+                ).getTime() || 0;
+
+                const timeB = new Date(
+                    (b.lastTimestamp || "").replace(" ", "T")
+                ).getTime() || 0;
+
+                return timeB - timeA;
+            });
+
+            renderConversationList();
+
+            if (selectedId === selected.key) {
+                renderChat();
+
+                document.querySelector(
+                    ".chat-panel input[name='message']"
+                )?.focus();
+            }
+        } catch (error) {
+            errorElement.textContent = error.message;
+            sendButton.disabled = false;
+            input.disabled = false;
+            input.focus();
+        }
+    });
+}
+
+function showChatError(message) {
+    const panel = document.querySelector(".chat-panel");
+
+    if (!panel) return;
+
+    panel.innerHTML = `
+        <p class="message-error" role="alert">
+            ${escapeHTML(message)}
+        </p>
+
+        <button type="button" class="retry-messages">
+            Try again
+        </button>
+    `;
+
+    panel.querySelector(".retry-messages")
+        .addEventListener("click", () => loadChat(selectedId));
 }
 
 function initializeMessages() {
     const root = document.getElementById("message-root");
+
+    if (!root) {
+        console.error('Missing element with id="message-root".');
+        return;
+    }
 
     root.innerHTML = `
         <main class="messages-page">
@@ -200,14 +569,32 @@ function initializeMessages() {
             </header>
 
             <section class="messages-layout">
-                <aside class="conversation-list"></aside>
+                <aside class="conversation-list">
+                    <p>Loading inbox...</p>
+                </aside>
+
                 <section class="chat-panel"></section>
             </section>
         </main>
     `;
 
-    renderConversationList();
-    renderChat();
+    loadConversations().catch(error => {
+        const list = document.querySelector(".conversation-list");
+
+        list.innerHTML = `
+            <h2>Inbox</h2>
+            <p class="message-error" role="alert">
+                ${escapeHTML(error.message)}
+            </p>
+
+            <button type="button" class="retry-inbox">
+                Try again
+            </button>
+        `;
+
+        list.querySelector(".retry-inbox")
+            .addEventListener("click", initializeMessages);
+    });
 }
 
 initializeMessages();
