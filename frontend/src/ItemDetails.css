@@ -80,7 +80,7 @@
 
 .id-heart.is-saved {
   color: #b4532a;
-  cursor: default;
+  cursor: pointer;
 }
 
 .id-save-error {

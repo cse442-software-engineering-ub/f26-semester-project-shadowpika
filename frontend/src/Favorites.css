@@ -12,6 +12,41 @@
   font-weight: 700;
 }
 
+.fav-frame .ps-book-card {
+  position: relative;
+}
+
+/* .ps-page prefix: outranks the `.ps-page button` reset in ProductSearch.css */
+.ps-page .fav-heart {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  /* White circle keeps the heart visible on any cover photo */
+  background: var(--ps-white);
+  box-shadow: 0 2px 6px rgba(31, 45, 68, 0.25);
+  color: #b4532a;
+  cursor: pointer;
+}
+
+.fav-heart svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ps-page .fav-heart:hover,
+.ps-page .fav-heart:focus-visible {
+  background: #f8f4ec;
+}
+
 @media (max-width: 768px) {
   .ps-frame.fav-frame {
     padding: 20px 15px 40px;
