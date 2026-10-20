@@ -9,5 +9,8 @@ if (import.meta.env.PROD) {
     };
     check();
     const timer = window.setInterval(check, 1000);
+    // Stop as soon as the page starts leaving: after Log Out the cookie is already gone
+    // while the login page loads, and a late check would send the browser to 404.html.
+    window.addEventListener('beforeunload', () => window.clearInterval(timer), { once: true });
     window.addEventListener('pagehide', () => window.clearInterval(timer), { once: true });
 }
