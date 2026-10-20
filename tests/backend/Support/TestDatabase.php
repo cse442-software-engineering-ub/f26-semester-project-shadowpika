@@ -56,6 +56,16 @@ final class TestDatabase
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )"
         );
+        // Mirrors database/migrations/008_community_members.sql.
+        $pdo->exec(
+            "CREATE TABLE community_members (
+                user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+                community_id INTEGER NOT NULL REFERENCES admin_requests (id) ON DELETE CASCADE,
+                shopping INTEGER NOT NULL DEFAULT 1,
+                joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, community_id)
+            )"
+        );
         // Mirrors sql/005_auth_tokens.sql.
         $pdo->exec(
             "CREATE TABLE auth_tokens (
