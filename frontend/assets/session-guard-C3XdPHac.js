@@ -1,0 +1,1 @@
+import{x as e}from"./api-DxUvtX0m.js";var t=e=>window.location.replace(e);function n(e=document.cookie){return e.split(`;`).some(e=>{let t=e.trim();return t.startsWith(`karavan_auth_cookie=`)&&t.length>20})}{let r=()=>{n()||t(e(`404.html`))};r();let i=window.setInterval(r,1e3);window.addEventListener(`pagehide`,()=>window.clearInterval(i),{once:!0})}

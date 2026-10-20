@@ -1,5 +1,5 @@
-const API_URL = "./messages.php";
-const CONVERSATIONS_URL = "./conversations.php";
+const API_URL = "api/messages.php";
+const CONVERSATIONS_URL = "api/conversations.php";
 
 let conversations = [];
 let selectedId = null;
@@ -219,17 +219,31 @@ function renderConversationList() {
     const list = document.querySelector(".conversation-list");
     if (!list) return;
 
-    list.innerHTML = `
-        <h2>Inbox</h2>
+    // Always display the Inbox heading.
+    list.innerHTML = `<h2>Inbox</h2>`;
 
+    // Handle the case where the user has no conversations.
+    if (conversations.length === 0) {
+        list.innerHTML += `
+            <div class="empty-conversations">
+                <p>No conversations yet.</p>
+                <p>Message a seller to start a conversation.</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Render existing conversations.
+    list.innerHTML += `
         <div class="conversation-items">
             ${conversations.map(conversation => {
                 const lastMessage =
                     conversation.messages.at(-1)?.text ??
                     conversation.lastMessage;
 
-                const timestamp = conversation.messages.at(-1)?.timestamp
-                    || conversation.lastTimestamp;
+                const timestamp =
+                    conversation.messages.at(-1)?.timestamp ||
+                    conversation.lastTimestamp;
 
                 return `
                     <button
