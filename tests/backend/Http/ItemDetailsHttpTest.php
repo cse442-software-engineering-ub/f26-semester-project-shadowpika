@@ -82,12 +82,12 @@ final class ItemDetailsHttpTest extends TestCase
     }
 
     /** @return array{0: int, 1: string} status code and raw body */
-    private function request(string $method, string $query): array
+    private function request(string $method, string $query, bool $authenticated = true): array
     {
         $context = stream_context_create(['http' => [
             'method' => $method,
             'ignore_errors' => true,
-            'header' => "Cookie: PHPSESSID={$this->sessionId}",
+            'header' => $authenticated ? "Cookie: PHPSESSID={$this->sessionId}" : '',
         ]]);
         $body = file_get_contents(self::$baseUrl . self::ENDPOINT . $query, false, $context);
         preg_match('{HTTP/\S+ (\d{3})}', $http_response_header[0], $match);
@@ -112,6 +112,9 @@ final class ItemDetailsHttpTest extends TestCase
             'category'    => 'Textbooks',
             'community'   => 'All of UB',
             'description' => 'Used for one semester. No writing or highlighting.',
+            'meeting_location' => null,
+            'meeting_location_id' => null,
+            'meeting_location_details' => null,
         ]], '?listing_id=91001');
     }
 
@@ -126,6 +129,9 @@ final class ItemDetailsHttpTest extends TestCase
             'category'    => 'Textbooks',
             'community'   => 'All of UB',
             'description' => null,
+            'meeting_location' => null,
+            'meeting_location_id' => null,
+            'meeting_location_details' => null,
         ]], '?listing_id=91002');
     }
 
@@ -148,5 +154,71 @@ final class ItemDetailsHttpTest extends TestCase
     public function testRejectsMethodsOtherThanGet(): void
     {
         $this->assertResponse(405, ['success' => false, 'error' => 'Method not allowed.'], '?listing_id=91001', 'POST');
+    }
+
+    public function testReturnsTheSelectedLocationsNumericCoordinatesAndNotAnotherSameNamedSpot(): void
+    {
+        $pdo = $this->pdo();
+        $id = TestDatabase::addLocation($pdo, 43.000822, -78.789203, 'Capen Hall', null, 'All of UB');
+        TestDatabase::addLocation($pdo, 42, -77, 'Capen Hall', null, 'Elsewhere');
+        $pdo->exec("UPDATE listings SET meeting_location_id = $id, meeting_location = 'Capen Hall' WHERE listing_id = 91001");
+        [$status, $body] = $this->request('GET', '?listing_id=91001');
+        $this->assertSame(200, $status, $body);
+        $listing = json_decode($body, true, 512, JSON_THROW_ON_ERROR)['listing'];
+        $this->assertSame($id, $listing['meeting_location_id']);
+        $this->assertSame('Capen Hall', $listing['meeting_location']);
+        $this->assertSame([
+            'location_id' => $id, 'label' => 'Capen Hall', 'lat' => 43.000822, 'lng' => -78.789203,
+        ], $listing['meeting_location_details']);
+        $pdo->exec("UPDATE approved_locations SET label = 'Renamed Entrance', lat = 0, lng = 0 WHERE id = $id");
+        [, $body] = $this->request('GET', '?listing_id=91001');
+        $details = json_decode($body, true)['listing']['meeting_location_details'];
+        $this->assertSame('Renamed Entrance', $details['label']);
+        $this->assertSame(0, $details['lat']);
+        $this->assertSame(0, $details['lng']);
+    }
+
+    public function testUnusableLocationsKeepLegacyTextWithoutAMap(): void
+    {
+        $pdo = $this->pdo();
+        $id = TestDatabase::addLocation($pdo, 43, -78, 'Capen Hall', null, 'All of UB');
+        $pdo->exec("UPDATE listings SET meeting_location_id = $id, meeting_location = 'Legacy label' WHERE listing_id = 91001");
+        foreach (["community = 'Elsewhere'", "community = 'All of UB', lat = 91", "lat = 'bad'", "lat = 43, lng = 181"] as $change) {
+            $pdo->exec("UPDATE approved_locations SET $change WHERE id = $id");
+            [$status, $body] = $this->request('GET', '?listing_id=91001');
+            $this->assertSame(200, $status, $body);
+            $listing = json_decode($body, true)['listing'];
+            $this->assertSame('Legacy label', $listing['meeting_location']);
+            $this->assertNull($listing['meeting_location_details']);
+        }
+        $pdo->exec("PRAGMA foreign_keys = ON");
+        $pdo->exec("DELETE FROM approved_locations WHERE id = $id");
+        [$status, $body] = $this->request('GET', '?listing_id=91001');
+        $this->assertSame(200, $status, $body);
+        $this->assertNull(json_decode($body, true)['listing']['meeting_location_details']);
+        $this->assertNull(json_decode($body, true)['listing']['meeting_location_id']);
+    }
+
+    public function testLocationDataIsNotReturnedWithoutAuthenticationOrCommunityAccess(): void
+    {
+        $pdo = $this->pdo();
+        $id = TestDatabase::addLocation($pdo, 43, -78, 'Private Office', null, 'Private Community');
+        $pdo->exec("UPDATE listings SET community = 'Private Community', meeting_location_id = $id WHERE listing_id = 91001");
+        [$status, $body] = $this->request('GET', '?listing_id=91001');
+        $this->assertSame(403, $status, $body);
+        $this->assertArrayNotHasKey('listing', json_decode($body, true));
+        [$status, $body] = $this->request('GET', '?listing_id=91001', false);
+        $this->assertSame(401, $status, $body);
+        $this->assertArrayNotHasKey('listing', json_decode($body, true));
+        // The listing owner remains entitled to view their own item.
+        $pdo->exec('UPDATE listings SET owner_id = 1 WHERE listing_id = 91001');
+        [$status, $body] = $this->request('GET', '?listing_id=91001');
+        $this->assertSame(200, $status, $body);
+        $this->assertSame($id, json_decode($body, true)['listing']['meeting_location_details']['location_id']);
+    }
+
+    private function pdo(): \PDO
+    {
+        return new \PDO('sqlite:' . self::$dbFile, null, null, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
     }
 }

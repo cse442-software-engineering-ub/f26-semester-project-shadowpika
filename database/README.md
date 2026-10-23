@@ -10,6 +10,20 @@ Review dependencies and existing tables before executing. Some migrations includ
 development seed rows and others are not idempotent. Do not run every file alphabetically
 or reset a shared database as part of deployment. The build never executes SQL.
 
+## Seller meeting-location map (#203)
+
+After the existing listing/location/community migrations, run
+`migrations/011_listing_meeting_location.sql` **before uploading the new PHP files**.
+It adds a nullable indexed location reference with `ON DELETE SET NULL`, matching
+the existing approved-location ID type. It backfills only byte-exact, unique
+label/community matches with valid coordinates. Existing non-null references and
+legacy text are preserved. Review the final SELECT for unresolved listings.
+
+Migration 009 renamed the campus community to `Karavan` in some tables. If existing
+locations still use `All of UB` while listings use `Karavan`, review and correct that
+data separately before re-running 011; 011 must not guess that two communities are
+the same. Do not fill every unresolved listing with an arbitrary campus location.
+
 ## Legacy Cattle bootstrap
 
 The original Cattle database may contain only the legacy `users` table. Export a SQL

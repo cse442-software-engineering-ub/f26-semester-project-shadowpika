@@ -97,6 +97,7 @@ final class TestDatabase
                 related_course TEXT NULL,
                 community TEXT NULL,
                 meeting_location TEXT NULL,
+                meeting_location_id INTEGER NULL REFERENCES approved_locations (id) ON DELETE SET NULL,
                 description TEXT NULL,
                 status TEXT NOT NULL DEFAULT 'active'
             )"
@@ -167,18 +168,19 @@ final class TestDatabase
             'related_course'   => 'MTH 141',
             'community'        => 'All of UB',
             'meeting_location' => 'Capen Hall · Main entrance',
+            'meeting_location_id' => null,
             'description'      => 'Used for one semester.',
             'status'           => 'active',
         ], $overrides);
         $stmt = $pdo->prepare(
             'INSERT INTO listings
-                (owner_id, name, price, `condition`, image_url, category, related_course, community, meeting_location, description, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                (owner_id, name, price, `condition`, image_url, category, related_course, community, meeting_location, meeting_location_id, description, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $ownerId, $row['name'], $row['price'], $row['condition'], $row['image_url'],
             $row['category'], $row['related_course'], $row['community'], $row['meeting_location'],
-            $row['description'], $row['status'],
+            $row['meeting_location_id'], $row['description'], $row['status'],
         ]);
         return (int) $pdo->lastInsertId();
     }
