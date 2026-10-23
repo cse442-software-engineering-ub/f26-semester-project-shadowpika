@@ -181,6 +181,66 @@
   color: var(--ps-muted);
 }
 
+.id-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.ps-page .id-actions .id-buy {
+  margin-top: 0;
+}
+
+.ps-page .id-message-seller {
+  padding: 12px 28px;
+  border: 1px solid var(--ps-navy);
+  border-radius: 10px;
+  background: var(--ps-white);
+  color: var(--ps-navy);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ps-page .id-message-seller:hover,
+.ps-page .id-message-seller:focus-visible {
+  background: var(--ps-cream);
+}
+
+.id-meeting-location {
+  grid-column: 1 / -1;
+  min-width: 0;
+  border-top: 1px solid #ebe6dc;
+  padding-top: 20px;
+}
+
+.id-meeting-location h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+}
+
+.id-meeting-location p {
+  margin: 10px 0;
+  font-size: 14px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.id-location-name {
+  font-weight: 700;
+}
+
+.id-meeting-location .kv-locations-map {
+  height: 320px;
+  border: 1px solid #d1d9e0;
+  border-radius: 10px;
+  overflow: hidden;
+  z-index: 0;
+}
+
 @media (max-width: 768px) {
   .ps-frame.id-frame {
     padding: 20px 15px 40px;
@@ -200,5 +260,9 @@
   .id-name {
     font-size: 26px;
     line-height: 32px;
+  }
+
+  .id-meeting-location .kv-locations-map {
+    height: 260px;
   }
 }

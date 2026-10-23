@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import NavBar from '../../NavBar.jsx';
 import { fetchCommunities, fetchMeetingLocations } from '../../api.js';
+import { onCommunitiesChanged } from '../../community.js';
 import './CreateListing.css';
 
 const CATEGORY_OPTIONS = [
@@ -156,6 +157,7 @@ function CreateListing() {
     const [submitError, setSubmitError] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const fieldRefs = useRef({});
+    const selectedCommunityRef = useRef('');
     const imageInputRef = useRef(null);
     const imageButtonRef = useRef(null);
 
@@ -169,43 +171,68 @@ function CreateListing() {
         if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
     }, [imagePreviewUrl]);
 
+    const selectCommunity = useCallback((community) => {
+        selectedCommunityRef.current = community;
+        setForm((current) => ({ ...current, community, meeting_location_id: '' }));
+        setLocations([]);
+        setLocationsLoading(Boolean(community));
+        setLocationLoadError('');
+        setErrors((current) => {
+            const next = { ...current };
+            delete next.community;
+            delete next.meeting_location_id;
+            return next;
+        });
+        setSubmitError('');
+    }, []);
+
     useEffect(() => {
         let active = true;
+        let latestRequest = 0;
 
         const loadCommunities = async () => {
+            const request = ++latestRequest;
             setCommunitiesLoading(true);
             setCommunityLoadError('');
             try {
                 const result = await fetchCommunities();
-                if (!active) return;
+                if (!active || request !== latestRequest) return;
                 if (result.status !== 200 || !result.success || !Array.isArray(result.communities)) {
                     setCommunities([]);
+                    selectCommunity('');
                     setCommunityLoadError(result.error || 'Could not load communities. Please try again.');
                     return;
                 }
 
                 const names = result.communities
+                    .filter((community) => community?.joined === true)
                     .map((community) => (typeof community?.name === 'string' ? community.name.trim() : ''))
                     .filter(Boolean);
                 setCommunities([...new Set(names)]);
+                if (selectedCommunityRef.current && !names.includes(selectedCommunityRef.current)) {
+                    selectCommunity('');
+                }
                 if (names.length === 0) {
-                    setCommunityLoadError('No approved communities are available.');
+                    setCommunityLoadError('Join a community from the navigation bar before creating a listing.');
                 }
             } catch {
-                if (active) {
+                if (active && request === latestRequest) {
                     setCommunities([]);
+                    selectCommunity('');
                     setCommunityLoadError('Could not load communities. Please try again.');
                 }
             } finally {
-                if (active) setCommunitiesLoading(false);
+                if (active && request === latestRequest) setCommunitiesLoading(false);
             }
         };
 
         loadCommunities();
+        const unsubscribe = onCommunitiesChanged(loadCommunities);
         return () => {
             active = false;
+            unsubscribe();
         };
-    }, []);
+    }, [selectCommunity]);
 
     useEffect(() => {
         if (!form.community) {
@@ -218,7 +245,7 @@ function CreateListing() {
         const loadLocations = async () => {
             try {
                 const result = await fetchMeetingLocations(selectedCommunity);
-                if (!active) return;
+                if (!active || selectedCommunityRef.current !== selectedCommunity) return;
                 if (result.status !== 200 || !result.success || !Array.isArray(result.locations)) {
                     setLocationLoadError(result.error || 'Could not load meeting locations. Please try again.');
                     return;
@@ -235,9 +262,11 @@ function CreateListing() {
                     setLocationLoadError('No approved meeting locations are available for this community.');
                 }
             } catch {
-                if (active) setLocationLoadError('Could not load meeting locations. Please try again.');
+                if (active && selectedCommunityRef.current === selectedCommunity) {
+                    setLocationLoadError('Could not load meeting locations. Please try again.');
+                }
             } finally {
-                if (active) setLocationsLoading(false);
+                if (active && selectedCommunityRef.current === selectedCommunity) setLocationsLoading(false);
             }
         };
 
@@ -250,19 +279,13 @@ function CreateListing() {
     const updateField = (event) => {
         const { name, value } = event.target;
         if (name === 'community') {
-            setLocations([]);
-            setLocationsLoading(Boolean(value));
-            setLocationLoadError('');
+            selectCommunity(value);
+            return;
         }
-        setForm((current) => (
-            name === 'community'
-                ? { ...current, community: value, meeting_location_id: '' }
-                : { ...current, [name]: value }
-        ));
+        setForm((current) => ({ ...current, [name]: value }));
         setErrors((current) => {
             const next = { ...current };
             delete next[name];
-            if (name === 'community') delete next.meeting_location_id;
             return next;
         });
         setSubmitError('');
@@ -301,7 +324,11 @@ function CreateListing() {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        if (communitiesLoading || submitting) return;
         const validationErrors = validateListing(form);
+        if (form.community && !communities.includes(form.community)) {
+            validationErrors.community = 'Select a community you have joined.';
+        }
         const imageValidationError = validateListingImage(imageFile);
         if (imageValidationError) validationErrors.image = imageValidationError;
         if (Object.keys(validationErrors).length > 0) {
@@ -577,7 +604,7 @@ function CreateListing() {
 
                         <div className="listing-actions">
                             <a className="listing-secondary-button" href="./product-search.html">Cancel</a>
-                            <button className="listing-primary-button" type="submit" disabled={submitting}>
+                            <button className="listing-primary-button" type="submit" disabled={submitting || communitiesLoading}>
                                 {submitting ? 'Creating…' : 'Create listing'}
                             </button>
                         </div>
