@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/listing_locations.php';
+
 const MANAGE_LISTING_CATEGORIES = [
     'Textbooks',
     'Tech & Electronics',
@@ -53,6 +55,7 @@ function manage_listings_format(array $row): array
         'related_course'   => $row['related_course'],
         'community'        => $row['community'],
         'meeting_location' => $row['meeting_location'],
+        'meeting_location_id' => $row['meeting_location_id'] === null ? null : (int) $row['meeting_location_id'],
         'description'      => $row['description'],
         'status'           => $row['status'],
     ];
@@ -66,7 +69,7 @@ function get_my_listings(PDO $pdo, ?int $userId): array
 
     $stmt = $pdo->prepare(
         'SELECT listing_id, name, price, `condition`, image_url, category,
-                related_course, community, meeting_location, description, status
+                related_course, community, meeting_location, meeting_location_id, description, status
            FROM listings
           WHERE owner_id = ?
           ORDER BY listing_id'
@@ -160,16 +163,23 @@ function update_my_listing(PDO $pdo, ?int $userId, $input): array
         if (!$valid) {
             return [422, ['success' => false, 'error' => 'Enter valid listing details.']];
         }
+        $current = $pdo->prepare('SELECT community, meeting_location, meeting_location_id FROM listings WHERE listing_id = ? AND owner_id = ?');
+        $current->execute([$listingId, $userId]);
+        $listing = $current->fetch(PDO::FETCH_ASSOC);
+        if (!$listing) {
+            return [404, ['success' => false, 'error' => 'Listing not found.']];
+        }
+        $locationId = listing_location_for_edit($pdo, $listing, $data['meeting_location']);
         $stmt = $pdo->prepare(
             'UPDATE listings
                 SET name = ?, price = ?, category = ?, `condition` = ?, related_course = ?,
-                    meeting_location = ?, description = ?, image_url = ?
+                    meeting_location = ?, meeting_location_id = ?, description = ?, image_url = ?
               WHERE listing_id = ? AND owner_id = ?'
         );
         $stmt->execute([
             $data['name'], $data['price'], $data['category'], $data['condition'],
             $data['related_course'] === '' ? null : $data['related_course'],
-            $data['meeting_location'], $data['description'],
+            $data['meeting_location'], $locationId, $data['description'],
             $data['image_url'] === '' ? null : $data['image_url'],
             $listingId, $userId,
         ]);

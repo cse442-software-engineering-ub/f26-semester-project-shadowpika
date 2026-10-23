@@ -1,7 +1,8 @@
 <?php
 // GET /api/get_item_details.php?listing_id=<id>
 // Returns the details shown on item.html for one ACTIVE listing: name, price, condition,
-// image, category, community, and description. Sold, inactive, and missing listings are all
+// image, category, community, description, and the selected approved meeting spot.
+// Sold, inactive, and missing listings are all
 // "Listing not found." Requires a login; only the owner and members of the listing's
 // community can view it.
 header("Content-Type: application/json");
@@ -29,6 +30,7 @@ function respond(int $status, array $payload) {
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/http.php';
 require_once __DIR__ . '/../includes/communities.php';
+require_once __DIR__ . '/../listing/lib/listing_locations.php';
 
 // KARAVAN_DB_DSN lets the test suite point this endpoint at SQLite, like includes/config.php.
 function item_details_pdo(): PDO {
@@ -55,7 +57,8 @@ if ($listingId === false) {
 try {
     $pdo = item_details_pdo();
     $stmt = $pdo->prepare(
-        "SELECT listing_id, owner_id, name, price, `condition`, image_url, category, community, description
+        "SELECT listing_id, owner_id, name, price, `condition`, image_url, category, community, description,
+                meeting_location, meeting_location_id
            FROM listings
           WHERE listing_id = ? AND status = 'active'"
     );
@@ -71,6 +74,8 @@ try {
 
     $description = $row['description'] ?? null;
     $imageUrl = $row['image_url'] ?? null;
+    $locationId = $row['meeting_location_id'] === null ? null : (int) $row['meeting_location_id'];
+    $locationDetails = listing_meeting_location_details($row, listing_location_by_id($pdo, $locationId));
 
     respond(200, [
         "success" => true,
@@ -83,6 +88,9 @@ try {
             "category"    => LEGACY_CATEGORY_LABELS[$row['category']] ?? $row['category'],
             "community"   => $row['community'],
             "description" => ($description === null || trim($description) === '') ? null : $description,
+            "meeting_location" => $row['meeting_location'],
+            "meeting_location_id" => $locationId,
+            "meeting_location_details" => $locationDetails,
         ],
     ]);
 } catch (Throwable $e) {
