@@ -32,6 +32,12 @@ final class CommunitiesTest extends TestCase
         return karavan_join_community($this->pdo, $userId ?? $this->studentId, ['community_id' => $communityId]);
     }
 
+    private function becomeMember(int $communityId, ?int $userId = null): void
+    {
+        $insert = $this->pdo->prepare('INSERT INTO community_members (user_id, community_id, shopping) VALUES (?, ?, 1)');
+        $insert->execute([$userId ?? $this->studentId, $communityId]);
+    }
+
     /** @return array<int, bool> community_id => shopping, read straight from the table */
     private function rowsOf(int $userId): array
     {
@@ -59,7 +65,7 @@ final class CommunitiesTest extends TestCase
 
         $this->assertSame(200, $status);
         $this->assertSame(
-            '{"success":true,"communities":[{"community_id":' . $keller . ',"name":"Keller Properties LLC","joined":false,"shopping":false,"automatic":false}]}',
+            '{"success":true,"communities":[{"community_id":' . $keller . ',"name":"Keller Properties LLC","joined":false,"shopping":false,"automatic":false,"pending":false}]}',
             json_encode($body)
         );
     }
@@ -70,8 +76,8 @@ final class CommunitiesTest extends TestCase
         $keller = $this->approvedCommunity('Keller Properties LLC');
 
         $this->assertSame([
-            ['community_id' => $allOfUb, 'name' => 'All of UB', 'joined' => true, 'shopping' => true, 'automatic' => true],
-            ['community_id' => $keller, 'name' => 'Keller Properties LLC', 'joined' => false, 'shopping' => false, 'automatic' => false],
+            ['community_id' => $allOfUb, 'name' => 'All of UB', 'joined' => true, 'shopping' => true, 'automatic' => true, 'pending' => false],
+            ['community_id' => $keller, 'name' => 'Keller Properties LLC', 'joined' => false, 'shopping' => false, 'automatic' => false, 'pending' => false],
         ], $this->listed());
         $this->assertSame([], $this->rowsOf($this->studentId), 'All of UB needs no row.');
     }
@@ -96,19 +102,21 @@ final class CommunitiesTest extends TestCase
 
     // ---- Joining several communities ----
 
-    public function testJoiningAddsTheCommunityAndShopsFromIt(): void
+    public function testJoiningCreatesAPendingRequestInsteadOfMembership(): void
     {
         $keller = $this->approvedCommunity('Keller Properties LLC');
 
         [$status, $body] = $this->join($keller);
 
         $this->assertSame(200, $status);
-        $this->assertSame('{"success":true,"community_id":' . $keller . ',"community_name":"Keller Properties LLC"}', json_encode($body));
-        $this->assertSame([$keller => true], $this->rowsOf($this->studentId));
-        $this->assertSame([['community_id' => $keller, 'name' => 'Keller Properties LLC']], karavan_joined_communities($this->pdo, $this->studentId));
+        $this->assertSame('{"success":true,"community_id":' . $keller . ',"community_name":"Keller Properties LLC","status":"pending"}', json_encode($body));
+        $this->assertSame([], $this->rowsOf($this->studentId));
+        $this->assertSame([], karavan_joined_communities($this->pdo, $this->studentId));
+        $this->assertTrue(array_column($this->listed(), 'pending', 'community_id')[$keller]);
+        $this->assertFalse(array_column($this->listed(), 'joined', 'community_id')[$keller]);
     }
 
-    public function testAUserCanBeInSeveralCommunitiesAtOnce(): void
+    public function testAUserCanRequestSeveralCommunitiesAtOnce(): void
     {
         $keller = $this->approvedCommunity('Keller Properties LLC');
         $riverside = $this->approvedCommunity('Riverside Apartments');
@@ -117,26 +125,23 @@ final class CommunitiesTest extends TestCase
         [$status, $body] = $this->join($riverside);
 
         $this->assertSame(200, $status);
-        $this->assertSame(['success' => true, 'community_id' => $riverside, 'community_name' => 'Riverside Apartments'], $body);
-        $this->assertSame([$keller => true, $riverside => true], $this->rowsOf($this->studentId));
-        $this->assertSame([true, true], array_column($this->listed(), 'joined'));
+        $this->assertSame(['success' => true, 'community_id' => $riverside, 'community_name' => 'Riverside Apartments', 'status' => 'pending'], $body);
+        $this->assertSame([true, true], array_column($this->listed(), 'pending'));
     }
 
-    public function testJoiningTwiceChangesNothing(): void
+    public function testRequestingTwiceStaysPending(): void
     {
         $keller = $this->approvedCommunity('Keller Properties LLC');
-        $riverside = $this->approvedCommunity('Riverside Apartments');
         $this->join($keller);
-        $this->join($riverside);
-        karavan_set_shopping_communities($this->pdo, $this->studentId, ['community_ids' => [$riverside]]);
 
-        [$status] = $this->join($keller);
+        [$status, $body] = $this->join($keller);
 
         $this->assertSame(200, $status);
-        $this->assertSame([$keller => false, $riverside => true], $this->rowsOf($this->studentId), 'Rejoining keeps the shopping choice.');
+        $this->assertSame('pending', $body['status']);
+        $this->assertSame([], $this->rowsOf($this->studentId));
     }
 
-    public function testJoiningAPartnerWithASharedNameJoinsTheListedCommunity(): void
+    public function testJoiningAPartnerWithASharedNameRequestsTheListedCommunity(): void
     {
         $first = $this->approvedCommunity('Keller Properties LLC');
         $second = $this->approvedCommunity('keller properties llc ');
@@ -144,16 +149,17 @@ final class CommunitiesTest extends TestCase
         [, $body] = $this->join($second);
 
         $this->assertSame($first, $body['community_id']);
-        $this->assertSame([$first => true], $this->rowsOf($this->studentId));
+        $this->assertSame('pending', $body['status']);
+        $this->assertSame([], $this->rowsOf($this->studentId));
     }
 
-    public function testJoiningAllOfUbIsAlreadyDone(): void
+    public function testJoiningKaravanIsAlreadyDone(): void
     {
-        $allOfUb = $this->approvedCommunity('All of UB');
+        $campus = $this->approvedCommunity('Karavan');
 
-        [$status, $body] = $this->join($allOfUb);
+        [$status, $body] = $this->join($campus);
 
-        $this->assertSame([200, ['success' => true, 'community_id' => $allOfUb, 'community_name' => 'All of UB']], [$status, $body]);
+        $this->assertSame([200, ['success' => true, 'community_id' => $campus, 'community_name' => 'Karavan', 'status' => 'joined']], [$status, $body]);
         $this->assertSame([], $this->rowsOf($this->studentId));
     }
 
@@ -173,7 +179,7 @@ final class CommunitiesTest extends TestCase
     public function testUnknownCommunityReturns404AndChangesNothing($input): void
     {
         $keller = $this->approvedCommunity('Keller Properties LLC');
-        $this->join($keller);
+        $this->becomeMember($keller);
 
         $this->assertSame([404, self::NOT_FOUND], karavan_join_community($this->pdo, $this->studentId, $input));
         $this->assertSame([$keller => true], $this->rowsOf($this->studentId));
@@ -193,8 +199,8 @@ final class CommunitiesTest extends TestCase
     {
         $keller = $this->approvedCommunity('Keller Properties LLC');
         $riverside = $this->approvedCommunity('Riverside Apartments');
-        $this->join($keller);
-        $this->join($riverside);
+        $this->becomeMember($keller);
+        $this->becomeMember($riverside);
 
         [$status, $body] = karavan_leave_community($this->pdo, $this->studentId, ['community_id' => $keller]);
 
@@ -204,9 +210,9 @@ final class CommunitiesTest extends TestCase
 
     public function testLeavingWithoutACommunityIdLeavesEveryJoinedCommunity(): void
     {
-        $this->approvedCommunity('All of UB');
-        $this->join($this->approvedCommunity('Keller Properties LLC'));
-        $this->join($this->approvedCommunity('Riverside Apartments'));
+        $this->approvedCommunity('Karavan');
+        $this->becomeMember($this->approvedCommunity('Keller Properties LLC'));
+        $this->becomeMember($this->approvedCommunity('Riverside Apartments'));
 
         [$status, $body] = karavan_leave_community($this->pdo, $this->studentId);
 
@@ -239,8 +245,8 @@ final class CommunitiesTest extends TestCase
     {
         $keller = $this->approvedCommunity('Keller Properties LLC');
         $otherId = TestDatabase::addUser($this->pdo, 'other.student', 'user', 'other.student@test.com');
-        $this->join($keller);
-        $this->join($keller, $otherId);
+        $this->becomeMember($keller);
+        $this->becomeMember($keller, $otherId);
 
         karavan_leave_community($this->pdo, $this->studentId, ['community_id' => $keller]);
 
@@ -249,9 +255,9 @@ final class CommunitiesTest extends TestCase
 
     public function testLeavingTheOnlyCommunityYouShopFromGoesBackToAllOfUb(): void
     {
-        $allOfUb = $this->approvedCommunity('All of UB');
+        $allOfUb = $this->approvedCommunity('Karavan');
         $keller = $this->approvedCommunity('Keller Properties LLC');
-        $this->join($keller);
+        $this->becomeMember($keller);
         karavan_set_shopping_communities($this->pdo, $this->studentId, ['community_ids' => [$keller]]);
 
         karavan_leave_community($this->pdo, $this->studentId, ['community_id' => $keller]);
@@ -263,11 +269,11 @@ final class CommunitiesTest extends TestCase
 
     public function testShopperChoosesWhichJoinedCommunitiesToShopFrom(): void
     {
-        $allOfUb = $this->approvedCommunity('All of UB');
+        $allOfUb = $this->approvedCommunity('Karavan');
         $keller = $this->approvedCommunity('Keller Properties LLC');
         $riverside = $this->approvedCommunity('Riverside Apartments');
-        $this->join($keller);
-        $this->join($riverside);
+        $this->becomeMember($keller);
+        $this->becomeMember($riverside);
 
         [$status, $body] = karavan_set_shopping_communities($this->pdo, $this->studentId, ['community_ids' => [$riverside, $keller]]);
 
@@ -281,9 +287,9 @@ final class CommunitiesTest extends TestCase
 
     public function testShopperCanSwitchAllOfUbBackOn(): void
     {
-        $allOfUb = $this->approvedCommunity('All of UB');
+        $allOfUb = $this->approvedCommunity('Karavan');
         $keller = $this->approvedCommunity('Keller Properties LLC');
-        $this->join($keller);
+        $this->becomeMember($keller);
         karavan_set_shopping_communities($this->pdo, $this->studentId, ['community_ids' => [$keller]]);
 
         [$status] = karavan_set_shopping_communities($this->pdo, $this->studentId, ['community_ids' => [$allOfUb]]);
@@ -338,30 +344,30 @@ final class CommunitiesTest extends TestCase
 
     public function testShoppersSeeOnlyListingsFromCommunitiesTheyShopFrom(): void
     {
-        $this->approvedCommunity('All of UB');
+        $this->approvedCommunity('Karavan');
         $keller = $this->approvedCommunity('Keller Properties LLC');
         $this->approvedCommunity('Riverside Apartments');
 
-        $this->assertSame(['All of UB'], karavan_member_listing_communities($this->pdo, $this->studentId, true));
+        $this->assertSame(['Karavan'], karavan_member_listing_communities($this->pdo, $this->studentId, true));
 
-        $this->join($keller);
-        $this->assertSame(['All of UB', 'Keller Properties LLC'], karavan_member_listing_communities($this->pdo, $this->studentId, true));
+        $this->becomeMember($keller);
+        $this->assertSame(['Karavan', 'Keller Properties LLC'], karavan_member_listing_communities($this->pdo, $this->studentId, true));
 
         karavan_set_shopping_communities($this->pdo, $this->studentId, ['community_ids' => [$keller]]);
         $this->assertSame(['Keller Properties LLC'], karavan_member_listing_communities($this->pdo, $this->studentId, true));
-        $this->assertSame(['All of UB', 'Keller Properties LLC'], karavan_member_listing_communities($this->pdo, $this->studentId), 'Still a member of both.');
+        $this->assertSame(['Karavan', 'Keller Properties LLC'], karavan_member_listing_communities($this->pdo, $this->studentId), 'Still a member of both.');
     }
 
-    public function testAllOfUbListingsStayVisibleWithoutAnApprovedAllOfUbPartner(): void
+    public function testCampusListingsStayVisibleWithoutAnApprovedCampusPartner(): void
     {
-        $this->assertSame(['All of UB'], karavan_member_listing_communities($this->pdo, $this->studentId, true));
+        $this->assertSame(['Karavan', 'All of UB'], karavan_member_listing_communities($this->pdo, $this->studentId, true));
     }
 
     public function testListingCommunityMatchesExactlyAndIncludesSharedNames(): void
     {
         $keller = $this->approvedCommunity('Keller Properties LLC');
         $this->approvedCommunity('keller properties llc ');
-        $this->join($keller);
+        $this->becomeMember($keller);
 
         $names = karavan_member_listing_communities($this->pdo, $this->studentId);
         $this->assertContains('Keller Properties LLC', $names);
@@ -381,7 +387,7 @@ final class CommunitiesTest extends TestCase
         $this->assertTrue(karavan_can_shop_listing($this->pdo, $this->studentId, ['owner_id' => $sellerId, 'community' => 'All of UB']));
         $this->assertFalse(karavan_can_shop_listing($this->pdo, $this->studentId, ['owner_id' => $sellerId, 'community' => null]));
 
-        $this->join($keller);
+        $this->becomeMember($keller);
         $this->assertTrue(karavan_can_shop_listing($this->pdo, $this->studentId, $kellerListing));
 
         karavan_set_shopping_communities($this->pdo, $this->studentId, ['community_ids' => [$keller]]);
@@ -401,7 +407,7 @@ final class CommunitiesTest extends TestCase
         $this->assertSame([403, self::NOT_A_MEMBER], karavan_create_meeting_request($this->pdo, $this->studentId, ['listing_id' => $listingId]));
         $this->assertSame([403, self::NOT_A_MEMBER], karavan_save_favorite($this->pdo, $this->studentId, ['listing_id' => $listingId]));
 
-        $this->join($keller);
+        $this->becomeMember($keller);
         $this->assertSame(400, karavan_create_meeting_request($this->pdo, $this->studentId, ['listing_id' => $listingId])[0], 'Members get past the check to the location validation.');
     }
 
@@ -420,6 +426,7 @@ final class CommunitiesTest extends TestCase
 
         $this->assertSame(200, karavan_list_communities($this->pdo, $userId)[0]);
         $this->assertSame(200, $this->join($keller, $userId)[0]);
+        $this->becomeMember($keller, $userId);
         $this->assertSame(200, karavan_set_shopping_communities($this->pdo, $userId, ['community_ids' => [$keller]])[0]);
     }
 
@@ -437,5 +444,110 @@ final class CommunitiesTest extends TestCase
         $this->assertSame([403, self::FORBIDDEN], karavan_join_community($this->pdo, $userId, ['community_id' => $keller]));
         $this->assertSame([403, self::FORBIDDEN], karavan_leave_community($this->pdo, $userId, ['community_id' => $keller]));
         $this->assertSame([403, self::FORBIDDEN], karavan_set_shopping_communities($this->pdo, $userId, ['community_ids' => [$keller]]));
+    }
+
+    public function testAdminApprovesAJoinRequestAndGrantsMembership(): void
+    {
+        $adminId = TestDatabase::addUser($this->pdo, 'hall.admin', 'admin', 'hall.admin@test.com');
+        $keller = TestDatabase::addRequest($this->pdo, [
+            'business_name' => 'Keller Properties LLC',
+            'status'        => 'approved',
+            'user_id'       => $adminId,
+        ]);
+        $this->join($keller);
+
+        [$status, $body] = karavan_list_join_requests($this->pdo, $adminId);
+        $this->assertSame(200, $status);
+        $this->assertSame($this->studentId, $body['requests'][0]['user_id']);
+
+        [$decideStatus, $decide] = karavan_decide_join_request($this->pdo, $adminId, [
+            'user_id'      => $this->studentId,
+            'community_id' => $keller,
+            'action'       => 'approve',
+        ]);
+
+        $this->assertSame(200, $decideStatus);
+        $this->assertSame('approved', $decide['status']);
+        $this->assertSame([$keller => true], $this->rowsOf($this->studentId));
+        $this->assertFalse(array_column($this->listed(), 'pending', 'community_id')[$keller]);
+        $this->assertTrue(karavan_can_shop_listing($this->pdo, $this->studentId, ['owner_id' => 0, 'community' => 'Keller Properties LLC']));
+    }
+
+    public function testAdminDenyLetsTheShopperRequestAgain(): void
+    {
+        $adminId = TestDatabase::addUser($this->pdo, 'annex.admin', 'admin', 'annex.admin@test.com');
+        $annex = TestDatabase::addRequest($this->pdo, [
+            'business_name' => 'Shopping Test Annex',
+            'status'        => 'approved',
+            'user_id'       => $adminId,
+        ]);
+        $this->join($annex);
+
+        [$status, $body] = karavan_decide_join_request($this->pdo, $adminId, [
+            'user_id'      => $this->studentId,
+            'community_id' => $annex,
+            'action'       => 'deny',
+        ]);
+
+        $this->assertSame(200, $status);
+        $this->assertSame('denied', $body['status']);
+        $this->assertSame([], $this->rowsOf($this->studentId));
+        $this->assertFalse(array_column($this->listed(), 'pending', 'community_id')[$annex]);
+
+        [$againStatus, $again] = $this->join($annex);
+        $this->assertSame(200, $againStatus);
+        $this->assertSame('pending', $again['status']);
+    }
+
+    public function testAnotherCommunityAdminCannotApproveARequest(): void
+    {
+        $hallAdmin = TestDatabase::addUser($this->pdo, 'hall.admin', 'admin', 'hall.admin@test.com');
+        $annexAdmin = TestDatabase::addUser($this->pdo, 'annex.admin', 'admin', 'annex.admin@test.com');
+        $hall = TestDatabase::addRequest($this->pdo, [
+            'business_name' => 'Shopping Test Hall',
+            'status'        => 'approved',
+            'user_id'       => $hallAdmin,
+        ]);
+        TestDatabase::addRequest($this->pdo, [
+            'business_name' => 'Shopping Test Annex',
+            'status'        => 'approved',
+            'user_id'       => $annexAdmin,
+        ]);
+        $this->join($hall);
+
+        $this->assertSame(
+            [403, self::FORBIDDEN],
+            karavan_decide_join_request($this->pdo, $annexAdmin, [
+                'user_id'      => $this->studentId,
+                'community_id' => $hall,
+                'action'       => 'approve',
+            ])
+        );
+        $this->assertSame([], $this->rowsOf($this->studentId));
+    }
+
+    public function testPendingMembersCannotShopTheCommunity(): void
+    {
+        $keller = $this->approvedCommunity('Keller Properties LLC');
+        $this->join($keller);
+
+        $this->assertFalse(karavan_can_shop_listing($this->pdo, $this->studentId, [
+            'owner_id'  => 0,
+            'community' => 'Keller Properties LLC',
+        ]));
+    }
+
+    public function testNonAdminAdminTabShowsRegisterOrPending(): void
+    {
+        [$status, $body] = karavan_admin_tab_status($this->pdo, $this->studentId);
+        $this->assertSame(200, $status);
+        $this->assertSame(['success' => true, 'is_admin' => false, 'application_status' => 'none'], $body);
+
+        TestDatabase::addRequest($this->pdo, [
+            'email'   => 'jamie.student@test.com',
+            'user_id' => $this->studentId,
+            'status'  => 'pending',
+        ]);
+        $this->assertSame('pending', karavan_admin_tab_status($this->pdo, $this->studentId)[1]['application_status']);
     }
 }

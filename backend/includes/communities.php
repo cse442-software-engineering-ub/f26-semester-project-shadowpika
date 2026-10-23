@@ -10,8 +10,16 @@
 require_once __DIR__ . '/admin_requests.php';
 
 // Everyone is automatically a member of the campus-wide community and can't leave it.
-// Listings without a community were moved into it by 006.
-const KARAVAN_CAMPUS_COMMUNITY = 'All of UB';
+// Listings without a community were moved into it by 006. 009 renamed it from All of UB.
+const KARAVAN_CAMPUS_COMMUNITY = 'Karavan';
+const KARAVAN_LEGACY_CAMPUS_COMMUNITY = 'All of UB';
+
+function karavan_is_campus_community(string $name): bool
+{
+    $key = karavan_community_key($name);
+    return $key === karavan_community_key(KARAVAN_CAMPUS_COMMUNITY)
+        || $key === karavan_community_key(KARAVAN_LEGACY_CAMPUS_COMMUNITY);
+}
 
 const KARAVAN_NOT_A_MEMBER_ERROR = 'This item is only available to members of its community.';
 const KARAVAN_SHOPPING_IDS_ERROR = 'community_ids must be a list of community ids.';
@@ -38,7 +46,7 @@ function karavan_approved_communities(PDO $pdo): array
             'name'         => $row['business_name'],
             'names'        => [],
             'ids'          => [],
-            'automatic'    => $key === karavan_community_key(KARAVAN_CAMPUS_COMMUNITY),
+            'automatic'    => karavan_is_campus_community($row['business_name']),
         ];
         $groups[$key]['names'][] = $row['business_name'];
         $groups[$key]['ids'][] = (int) $row['id'];
@@ -113,9 +121,10 @@ function karavan_member_listing_communities(PDO $pdo, int $userId, bool $shoppin
             array_push($names, ...$communities[$listedId]['names']);
         }
     }
-    // Campus listings stay visible on a database where no "All of UB" partner was approved.
+    // Campus listings stay visible on a database where no campus partner was approved.
     if (!$campusListed) {
         $names[] = KARAVAN_CAMPUS_COMMUNITY;
+        $names[] = KARAVAN_LEGACY_CAMPUS_COMMUNITY;
     }
     return array_values(array_unique($names));
 }
@@ -157,15 +166,18 @@ function karavan_list_communities(PDO $pdo, ?int $userId): array
 
     $communities = karavan_approved_communities($pdo);
     $memberships = karavan_user_memberships($pdo, (int) $user['id'], $communities);
+    $pending = karavan_pending_join_ids($pdo, (int) $user['id'], $communities);
 
     $list = [];
     foreach ($communities as $listedId => $community) {
+        $joined = array_key_exists($listedId, $memberships);
         $list[] = [
             'community_id' => $listedId,
             'name'         => $community['name'],
-            'joined'       => array_key_exists($listedId, $memberships),
+            'joined'       => $joined,
             'shopping'     => $memberships[$listedId] ?? false,
             'automatic'    => $community['automatic'],
+            'pending'      => !$joined && isset($pending[$listedId]),
         ];
     }
 
@@ -188,21 +200,35 @@ function karavan_join_community(PDO $pdo, ?int $userId, $input): array
     }
     $community = $communities[$listedId];
 
-    if (!$community['automatic']
-        && !array_key_exists($listedId, karavan_user_memberships($pdo, (int) $user['id'], $communities))) {
-        try {
-            // New communities are shopped from straight away.
-            $insert = $pdo->prepare('INSERT INTO community_members (user_id, community_id, shopping) VALUES (?, ?, 1)');
-            $insert->execute([(int) $user['id'], $listedId]);
-        } catch (PDOException $e) {
-            // 23000: a double click already added the same membership.
-            if ($e->getCode() != 23000) {
-                return [500, ['success' => false, 'error' => 'Could not join the community.']];
-            }
+    $alreadyJoined = $community['automatic']
+        || array_key_exists($listedId, karavan_user_memberships($pdo, (int) $user['id'], $communities));
+    if ($alreadyJoined) {
+        return [200, [
+            'success'        => true,
+            'community_id'   => $listedId,
+            'community_name' => $community['name'],
+            'status'         => 'joined',
+        ]];
+    }
+
+    try {
+        $insert = $pdo->prepare(
+            'INSERT INTO community_join_requests (user_id, community_id) VALUES (?, ?)'
+        );
+        $insert->execute([(int) $user['id'], $listedId]);
+    } catch (PDOException $e) {
+        // 23000: a double click already filed the same request.
+        if ($e->getCode() != 23000) {
+            return [500, ['success' => false, 'error' => 'Could not send the join request.']];
         }
     }
 
-    return [200, ['success' => true, 'community_id' => $listedId, 'community_name' => $community['name']]];
+    return [200, [
+        'success'        => true,
+        'community_id'   => $listedId,
+        'community_name' => $community['name'],
+        'status'         => 'pending',
+    ]];
 }
 
 // With a community_id, leaves that community. Without one (the original one-community client),
@@ -341,5 +367,179 @@ function karavan_set_shopping_communities(PDO $pdo, ?int $userId, $input): array
     return [200, [
         'success'                => true,
         'shopping_community_ids' => array_values(array_filter(array_keys($memberships), fn ($id) => isset($selected[$id]))),
+    ]];
+}
+
+/**
+ * Listed community ids this user has a pending join request for.
+ *
+ * @return array<int, true>
+ */
+function karavan_pending_join_ids(PDO $pdo, int $userId, array $communities): array
+{
+    $stmt = $pdo->prepare('SELECT community_id FROM community_join_requests WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    $pending = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $listedId = karavan_listed_community_id($communities, (int) $row['community_id']);
+        if ($listedId !== null) {
+            $pending[$listedId] = true;
+        }
+    }
+    return $pending;
+}
+
+/** Listed community ids this approved partner administers. */
+function karavan_administered_community_ids(PDO $pdo, int $userId): array
+{
+    $communities = karavan_approved_communities($pdo);
+    $stmt = $pdo->prepare("SELECT id FROM admin_requests WHERE status = 'approved' AND user_id = ?");
+    $stmt->execute([$userId]);
+    $ids = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $listedId = karavan_listed_community_id($communities, (int) $row['id']);
+        if ($listedId !== null) {
+            $ids[$listedId] = true;
+        }
+    }
+    return array_keys($ids);
+}
+
+function karavan_admin_tab_status(PDO $pdo, ?int $userId): array
+{
+    $user = karavan_find_user($pdo, $userId);
+    if ($user === null) {
+        return karavan_forbidden();
+    }
+
+    $isAdmin = ($user['role'] ?? null) === 'admin';
+    $pending = false;
+    if (!$isAdmin) {
+        $stmt = $pdo->prepare(
+            "SELECT 1 FROM admin_requests
+              WHERE status = 'pending' AND (user_id = ? OR LOWER(email) = LOWER(?))
+              LIMIT 1"
+        );
+        $stmt->execute([(int) $user['id'], (string) ($user['email'] ?? '')]);
+        $pending = (bool) $stmt->fetchColumn();
+    }
+
+    return [200, [
+        'success'            => true,
+        'is_admin'           => $isAdmin,
+        'application_status' => $isAdmin ? 'approved' : ($pending ? 'pending' : 'none'),
+    ]];
+}
+
+function karavan_list_join_requests(PDO $pdo, ?int $userId): array
+{
+    $user = karavan_find_user($pdo, $userId);
+    if ($user === null) {
+        return karavan_forbidden();
+    }
+    if (($user['role'] ?? null) !== 'admin') {
+        return karavan_forbidden();
+    }
+
+    $adminIds = karavan_administered_community_ids($pdo, (int) $user['id']);
+    if ($adminIds === []) {
+        return [200, ['success' => true, 'requests' => []]];
+    }
+
+    $communities = karavan_approved_communities($pdo);
+    $placeholders = implode(', ', array_fill(0, count($adminIds), '?'));
+    $stmt = $pdo->prepare(
+        "SELECT r.user_id, r.community_id, r.created_at, u.username, u.email
+           FROM community_join_requests r
+           JOIN users u ON u.id = r.user_id
+          WHERE r.community_id IN ($placeholders)
+          ORDER BY r.created_at ASC, r.user_id ASC"
+    );
+    $stmt->execute($adminIds);
+
+    $requests = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $listedId = karavan_listed_community_id($communities, (int) $row['community_id']);
+        if ($listedId === null) {
+            continue;
+        }
+        $requests[] = [
+            'user_id'        => (int) $row['user_id'],
+            'username'       => $row['username'],
+            'email'          => $row['email'],
+            'community_id'   => $listedId,
+            'community_name' => $communities[$listedId]['name'],
+        ];
+    }
+
+    return [200, ['success' => true, 'requests' => $requests]];
+}
+
+function karavan_decide_join_request(PDO $pdo, ?int $userId, $input): array
+{
+    $admin = karavan_find_user($pdo, $userId);
+    if ($admin === null || ($admin['role'] ?? null) !== 'admin') {
+        return karavan_forbidden();
+    }
+
+    $requesterId = is_array($input) ? karavan_parse_community_id($input['user_id'] ?? null) : null;
+    $partnerId = is_array($input) ? karavan_parse_community_id($input['community_id'] ?? null) : null;
+    $action = is_array($input) ? ($input['action'] ?? null) : null;
+    if ($requesterId === null || $partnerId === null || !in_array($action, ['approve', 'deny'], true)) {
+        return [400, ['success' => false, 'error' => 'A valid user_id, community_id, and action ("approve" or "deny") are required.']];
+    }
+
+    $communities = karavan_approved_communities($pdo);
+    $listedId = karavan_listed_community_id($communities, $partnerId);
+    if ($listedId === null) {
+        return [404, ['success' => false, 'error' => 'Community not found.']];
+    }
+    if (!in_array($listedId, karavan_administered_community_ids($pdo, (int) $admin['id']), true)) {
+        return karavan_forbidden();
+    }
+
+    $community = $communities[$listedId];
+    $find = $pdo->prepare(
+        'SELECT user_id FROM community_join_requests WHERE user_id = ? AND community_id IN ('
+        . implode(', ', array_fill(0, count($community['ids']), '?')) . ')'
+    );
+    $find->execute([$requesterId, ...$community['ids']]);
+    if (!$find->fetch()) {
+        return [404, ['success' => false, 'error' => 'Join request not found.']];
+    }
+
+    try {
+        $pdo->beginTransaction();
+        $placeholders = implode(', ', array_fill(0, count($community['ids']), '?'));
+        $delete = $pdo->prepare(
+            "DELETE FROM community_join_requests WHERE user_id = ? AND community_id IN ($placeholders)"
+        );
+        $delete->execute([$requesterId, ...$community['ids']]);
+
+        if ($action === 'approve') {
+            $insert = $pdo->prepare(
+                'INSERT INTO community_members (user_id, community_id, shopping) VALUES (?, ?, 1)'
+            );
+            try {
+                $insert->execute([$requesterId, $listedId]);
+            } catch (PDOException $e) {
+                if ($e->getCode() != 23000) {
+                    throw $e;
+                }
+            }
+        }
+        $pdo->commit();
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        return [500, ['success' => false, 'error' => 'Could not update the join request.']];
+    }
+
+    return [200, [
+        'success'      => true,
+        'user_id'      => $requesterId,
+        'community_id' => $listedId,
+        'status'       => $action === 'approve' ? 'approved' : 'denied',
     ]];
 }
