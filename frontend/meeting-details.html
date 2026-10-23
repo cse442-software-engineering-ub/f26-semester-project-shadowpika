@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Karavan — Star Ratings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=League+Spartan:wght@500;600;700&display=swap" rel="stylesheet">
+  <script type="module" src="./assets/navbar-main-B6-y3yeP.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/NavBar-BNai4K7Z.css">
+  <link rel="stylesheet" href="ratings.css">
+  <script src="ratings.js" defer></script>
+</head>
+<body>
+    <div id="root"></div>
+  <main class="page">
+    <section class="seller-card" aria-labelledby="page-title">
+      <div class="avatar" id="seller-avatar" aria-hidden="true">S</div>
+      <div class="seller-details">
+        <p class="eyebrow">SELLER PROFILE</p>
+        <h1 id="page-title">Seller ratings</h1>
+        <p class="seller-subtitle">Share your experience with this seller.</p>
+      </div>
+    </section>
+
+    <section class="summary-card" aria-label="Rating summary">
+      <div class="average-number" id="average-rating">—</div>
+      <div class="summary-details">
+        <div class="summary-stars" id="summary-stars" aria-label="No ratings yet">☆☆☆☆☆</div>
+        <p id="rating-count">No ratings yet</p>
+      </div>
+    </section>
+
+    <section class="review-form-card" aria-labelledby="form-title">
+      <div class="form-intro">
+        <p class="eyebrow">YOUR EXPERIENCE</p>
+        <h2 id="form-title">Rate this seller</h2>
+        <p class="muted">Choose a star rating and optionally leave a review.</p>
+      </div>
+      <form id="rating-form">
+        <fieldset class="star-fieldset">
+          <legend>Your rating</legend>
+          <div class="star-picker" aria-label="Choose a rating from one to five stars">
+            <input type="radio" id="rating-5" name="rating" value="5">
+            <label for="rating-5" title="5 stars — Excellent" aria-label="5 stars — Excellent">★</label>
+
+            <input type="radio" id="rating-4" name="rating" value="4">
+            <label for="rating-4" title="4 stars — Very good" aria-label="4 stars — Very good">★</label>
+
+            <input type="radio" id="rating-3" name="rating" value="3">
+            <label for="rating-3" title="3 stars — Good" aria-label="3 stars — Good">★</label>
+
+            <input type="radio" id="rating-2" name="rating" value="2">
+            <label for="rating-2" title="2 stars — Fair" aria-label="2 stars — Fair">★</label>
+
+            <input type="radio" id="rating-1" name="rating" value="1">
+            <label for="rating-1" title="1 star — Poor" aria-label="1 star — Poor">★</label>
+          </div>
+          <p id="star-hint" class="star-hint" aria-live="polite">Select a star rating</p>
+        </fieldset>
+
+        <label class="field-label" for="review">Review <span>(optional)</span></label>
+        <textarea id="review" name="review" rows="4" maxlength="1000" placeholder="How was your experience?"></textarea>
+        <div class="form-bottom">
+          <span id="character-count" class="character-count">0 / 1000</span>
+          <button type="submit" id="submit-rating" disabled>Submit rating</button>
+        </div>
+        <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="reviews-section" aria-labelledby="reviews-title">
+      <div class="reviews-heading">
+        <div>
+          <p class="eyebrow">COMMUNITY FEEDBACK</p>
+          <h2 id="reviews-title">Ratings &amp; reviews</h2>
+        </div>
+        <span id="reviews-subheading" class="review-count">0 reviews</span>
+      </div>
+      <div id="reviews-list" class="reviews-list">
+        <div class="empty-reviews">No reviews yet. Be the first to rate this seller.</div>
+      </div>
+      <button type="button" id="clear-demo" class="reset-button">Clear ratings on this browser</button>
+    </section>
+  </main>
+
+  <footer class="site-footer">KARAVAN <span>•</span> Seller ratings</footer>
+</body>
+</html>

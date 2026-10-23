@@ -124,11 +124,15 @@ async function loadConversations() {
         );
 
         if (!conversation) {
+            const sellerData = await apiRequest(
+                `${CONVERSATIONS_URL}?seller_id=${encodeURIComponent(requestedUserId)}`
+            );
+
             conversation = {
                 id: requestedUserId,
                 listingId: requestedListingId,
                 key,
-                name: "Seller",
+                name: sellerData.username || "Seller",
                 listing: requestedListingName,
                 lastMessage: "",
                 lastTimestamp: "",
