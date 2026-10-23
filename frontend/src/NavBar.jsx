@@ -140,7 +140,7 @@ function useCommunities() {
     const [communities, setCommunities] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    // Communities the user chose to join; All of UB is automatic and not counted.
+    // Communities the user chose to join; Karavan (campus-wide) is automatic and not counted.
     const [joined, setJoined] = useState(readJoinedCommunities);
     const [joiningId, setJoiningId] = useState(null);
     const [leavingId, setLeavingId] = useState(null);
@@ -201,11 +201,11 @@ function useCommunities() {
         try {
             const result = await joinCommunity(communityId);
             if (result.status === 200 && result.success) {
-                setPicker(null);
+                if (result.joinStatus !== 'pending') setPicker(null);
                 await load();
                 announceCommunitiesChanged();
             } else {
-                setError(result.error || 'Could not join that community. Please try again.');
+                setError(result.error || 'Could not send that join request. Please try again.');
             }
         } catch {
             setError('Could not join that community. Please try again.');

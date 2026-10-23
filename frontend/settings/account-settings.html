@@ -35,7 +35,7 @@
                 <!-- <div class="tab">General</div> -->
                 <div class="tab active">Account</div>
                 <!-- <div class="tab">Customization</div> -->
-                <a href="../settings.html" class="tab_group" id="admin-tab" hidden><div class="tab">Admin</div></a>
+                <a href="../settings.html" class="tab_group" id="admin-tab"><div class="tab">Admin</div></a>
             </div>
 
 
@@ -247,28 +247,7 @@
             });
         }
 
-        async function checkAdminStatus() {
-        const adminTab = document.getElementById("admin-tab");
-
-        try {
-            const response = await fetch("admin-check.php", {
-                credentials: "same-origin"
-            });
-
-            if (!response.ok) {
-                adminTab.hidden = true;
-                return;
-            }
-
-            const data = await response.json();
-            adminTab.hidden = !(data.success && data.is_admin);
-        } catch (error) {
-            console.error("Admin check failed:", error);
-            adminTab.hidden = true;
-        }
-    }
-
-    checkAdminStatus();
+        // Everyone can open the Admin tab. Only approved admins see admin tools there.
 
         </script>
 

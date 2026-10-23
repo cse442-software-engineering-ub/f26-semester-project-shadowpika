@@ -49,7 +49,7 @@ export function takeCommunityPrompt() {
     return pending;
 }
 
-/** Communities the user joined (not the automatic All of UB). @returns {{community_id: number, name: string}[]} */
+/** Communities the user joined (not the automatic campus community). @returns {{community_id: number, name: string}[]} */
 export function readJoinedCommunities() {
     try {
         const stored = JSON.parse(read(COMMUNITIES_KEY));

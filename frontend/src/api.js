@@ -88,6 +88,26 @@ export async function fetchMeetingLocations(community) {
     return { status: response.status, ...(await readJson(response)) };
 }
 
+export async function fetchAdminStatus() {
+    const response = await fetch(apiUrl('admin_status.php'), { credentials: 'same-origin' });
+    return { status: response.status, ...(await readJson(response)) };
+}
+
+export async function fetchJoinRequests() {
+    const response = await fetch(apiUrl('get_join_requests.php'), { credentials: 'same-origin' });
+    return { status: response.status, ...(await readJson(response)) };
+}
+
+export async function decideJoinRequest(userId, communityId, action) {
+    const response = await fetch(apiUrl('approve_join_request.php'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ user_id: userId, community_id: communityId, action }),
+    });
+    return { status: response.status, ...(await readJson(response)) };
+}
+
 export async function joinCommunity(communityId) {
     const response = await fetch(apiUrl('join_community.php'), {
         method: 'POST',
@@ -95,7 +115,9 @@ export async function joinCommunity(communityId) {
         credentials: 'same-origin',
         body: JSON.stringify({ community_id: communityId }),
     });
-    return { status: response.status, ...(await readJson(response)) };
+    const body = await readJson(response);
+    // The JSON body also has "status" (pending|joined); keep the HTTP code on `status`.
+    return { ...body, status: response.status, joinStatus: body.status };
 }
 
 export async function leaveCommunity(communityId) {
