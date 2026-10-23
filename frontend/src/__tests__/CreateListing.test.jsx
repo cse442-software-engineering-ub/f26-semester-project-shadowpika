@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CreateListing from '../features/listings/CreateListing.jsx';
+import { announceCommunitiesChanged } from '../community.js';
 
-const ALL_OF_UB = 'All of UB';
+const CAMPUS = 'Karavan';
 const KELLER = 'Keller Properties LLC';
 const CAPEN = { location_id: 91001, label: 'Capen Hall Main Entrance' };
 const UNION = { location_id: 91002, label: 'Student Union Main Entrance' };
@@ -18,11 +19,16 @@ function mockBackend() {
     const backend = {
         communities: [200, {
             success: true,
-            communities: [{ name: ALL_OF_UB }, { name: KELLER }],
-            joined_community_id: null,
+            communities: [
+                { community_id: 91070, name: CAMPUS, joined: true, shopping: true, automatic: true },
+                { community_id: 5016, name: KELLER, joined: true, shopping: false, automatic: false },
+                { community_id: 5019, name: 'Riverside Apartments', joined: false, shopping: false },
+                { community_id: 5020, name: 'Pending Community', joined: false, pending: true },
+                { community_id: 5029, name: 'all of ub', joined: false, pending: false },
+            ],
         }],
         locations: {
-            [ALL_OF_UB]: [200, { success: true, locations: [CAPEN, UNION] }],
+            [CAMPUS]: [200, { success: true, locations: [CAPEN, UNION] }],
             [KELLER]: [200, { success: true, locations: [KELLER_OFFICE] }],
         },
         upload: [200, {
@@ -34,18 +40,35 @@ function mockBackend() {
             listing: {
                 listing_id: 9901741,
                 name: 'Community Listing Test Book',
-                community: ALL_OF_UB,
+                community: CAMPUS,
                 meeting_location: CAPEN.label,
             },
         }],
     };
 
-    backend.fetch = vi.fn((input) => {
+    backend.fetch = vi.fn((input, options = {}) => {
         const url = String(input);
         if (url.endsWith('list_communities.php')) return jsonResponse(...backend.communities);
+        if (url.endsWith('leave_community.php')) {
+            const id = JSON.parse(options.body).community_id;
+            backend.communities[1].communities = backend.communities[1].communities.map((community) => (
+                community.community_id === id ? { ...community, joined: false, shopping: false } : community
+            ));
+            return jsonResponse(200, { success: true, community_id: id });
+        }
+        if (url.endsWith('join_community.php')) {
+            const id = JSON.parse(options.body).community_id;
+            backend.communities[1].communities = backend.communities[1].communities.map((community) => (
+                community.community_id === id ? { ...community, pending: true } : community
+            ));
+            return jsonResponse(200, { success: true, community_id: id, status: 'pending' });
+        }
         if (url.includes('api/get_meeting_locations.php?')) {
             const community = new URL(url, 'https://aptitude.test/').searchParams.get('community');
-            return jsonResponse(...(backend.locations[community] || [404, { success: false, error: 'Community not found.' }]));
+            const response = backend.locations[community];
+            return typeof response === 'function'
+                ? response()
+                : jsonResponse(...(response || [404, { success: false, error: 'Community not found.' }]));
         }
         if (url.endsWith('listing/api/upload_image.php')) return jsonResponse(...backend.upload);
         if (url.endsWith('listing/api/create_listing.php')) return jsonResponse(...backend.create);
@@ -73,7 +96,7 @@ function stubBrowser() {
 const communitySelect = () => screen.getByLabelText(/COMMUNITY/);
 const locationSelect = () => screen.getByLabelText(/PREFERRED MEETING LOCATION/);
 
-async function chooseCommunityAndLocation(user, community = ALL_OF_UB, location = CAPEN.label) {
+async function chooseCommunityAndLocation(user, community = CAMPUS, location = CAPEN.label) {
     await waitFor(() => expect(communitySelect()).toBeEnabled());
     await user.selectOptions(communitySelect(), community);
     await waitFor(() => expect(locationSelect()).toBeEnabled());
@@ -97,19 +120,112 @@ describe('Create listing Community selection', () => {
         stubBrowser();
     });
 
-    it('loads approved Communities once and keeps locations disabled until selection', async () => {
+    it('offers only joined Communities, including Karavan and a joined Community not selected for shopping', async () => {
         const backend = mockBackend();
         render(<CreateListing />);
 
         await waitFor(() => expect(communitySelect()).toBeEnabled());
         expect(communitySelect()).toHaveValue('');
-        expect(within(communitySelect()).getAllByRole('option', { name: ALL_OF_UB })).toHaveLength(1);
+        expect(within(communitySelect()).getAllByRole('option', { name: CAMPUS })).toHaveLength(1);
         expect(within(communitySelect()).getAllByRole('option', { name: KELLER })).toHaveLength(1);
+        expect(within(communitySelect()).queryByRole('option', { name: 'Riverside Apartments' })).not.toBeInTheDocument();
+        expect(within(communitySelect()).queryByRole('option', { name: 'Pending Community' })).not.toBeInTheDocument();
         expect(within(communitySelect()).queryByRole('option', { name: 'all of ub' })).not.toBeInTheDocument();
         expect(locationSelect()).toBeDisabled();
         expect(locationSelect()).toHaveDisplayValue('Select a community first');
         expect(callsContaining(backend.fetch, 'list_communities.php')).toHaveLength(1);
         expect(callsContaining(backend.fetch, 'get_meeting_locations.php')).toHaveLength(0);
+    });
+
+    it('prompts an account with no joined Communities to join before listing', async () => {
+        const backend = mockBackend();
+        backend.communities[1].communities = backend.communities[1].communities.map((community) => ({
+            ...community, joined: false,
+        }));
+        render(<CreateListing />);
+
+        expect(await screen.findByText('Join a community from the navigation bar before creating a listing.')).toBeVisible();
+        expect(communitySelect()).toBeDisabled();
+        expect(locationSelect()).toBeDisabled();
+        expect(within(communitySelect()).getAllByRole('option')).toHaveLength(1);
+        expect(callsContaining(backend.fetch, 'get_meeting_locations.php')).toHaveLength(0);
+    });
+
+    it('clears the selected Community and location after leaving it through the NavBar', async () => {
+        const backend = mockBackend();
+        const user = userEvent.setup();
+        render(<CreateListing />);
+        await chooseCommunityAndLocation(user, KELLER, KELLER_OFFICE.label);
+        await user.type(screen.getByLabelText(/ITEM TITLE/), 'Keep my listing title');
+
+        const nav = within(screen.getByRole('navigation', { name: 'Main' }));
+        await user.click(await nav.findByRole('button', { name: KELLER }));
+        await user.click(await screen.findByRole('button', { name: `Leave ${KELLER}` }));
+
+        await waitFor(() => expect(within(communitySelect()).queryByRole('option', { name: KELLER })).not.toBeInTheDocument());
+        expect(communitySelect()).toHaveValue('');
+        expect(locationSelect()).toHaveValue('');
+        expect(locationSelect()).toBeDisabled();
+        expect(within(locationSelect()).queryByRole('option', { name: KELLER_OFFICE.label })).not.toBeInTheDocument();
+        expect(screen.getByLabelText(/ITEM TITLE/)).toHaveValue('Keep my listing title');
+        expect(callsContaining(backend.fetch, 'create_listing.php')).toHaveLength(0);
+    });
+
+    it('preserves a still-joined Community and its selected location when leaving another Community', async () => {
+        mockBackend();
+        const user = userEvent.setup();
+        render(<CreateListing />);
+        await chooseCommunityAndLocation(user);
+
+        const nav = within(screen.getByRole('navigation', { name: 'Main' }));
+        await user.click(await nav.findByRole('button', { name: KELLER }));
+        await user.click(await screen.findByRole('button', { name: `Leave ${KELLER}` }));
+
+        await waitFor(() => expect(within(communitySelect()).queryByRole('option', { name: KELLER })).not.toBeInTheDocument());
+        expect(communitySelect()).toHaveValue(CAMPUS);
+        expect(locationSelect()).toHaveValue(String(CAPEN.location_id));
+        expect(locationSelect()).toBeEnabled();
+    });
+
+    it('keeps a requested Community out of Sell until a refresh confirms membership', async () => {
+        const backend = mockBackend();
+        const user = userEvent.setup();
+        render(<CreateListing />);
+        await waitFor(() => expect(communitySelect()).toBeEnabled());
+
+        const nav = within(screen.getByRole('navigation', { name: 'Main' }));
+        await user.click(await nav.findByRole('button', { name: KELLER }));
+        await user.click(await screen.findByRole('button', { name: 'Request to Join Riverside Apartments' }));
+        expect(await screen.findByRole('button', { name: 'Pending approval for Riverside Apartments' })).toBeDisabled();
+        await waitFor(() => expect(communitySelect()).toBeEnabled());
+        expect(within(communitySelect()).queryByRole('option', { name: 'Riverside Apartments' })).not.toBeInTheDocument();
+
+        backend.communities[1].communities = backend.communities[1].communities.map((community) => (
+            community.name === 'Riverside Apartments' ? { ...community, joined: true, pending: false } : community
+        ));
+        act(() => announceCommunitiesChanged());
+
+        expect(await within(communitySelect()).findByRole('option', { name: 'Riverside Apartments' })).toBeInTheDocument();
+    });
+
+    it('ignores a late location response after the selected Community was left', async () => {
+        const backend = mockBackend();
+        let finishLocations;
+        backend.locations[KELLER] = () => new Promise((resolve) => { finishLocations = resolve; });
+        const user = userEvent.setup();
+        render(<CreateListing />);
+        await waitFor(() => expect(communitySelect()).toBeEnabled());
+        await user.selectOptions(communitySelect(), KELLER);
+        expect(locationSelect()).toBeDisabled();
+
+        const nav = within(screen.getByRole('navigation', { name: 'Main' }));
+        await user.click(await nav.findByRole('button', { name: KELLER }));
+        await user.click(await screen.findByRole('button', { name: `Leave ${KELLER}` }));
+        await waitFor(() => expect(communitySelect()).toHaveValue(''));
+        await act(async () => finishLocations(await jsonResponse(200, { success: true, locations: [KELLER_OFFICE] })));
+
+        expect(locationSelect()).toBeDisabled();
+        expect(within(locationSelect()).queryByRole('option', { name: KELLER_OFFICE.label })).not.toBeInTheDocument();
     });
 
     it('requests the exact Community name and shows only its mocked locations', async () => {
@@ -118,7 +234,7 @@ describe('Create listing Community selection', () => {
         render(<CreateListing />);
 
         await waitFor(() => expect(communitySelect()).toBeEnabled());
-        await user.selectOptions(communitySelect(), ALL_OF_UB);
+        await user.selectOptions(communitySelect(), CAMPUS);
 
         await waitFor(() => expect(locationSelect()).toBeEnabled());
         expect(within(locationSelect()).getByRole('option', { name: CAPEN.label })).toBeInTheDocument();
@@ -126,7 +242,7 @@ describe('Create listing Community selection', () => {
         expect(within(locationSelect()).queryByRole('option', { name: KELLER_OFFICE.label })).not.toBeInTheDocument();
         const [[requestUrl, requestOptions]] = callsContaining(backend.fetch, 'get_meeting_locations.php');
         expect(requestOptions).toEqual({ credentials: 'same-origin' });
-        expect(new URL(String(requestUrl), 'https://aptitude.test/').searchParams.get('community')).toBe(ALL_OF_UB);
+        expect(new URL(String(requestUrl), 'https://aptitude.test/').searchParams.get('community')).toBe(CAMPUS);
     });
 
     it('clears the old location and replaces its options when Community changes', async () => {
@@ -162,20 +278,20 @@ describe('Create listing Community selection', () => {
 
     it('shows empty and failed location responses without stale options', async () => {
         const backend = mockBackend();
-        backend.locations[ALL_OF_UB] = [200, { success: true, locations: [] }];
+        backend.locations[CAMPUS] = [200, { success: true, locations: [] }];
         const user = userEvent.setup();
         const { unmount } = render(<CreateListing />);
 
         await waitFor(() => expect(communitySelect()).toBeEnabled());
-        await user.selectOptions(communitySelect(), ALL_OF_UB);
+        await user.selectOptions(communitySelect(), CAMPUS);
         expect(await screen.findByText('No approved meeting locations are available for this community.')).toBeVisible();
         expect(locationSelect()).toBeDisabled();
         unmount();
 
-        backend.locations[ALL_OF_UB] = [404, { success: false, error: 'Community not found.' }];
+        backend.locations[CAMPUS] = [404, { success: false, error: 'Community not found.' }];
         render(<CreateListing />);
         await waitFor(() => expect(communitySelect()).toBeEnabled());
-        await user.selectOptions(communitySelect(), ALL_OF_UB);
+        await user.selectOptions(communitySelect(), CAMPUS);
         expect(await screen.findByText('Community not found.')).toBeVisible();
         expect(within(locationSelect()).queryByRole('option', { name: CAPEN.label })).not.toBeInTheDocument();
     });
@@ -187,7 +303,7 @@ describe('Create listing Community selection', () => {
 
         expect(await screen.findByText('Community list test error.')).toBeVisible();
         expect(communitySelect()).toBeDisabled();
-        expect(within(communitySelect()).queryByRole('option', { name: ALL_OF_UB })).not.toBeInTheDocument();
+        expect(within(communitySelect()).queryByRole('option', { name: CAMPUS })).not.toBeInTheDocument();
     });
 
     it('uploads first and sends the exact Community and location ID when publishing', async () => {
@@ -213,7 +329,7 @@ describe('Create listing Community selection', () => {
             condition: 'Good',
             price: '25.00',
             related_course: 'CSE 442',
-            community: ALL_OF_UB,
+            community: CAMPUS,
             meeting_location_id: CAPEN.location_id,
             description: 'Community listing frontend test item.',
             image_url: 'listing/api/image.php?file=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg',
@@ -254,7 +370,7 @@ describe('Create listing Community selection', () => {
 
         expect(await screen.findByText(message)).toBeVisible();
         expect(screen.getByRole('button', { name: 'Create listing' })).toBeEnabled();
-        expect(communitySelect()).toHaveValue(ALL_OF_UB);
+        expect(communitySelect()).toHaveValue(CAMPUS);
         expect(locationSelect()).toHaveValue(String(CAPEN.location_id));
         expect(location.assign).not.toHaveBeenCalled();
     });

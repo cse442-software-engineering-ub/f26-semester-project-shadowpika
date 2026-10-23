@@ -7,6 +7,7 @@ import ItemCover from './ItemCover.jsx';
 import { fetchListingOwnership, loadListing, meetPageUrl } from './meetingRequests.js';
 import HeartIcon from './HeartIcon.jsx';
 import { fetchFavoriteStatus, removeFavorite, saveFavorite } from './favorites.js';
+import ListingMeetingLocation from './components/ListingMeetingLocation.jsx';
 
 const SEARCH_HREF = './product-search.html';
 
@@ -130,13 +131,33 @@ function ItemDetails() {
                             {saveError && <p className="id-error id-save-error" role="alert">{saveError}</p>}
 
                             {canBuy && (
-                                <button
-                                    type="button"
-                                    className="id-buy"
-                                    onClick={() => window.location.assign(meetPageUrl(listing.listing_id))}
-                                >
-                                    Buy Now
-                                </button>
+                                <div className="id-actions">
+                                    <button
+                                        type="button"
+                                        className="id-buy"
+                                        onClick={() => window.location.assign(meetPageUrl(listing.listing_id))}
+                                    >
+                                        Buy Now
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="id-message-seller"
+                                        onClick={() => {
+                                            if (!listing.owner_id) {
+                                                window.alert('Seller information is unavailable.');
+                                                return;
+                                            }
+                                            const parameters = new URLSearchParams({
+                                                with: String(listing.owner_id),
+                                                listing_id: String(listing.listing_id),
+                                                listing_name: listing.name,
+                                            });
+                                            window.location.assign(`./message.html?${parameters}`);
+                                        }}
+                                    >
+                                        Message Seller
+                                    </button>
+                                </div>
                             )}
 
                             <dl className="id-facts">
@@ -153,6 +174,7 @@ function ItemDetails() {
                                     : <p className="id-muted">The seller didn't add a description.</p>}
                             </section>
                         </div>
+                        <ListingMeetingLocation listing={listing} />
                     </article>
                 )}
             </main>

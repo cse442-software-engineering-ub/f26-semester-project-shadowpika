@@ -1,0 +1,78 @@
+.kv-locations-map {
+  width: 100%;
+  height: 420px;
+  background: #f3efe7;
+  cursor: crosshair;
+}
+
+.kv-locations-map--readonly {
+  cursor: grab;
+}
+
+/* Share the established map and pin styling with the listing view. */
+.kv-locations-map .leaflet-tile-pane {
+  filter: grayscale(0.9) sepia(0.18) brightness(1.04) contrast(0.92);
+}
+
+.kv-pin {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.kv-pin svg {
+  display: block;
+  filter: drop-shadow(0 2px 2px rgba(31, 45, 68, 0.3));
+}
+
+.kv-pin__body {
+  fill: #24364f;
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+.kv-pin__dot {
+  fill: #ffffff;
+}
+
+.kv-pin--selected .kv-pin__body {
+  stroke: #c9a15e;
+  stroke-width: 2.5;
+}
+
+.kv-pin--removing svg {
+  opacity: 0.45;
+}
+
+.kv-pin--removing .kv-pin__body {
+  fill: #9aa5b4;
+}
+
+.kv-pin--draft .kv-pin__body {
+  fill: #c9a15e;
+}
+
+.kv-pin--draft .kv-pin__dot {
+  fill: #24364f;
+}
+
+.kv-pin-label {
+  width: max-content;
+  max-width: 180px;
+  padding: 3px 8px;
+  border: 1px solid #e3e0d9;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(31, 45, 68, 0.15);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #24364f;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .kv-locations-map {
+    height: 320px;
+  }
+}

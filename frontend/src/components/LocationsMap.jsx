@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import './LocationsMap.css';
 
 // UB North Campus, used until there are pins to frame.
 const CAMPUS_CENTER = [43.0008, -78.789];
@@ -23,34 +24,80 @@ const pinIcon = (state) =>
     });
 
 const LABEL_OPTIONS = { permanent: true, direction: 'top', className: 'kv-pin-label' };
+const NO_REMOVALS = new Set();
+
+// Leaflet treats string tooltip content as HTML. Location names are plain text.
+const labelContent = (label) => {
+    const content = document.createElement('span');
+    content.textContent = label;
+    return content;
+};
 
 /** Leaflet map of approved meeting locations, styled after the Check-in Map frames. */
-export default function LocationsMap({ locations, removingIds, selectedId, draft, onMapClick, onSelect }) {
+export default function LocationsMap({
+    locations,
+    removingIds = NO_REMOVALS,
+    selectedId,
+    draft,
+    onMapClick,
+    onSelect,
+    readOnly = false,
+    onMapError,
+}) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
     const pinsRef = useRef(null);
-    const framedRef = useRef(false);
-    const handlersRef = useRef({ onMapClick, onSelect });
+    const framedRef = useRef(null);
+    const handlersRef = useRef({ onMapClick, onSelect, onMapError });
 
     useEffect(() => {
-        handlersRef.current = { onMapClick, onSelect };
+        handlersRef.current = { onMapClick, onSelect, onMapError };
     });
 
     useEffect(() => {
-        const map = L.map(containerRef.current, { center: CAMPUS_CENTER, zoom: CAMPUS_ZOOM });
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        }).addTo(map);
-        map.on('click', (event) => handlersRef.current.onMapClick(event.latlng));
-        pinsRef.current = L.layerGroup().addTo(map);
-        mapRef.current = map;
+        let map;
+        let observer;
+        let active = true;
+        try {
+            map = L.map(containerRef.current, { center: CAMPUS_CENTER, zoom: CAMPUS_ZOOM });
+            let tileError = false;
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            })
+                .on('loading', () => {
+                    tileError = false;
+                    if (active) handlersRef.current.onMapError?.(false);
+                })
+                .on('tileerror', () => {
+                    tileError = true;
+                    if (active) handlersRef.current.onMapError?.(true);
+                })
+                .on('load', () => {
+                    if (active) handlersRef.current.onMapError?.(tileError);
+                })
+                .addTo(map);
+            if (!readOnly) {
+                map.on('click', (event) => handlersRef.current.onMapClick?.(event.latlng));
+            }
+            pinsRef.current = L.layerGroup().addTo(map);
+            mapRef.current = map;
+            if (typeof ResizeObserver === 'function') {
+                observer = new ResizeObserver(() => map.invalidateSize());
+                observer.observe(containerRef.current);
+            }
+        } catch {
+            handlersRef.current.onMapError?.(true);
+        }
         return () => {
-            map.remove();
+            active = false;
+            observer?.disconnect();
+            map?.remove();
             mapRef.current = null;
-            framedRef.current = false;
+            pinsRef.current = null;
+            framedRef.current = null;
         };
-    }, []);
+    }, [readOnly]);
 
     useEffect(() => {
         const pins = pinsRef.current;
@@ -71,36 +118,43 @@ export default function LocationsMap({ locations, removingIds, selectedId, draft
                     interactive: false,
                 }).addTo(pins);
             }
-            L.marker([location.lat, location.lng], { icon: pinIcon(state), title: location.label, riseOnHover: true })
-                .bindTooltip(removing ? `${location.label} (will be removed)` : location.label, LABEL_OPTIONS)
-                .on('click', (event) => {
-                    L.DomEvent.stop(event);
-                    handlersRef.current.onSelect(location.location_id);
-                })
+            const marker = L.marker([location.lat, location.lng], {
+                icon: pinIcon(state), title: location.label, riseOnHover: true, draggable: false,
+            })
+                .bindTooltip(labelContent(removing ? `${location.label} (will be removed)` : location.label), LABEL_OPTIONS)
                 .addTo(pins);
+            if (!readOnly) {
+                marker.on('click', (event) => {
+                    L.DomEvent.stop(event);
+                    handlersRef.current.onSelect?.(location.location_id);
+                });
+            }
         }
 
-        if (draft) {
+        if (draft && !readOnly) {
             L.marker([draft.lat, draft.lng], { icon: pinIcon('draft'), interactive: false })
-                .bindTooltip(draft.label?.trim() || 'New location', LABEL_OPTIONS)
+                .bindTooltip(labelContent(draft.label?.trim() || 'New location'), LABEL_OPTIONS)
                 .addTo(pins);
         }
 
         // Frame the saved pins once, when they first arrive, so later clicks don't move the map.
-        if (!framedRef.current && locations.length > 0) {
-            framedRef.current = true;
+        const frame = readOnly ? JSON.stringify(locations.map(({ lat, lng }) => [lat, lng])) : 'admin';
+        if (locations.length > 0 && framedRef.current !== frame) {
+            framedRef.current = frame;
             const bounds = L.latLngBounds(locations.map((location) => [location.lat, location.lng]));
             mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
         }
-    }, [locations, removingIds, selectedId, draft]);
+    }, [locations, removingIds, selectedId, draft, readOnly]);
 
     return (
         <div
             ref={containerRef}
-            className="kv-locations-map"
+            className={`kv-locations-map${readOnly ? ' kv-locations-map--readonly' : ''}`}
             data-testid="locations-map"
-            role="application"
-            aria-label="Approved meeting locations map. Click to mark a new location; click a pin to select it."
+            role={readOnly ? 'region' : 'application'}
+            aria-label={readOnly
+                ? 'Meeting location map'
+                : 'Approved meeting locations map. Click to mark a new location; click a pin to select it.'}
         />
     );
 }
