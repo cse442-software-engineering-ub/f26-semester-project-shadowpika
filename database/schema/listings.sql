@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS listings (
     related_course   VARCHAR(100)  DEFAULT NULL,
     community        VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
     meeting_location VARCHAR(150)  DEFAULT NULL,
+    meeting_location_id INT UNSIGNED DEFAULT NULL,
     description      TEXT          NULL,
     status           ENUM('active', 'sold', 'inactive') NOT NULL DEFAULT 'active',
     created_at       TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS listings (
     PRIMARY KEY (listing_id),
     KEY idx_listings_status (status),
     KEY idx_listings_community (community),
+    KEY idx_listings_meeting_location (meeting_location_id),
     KEY idx_listings_owner_status (owner_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
