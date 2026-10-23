@@ -27,8 +27,16 @@ function jsonResponse(status, body) {
     return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }));
 }
 
-function mockBackend({ list = [200, { success: true, locations: [CAPEN] }], add = [201, { success: true, location_id: 2 }], remove } = {}) {
+function mockBackend({
+    adminStatus = [200, { success: true, is_admin: true, application_status: 'approved' }],
+    requests = [200, { success: true, requests: [] }],
+    list = [200, { success: true, locations: [CAPEN] }],
+    add = [201, { success: true, location_id: 2 }],
+    remove,
+} = {}) {
     const fetchMock = vi.fn((url, options = {}) => {
+        if (url.endsWith('admin_status.php')) return jsonResponse(...adminStatus);
+        if (url.endsWith('get_join_requests.php')) return jsonResponse(...requests);
         if (url.endsWith('get_approved_locations.php')) return jsonResponse(...list);
         if (url.endsWith('add_approved_location.php')) return jsonResponse(...add);
         if (url.endsWith('remove_approved_location.php')) {
@@ -79,24 +87,33 @@ describe('Settings page', () => {
         expect(window.location.assign).toHaveBeenCalledWith(ACCOUNT_SETTINGS_HREF);
     });
 
-    // Frontend Test 4
-    it('sends users who are not admins to Account settings without showing the map', async () => {
-        const fetchMock = mockBackend({ list: [403, FORBIDDEN] });
+    it('shows every signed-in user the Admin tab with a register button', async () => {
+        mockBackend({ adminStatus: [200, { success: true, is_admin: false, application_status: 'none' }] });
         render(<Settings />);
 
-        await waitFor(() => expect(window.location.replace).toHaveBeenCalledWith(ACCOUNT_SETTINGS_HREF));
-        expect(callsTo(fetchMock, 'get_approved_locations.php')).toHaveLength(1);
-        expect(screen.queryByRole('tab', { name: 'Admin' })).not.toBeInTheDocument();
+        expect(await screen.findByRole('tab', { name: 'Admin' })).toBeInTheDocument();
+        expect(await screen.findByRole('link', { name: 'Register as an admin' })).toHaveAttribute('href', expect.stringContaining('admin-register'));
+        expect(window.location.replace).not.toHaveBeenCalled();
         expect(screen.queryByText('Approved Meeting Locations')).not.toBeInTheDocument();
         expect(screen.queryByTestId('locations-map')).not.toBeInTheDocument();
     });
 
-    it('sends the user to Account settings when the server cannot be reached', async () => {
+    it('tells a pending applicant that their request is being reviewed', async () => {
+        mockBackend({ adminStatus: [200, { success: true, is_admin: false, application_status: 'pending' }] });
+        render(<Settings />);
+
+        expect(await screen.findByText('Your request is being reviewed.')).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Register as an admin' })).not.toBeInTheDocument();
+        expect(screen.queryByTestId('locations-map')).not.toBeInTheDocument();
+    });
+
+    it('keeps the Admin tab when the admin-status request fails', async () => {
         vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))));
         render(<Settings />);
 
-        await waitFor(() => expect(window.location.replace).toHaveBeenCalledWith(ACCOUNT_SETTINGS_HREF));
-        expect(screen.queryByRole('tab', { name: 'Admin' })).not.toBeInTheDocument();
+        expect(await screen.findByRole('tab', { name: 'Admin' })).toBeInTheDocument();
+        expect(await screen.findByRole('link', { name: 'Register as an admin' })).toBeInTheDocument();
+        expect(window.location.replace).not.toHaveBeenCalled();
     });
 
     // Frontend Test 1
@@ -107,7 +124,7 @@ describe('Settings page', () => {
 
         await openAdminTab(user);
 
-        expect(screen.getByRole('heading', { name: 'Approved Meeting Locations' })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Approved Meeting Locations' })).toBeInTheDocument();
         expect(screen.getByTestId('locations-map')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Pin: Capen Hall Main Entrance @ 42.9612,-78.8328' })).toBeInTheDocument();
     });
@@ -119,7 +136,7 @@ describe('Settings page', () => {
 
         await openAdminTab(user);
 
-        expect(screen.getByText('No approved meeting locations yet.')).toBeInTheDocument();
+        expect(await screen.findByText('No approved meeting locations yet.')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
     });
 

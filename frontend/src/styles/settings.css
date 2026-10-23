@@ -277,6 +277,99 @@
   color: #718197;
 }
 
+.kv-admin-gate {
+  max-width: 520px;
+}
+
+.kv-admin-gate__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 8px;
+  background: #24364f;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.kv-admin-gate__pending {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f6f1ea;
+  color: #24364f;
+  font-weight: 600;
+}
+
+.kv-join-requests {
+  margin-bottom: 32px;
+}
+
+.kv-join-requests__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kv-join-requests__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e3e0d9;
+  border-radius: 10px;
+}
+
+.kv-join-requests__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kv-join-requests__approve,
+.kv-join-requests__deny {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.kv-join-requests__approve {
+  background: #24364f;
+  color: #ffffff;
+}
+
+.kv-join-requests__deny {
+  border: 1px solid #24364f;
+  background: #ffffff;
+  color: #24364f;
+}
+
+.kv-join-requests__notice,
+.kv-join-requests__error {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.kv-join-requests__notice {
+  background: #eaf6ee;
+  color: #1f6b3a;
+}
+
+.kv-join-requests__error {
+  background: #fdecea;
+  color: #c0392b;
+}
+
 @media (max-width: 600px) {
   .kv-settings-content {
     padding: 20px 16px;
@@ -284,5 +377,9 @@
 
   .kv-locations-map {
     height: 320px;
+  }
+
+  .kv-join-requests__item {
+    align-items: flex-start;
   }
 }

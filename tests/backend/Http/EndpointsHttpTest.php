@@ -885,6 +885,14 @@ final class EndpointsHttpTest extends TestCase
         )->fetchAll(PDO::FETCH_KEY_PAIR);
     }
 
+    private function grantMembership(string $username, int $communityId): void
+    {
+        $this->pdo->prepare(
+            'INSERT INTO community_members (user_id, community_id, shopping)
+             SELECT id, ?, 1 FROM users WHERE username = ?'
+        )->execute([$communityId, $username]);
+    }
+
     public function testStudentListsAndJoinsSeveralCommunities(): void
     {
         $allOfUb = $this->approvedCommunity('All of UB', 'all-of-ub@test.com');
@@ -898,20 +906,22 @@ final class EndpointsHttpTest extends TestCase
         $this->assertSame(200, $listStatus);
         $this->assertSame(
             '{"success":true,"communities":['
-            . '{"community_id":' . $allOfUb . ',"name":"All of UB","joined":true,"shopping":true,"automatic":true},'
-            . '{"community_id":' . $keller . ',"name":"Keller Properties LLC","joined":false,"shopping":false,"automatic":false},'
-            . '{"community_id":' . $riverside . ',"name":"Riverside Apartments","joined":false,"shopping":false,"automatic":false}]}',
+            . '{"community_id":' . $allOfUb . ',"name":"All of UB","joined":true,"shopping":true,"automatic":true,"pending":false},'
+            . '{"community_id":' . $keller . ',"name":"Keller Properties LLC","joined":false,"shopping":false,"automatic":false,"pending":false},'
+            . '{"community_id":' . $riverside . ',"name":"Riverside Apartments","joined":false,"shopping":false,"automatic":false,"pending":false}]}',
             $listRaw
         );
 
         [$joinStatus, , $joinRaw] = $this->postJson('join_community.php', json_encode(['community_id' => $keller]), $session);
         $this->assertSame(200, $joinStatus);
-        $this->assertSame('{"success":true,"community_id":' . $keller . ',"community_name":"Keller Properties LLC"}', $joinRaw);
+        $this->assertSame('{"success":true,"community_id":' . $keller . ',"community_name":"Keller Properties LLC","status":"pending"}', $joinRaw);
         [$secondStatus, $second] = $this->postJson('join_community.php', json_encode(['community_id' => $riverside]), $session);
         $this->assertSame(200, $secondStatus);
-        $this->assertSame(['success' => true, 'community_id' => $riverside, 'community_name' => 'Riverside Apartments'], $second);
+        $this->assertSame(['success' => true, 'community_id' => $riverside, 'community_name' => 'Riverside Apartments', 'status' => 'pending'], $second);
 
-        $this->assertSame([$keller => 1, $riverside => 1], $this->membershipsOf('drew.student'));
+        $this->assertSame([], $this->membershipsOf('drew.student'));
+        $this->grantMembership('drew.student', $keller);
+        $this->grantMembership('drew.student', $riverside);
         [$again] = $this->login('drew.student@test.com', 'Student123!');
         $this->assertSame([
             ['community_id' => $keller, 'name' => 'Keller Properties LLC'],
@@ -927,8 +937,8 @@ final class EndpointsHttpTest extends TestCase
         $riverside = $this->approvedCommunity('Riverside Apartments', 'taylor.rivers.b4@test.com');
         $this->signUp('drew.student', 'drew.student@test.com', 'Student123!');
         [, $session] = $this->login('drew.student@test.com', 'Student123!');
-        $this->postJson('join_community.php', json_encode(['community_id' => $keller]), $session);
-        $this->postJson('join_community.php', json_encode(['community_id' => $riverside]), $session);
+        $this->grantMembership('drew.student', $keller);
+        $this->grantMembership('drew.student', $riverside);
 
         [$leaveStatus, , $leaveRaw] = $this->postJson('leave_community.php', json_encode(['community_id' => $keller]), $session);
 
@@ -953,7 +963,7 @@ final class EndpointsHttpTest extends TestCase
         $keller = $this->approvedCommunity('Keller Properties LLC', 'morgan.keller.s1@test.com');
         $riverside = $this->approvedCommunity('Riverside Apartments', 'taylor.rivers.s1@test.com');
         $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'drew.student'));
-        $this->postJson('join_community.php', json_encode(['community_id' => $keller]), $session);
+        $this->grantMembership('drew.student', $keller);
 
         [$status, , $raw] = $this->postJson('set_shopping_communities.php', json_encode(['community_ids' => [$keller]]), $session);
 
@@ -998,7 +1008,7 @@ final class EndpointsHttpTest extends TestCase
         [$ownerStatus] = $this->request('GET', "api/get_item_details.php?listing_id=$kellerItem", null, $this->sessionFor($sellerId));
         $this->assertSame(200, $ownerStatus, 'Sellers always see their own listing.');
 
-        $this->postJson('join_community.php', json_encode(['community_id' => $keller]), $shopper);
+        $this->grantMembership('drew.student', $keller);
         [$memberStatus, $member] = $this->request('GET', "api/get_item_details.php?listing_id=$kellerItem", null, $shopper);
         $this->assertSame(200, $memberStatus);
         $this->assertSame('Keller Desk Lamp', $member['listing']['name']);

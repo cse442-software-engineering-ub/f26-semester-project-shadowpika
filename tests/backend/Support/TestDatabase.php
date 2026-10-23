@@ -66,6 +66,14 @@ final class TestDatabase
                 PRIMARY KEY (user_id, community_id)
             )"
         );
+        $pdo->exec(
+            "CREATE TABLE community_join_requests (
+                user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+                community_id INTEGER NOT NULL REFERENCES admin_requests (id) ON DELETE CASCADE,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, community_id)
+            )"
+        );
         // Mirrors sql/005_auth_tokens.sql.
         $pdo->exec(
             "CREATE TABLE auth_tokens (

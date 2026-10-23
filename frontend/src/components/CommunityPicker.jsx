@@ -23,8 +23,9 @@ function CommunityPicker({ communities, loading, error, joiningId, leavingId, fi
     } else {
         body = (
             <ul className="kv-communities-list">
-                {communities.map(({ community_id: id, name, joined, automatic }) => {
+                {communities.map(({ community_id: id, name, joined, automatic, pending }) => {
                     const busy = joiningId !== null || leavingId !== null;
+                    const joinLabel = joined ? 'Joined' : pending ? 'Pending approval' : joiningId === id ? 'Requesting…' : 'Request to Join';
                     return (
                         <li key={id} className="kv-communities-item">
                             <span className="kv-communities-name">
@@ -46,11 +47,11 @@ function CommunityPicker({ communities, loading, error, joiningId, leavingId, fi
                                 <button
                                     type="button"
                                     className="kv-communities-join"
-                                    aria-label={joined ? `Joined ${name}` : `Join ${name}`}
-                                    disabled={joined || busy}
+                                    aria-label={joined ? `Joined ${name}` : pending ? `Pending approval for ${name}` : `Request to Join ${name}`}
+                                    disabled={joined || pending || busy}
                                     onClick={() => onJoin(id)}
                                 >
-                                    {joined ? 'Joined' : joiningId === id ? 'Joining…' : 'Join'}
+                                    {joinLabel}
                                 </button>
                             </span>
                         </li>
@@ -77,7 +78,7 @@ function CommunityPicker({ communities, loading, error, joiningId, leavingId, fi
                 <p id="kv-communities-intro" className="kv-communities-intro">
                     {firstLogin
                         ? 'Welcome to Karavan! Join a community to connect with students and partners near you.'
-                        : 'Join as many communities as you like. You can only shop items from communities you are in, and you can leave at any time.'}
+                        : 'Request to join as many communities as you like. A community admin has to approve you before you can shop their items.'}
                 </p>
                 {error ? <p className="kv-communities-error" role="alert">{error}</p> : null}
                 {body}
