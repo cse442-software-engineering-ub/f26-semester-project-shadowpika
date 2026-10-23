@@ -51,6 +51,43 @@ try {
 
     $userId = (int) $user['id'];
 
+    // Optionally retrieve a seller's username for a new draft chat.
+    if (isset($_GET['seller_id'])) {
+        $sellerId = filter_var(
+            $_GET['seller_id'],
+            FILTER_VALIDATE_INT
+        );
+
+        if (!$sellerId || $sellerId === $userId) {
+            respond(400, [
+                'success' => false,
+                'error' => 'Invalid seller ID.'
+            ]);
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT username
+            FROM users
+            WHERE id = :seller_id
+            LIMIT 1'
+        );
+
+        $stmt->execute(['seller_id' => $sellerId]);
+        $seller = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$seller) {
+            respond(404, [
+                'success' => false,
+                'error' => 'Seller not found.'
+            ]);
+        }
+
+        respond(200, [
+            'success' => true,
+            'username' => $seller['username']
+        ]);
+    }
+
     /*
      * Each conversation is identified by:
      *   1. The other participant
