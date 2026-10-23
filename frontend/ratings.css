@@ -10,7 +10,7 @@ button, textarea { font:inherit; }
 .seller-card { display:flex; align-items:center; gap:20px; padding:28px; margin-bottom:18px; }
 .avatar { width:76px; height:76px; flex:0 0 76px; display:grid; place-items:center; border-radius:50%; background:var(--navy); color:var(--white); font:600 34px/1 "League Spartan",sans-serif; }
 .eyebrow { margin:0 0 8px; color:#9a7841; font-size:11px; font-weight:700; letter-spacing:1.6px; }
-h1,h2,p { margin-top:0; }
+h1,h2,p { margin-top:0; } 
 h1,h2 { font-family:"League Spartan",sans-serif; }
 h1 { margin-bottom:7px; font-size:clamp(28px,4vw,36px); }
 h2 { margin-bottom:8px; font-size:27px; }
