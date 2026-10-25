@@ -27,8 +27,9 @@ INSERT IGNORE INTO admin_requests (
 UPDATE admin_requests SET status = 'approved'
  WHERE id IN (91801, 91802, 91803) AND email LIKE 'recommended-test-%@test.invalid';
 
--- Listings: remove only this fixture's own rows, then add them fresh (sold/inactive/owner reset)
-DELETE FROM listings WHERE listing_id BETWEEN 91801 AND 91823 AND description = @marker;
+-- Listings: remove only this fixture's own rows, then add them fresh (sold/inactive/owner reset).
+-- The marker is written out here: comparing the column with @marker fails on the team DB (#1267, mixed collations).
+DELETE FROM listings WHERE listing_id BETWEEN 91801 AND 91823 AND description = 'Recommended items test item';
 
 INSERT IGNORE INTO listings (listing_id, name, price, `condition`, image_url, category, related_course, community, status, owner_id, description)
 VALUES
