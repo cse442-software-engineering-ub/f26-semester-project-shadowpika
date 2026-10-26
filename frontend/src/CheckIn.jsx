@@ -10,7 +10,7 @@ import './CheckIn.css';
 
 export default function CheckIn() {
     const requestId = new URLSearchParams(window.location.search).get('request_id') || '';
-    const { meeting, loading, busy, allowed, error, geoMessage, state, allow, submit, refresh } = useCheckin(requestId);
+    const { meeting, loading, busy, allowed, error, geoMessage, state, userLocation, allow, submit, refresh } = useCheckin(requestId);
     const [mapError, setMapError] = useState(false);
     const location = meeting?.location;
     const locations = useMemo(() => validLocation(location) ? [location] : [], [location]);
@@ -30,7 +30,8 @@ export default function CheckIn() {
                         <p>{meeting.location_label}</p>
                     </section>
                     {locations.length > 0 && <LocationsMap locations={locations} selectedId={meeting.location.location_id}
-                        readOnly circleRadius={100} fitCircle onMapError={setMapError} />}
+                        readOnly circleRadius={100} fitCircle userLocation={userLocation} onMapError={setMapError} />}
+                    {userLocation && <p className="ci-location-key">Blue dot: Your location. Blue circle: reported location accuracy ({Math.ceil(userLocation.accuracy)} m).</p>}
                     {mapError && <p role="status">The map could not load. The agreed meeting location is shown above.</p>}
                     <section className="ci-actions" aria-label="Check in">
                         <p role="status">{windowMessage(meeting, state)}</p>

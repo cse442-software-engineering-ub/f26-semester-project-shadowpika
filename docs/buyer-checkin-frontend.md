@@ -16,11 +16,11 @@ Sell's Create Listing form no longer renders, validates or submits `related_cour
 
 ## Dependencies and release
 
-- This branch is based on dev and deliberately does not include #206's source. Its UI tests use mocked API contracts. The current frontend-only `deploy/` must not be uploaded as the complete #58 release.
+- The standalone #205 branch did not include #206's source; its UI tests use mocked API contracts. Both are now merged into dev **e7644b1**, and the combined **140-file** release was rebuilt and verified. This supersedes the earlier frontend-only bundle warning.
 - Integrate **both #205 and #206** before generating the deployment bundle. The user handles Git branches, commits, pushes, PRs and merges.
 - #206 adds `request_id` to the buyer list, the two check-in endpoints and `checked_in_at`. Its complete contract and migration/deployment instructions are in `docs/buyer-checkin.md` on the backend branch and will be available after integration.
 - The final release verifier must retain all three new route checks: `check-in.html`, `api/get_meeting_checkin.php`, and `api/check_in_meeting.php`.
-- On the verified Aptitude **postsprint/** target, back up application/database state, apply #206's additive migration, then upload only generated manifest-listed files. Preserve the parent grading deployment, server configuration, sessions and uploads.
+- The user changed the Aptitude target on October 26 to **/data/web/CSE442/2026-Fall/cse-442j/**, replacing the temporary **postsprint/** target. Back up the root application and its actual configured database, apply #206's additive migration, then upload generated manifest-listed files into the root. Preserve server configuration, sessions, uploads and grading meeting data.
 - After Git integration, rebuild and verify the final combined bundle. Do not use files from a temporary local test overlay for deployment.
 
 ## Tests
@@ -71,4 +71,20 @@ git diff --cached --stat
 git commit -m "Add buyer location check-in frontend and simplify Sell (#205)"
 ```
 
-After reviewing/merging both feature branches through the team's normal Git workflow, regenerate and verify the combined bundle. Keep both #206's endpoint checks and #205's page check if resolving a conflict in the release verifier. The local `deploy/` currently reflects #205 alone and is not ready for a complete #58 server deployment.
+Both feature branches have now been merged into dev **e7644b1**, and the combined bundle has been rebuilt. Both #206's endpoint checks and #205's page check are retained. Upload the contents of `deploy/` to the newly confirmed root target after backing up and migrating its database; live deployment is still pending.
+# Current location overlay
+
+After Allow location returns a fresh reading, the check-in map displays a blue dot
+labelled **Your location** and a blue circle whose radius is the device-reported
+accuracy in metres. The meeting pin and 100 m meeting area remain visible. The
+first reading frames both positions; subsequent readings update the overlay
+without repeatedly changing the user's zoom or pan.
+
+Readings with accuracy above 100 m remain visible to explain poor reception but
+cannot enable check-in. Invalid, expired, denied, hidden-page and checked-in
+readings do not display an overlay. Coordinates remain ephemeral in page state.
+
+Verification: the frontend suite passes **18 files / 261 tests**, including overlay
+coordinates, accuracy radius, map framing, movement, expiry, visibility, permission
+denial and success cleanup. Production build, targeted lint and release validation
+pass. Physical phone verification remains a deployment acceptance step.

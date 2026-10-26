@@ -8,8 +8,8 @@ import CheckIn from '../CheckIn.jsx';
 import { BLOCKED_LOCATION, distanceMeters, EARTH_RADIUS_M, LOCATION_OPTIONS, positionResult, windowState } from '../checkin.js';
 
 vi.mock('../NavBar.jsx', () => ({ default: () => <nav>Karavan</nav> }));
-vi.mock('../components/LocationsMap.jsx', () => ({ default: ({ circleRadius, readOnly, onMapError }) => (
-    <div aria-label="Meeting location map" data-radius={circleRadius} data-readonly={String(readOnly)}>
+vi.mock('../components/LocationsMap.jsx', () => ({ default: ({ circleRadius, readOnly, onMapError, userLocation }) => (
+    <div aria-label="Meeting location map" data-radius={circleRadius} data-readonly={String(readOnly)} data-user={JSON.stringify(userLocation || null)}>
         <button onClick={() => onMapError(true)}>Simulate map failure</button>
     </div>
 ) }));
@@ -87,6 +87,7 @@ describe('Frontend #205 check-in', () => {
         expect(screen.getByText('Checked in at 12:03 PM.')).toBeVisible();
         expect(screen.queryByRole('button', { name: "I'm here" })).not.toBeInTheDocument();
         expect(geo.clearWatch).toHaveBeenCalledWith(12);
+        expect(screen.getByLabelText('Meeting location map')).toHaveAttribute('data-user', 'null');
     });
 
     it('disables after moving away, poor accuracy and expired readings', async () => {
@@ -101,6 +102,7 @@ describe('Frontend #205 check-in', () => {
         await act(async () => vi.advanceTimersByTime(30001));
         expect(screen.getByRole('button', { name: "I'm here" })).toBeDisabled();
         expect(screen.getByText(/reading expired/)).toBeVisible();
+        expect(screen.getByLabelText('Meeting location map')).toHaveAttribute('data-user', 'null');
     });
 
     it('does not POST when the fresh submission reading is outside the area', async () => {
@@ -165,6 +167,26 @@ describe('Frontend #205 check-in', () => {
         expect(screen.getByRole('button', { name: "I'm here" })).toBeDisabled();
         await act(async () => watchSuccess(position()));
         expect(screen.getByRole('button', { name: "I'm here" })).toBeEnabled();
+    });
+
+    it('shows fresh coordinates and accuracy, including poor accuracy, and removes hidden or denied readings', async () => {
+        await mount();
+        const map = screen.getByLabelText('Meeting location map');
+        expect(map).toHaveAttribute('data-user', 'null');
+        await locate(position({ accuracy: 150 }));
+        expect(map).toHaveAttribute('data-user', JSON.stringify({ lat: 43, lng: -78.78, accuracy: 150 }));
+        expect(screen.getByText(/Blue dot: Your location/)).toHaveTextContent('150 m');
+        expect(screen.getByRole('button', { name: "I'm here" })).toBeDisabled();
+        hidden = true;
+        fireEvent(document, new Event('visibilitychange'));
+        expect(map).toHaveAttribute('data-user', 'null');
+        hidden = false;
+        await act(async () => fireEvent(document, new Event('visibilitychange')));
+        await act(async () => watchSuccess(position({ latitude: 42.99, accuracy: 12 })));
+        expect(map).toHaveAttribute('data-user', JSON.stringify({ lat: 42.99, lng: -78.78, accuracy: 12 }));
+        await act(async () => watchFailure({ code: 1 }));
+        expect(map).toHaveAttribute('data-user', 'null');
+        expect(screen.queryByText(/Blue dot: Your location/)).not.toBeInTheDocument();
     });
 
     it('reloads after a failed submission without showing false success', async () => {

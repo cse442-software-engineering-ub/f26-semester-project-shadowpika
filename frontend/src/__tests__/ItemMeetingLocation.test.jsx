@@ -42,6 +42,11 @@ const mapMocks = vi.hoisted(() => {
             return marker;
         }),
         circle: vi.fn(() => Object.assign(eventLayer(), { getBounds: vi.fn(() => 'circle-bounds') })),
+        circleMarker: vi.fn(() => {
+            const marker = eventLayer();
+            marker.bindTooltip = vi.fn(() => marker);
+            return marker;
+        }),
         divIcon: vi.fn((options) => options),
         latLngBounds: vi.fn((points) => points),
         DomEvent: { stop: vi.fn() },
@@ -199,6 +204,28 @@ describe('Frontend #202: seller meeting-location map', () => {
 });
 
 describe('Shared map: administrator compatibility', () => {
+    it('draws and updates the user dot and accuracy circle, fits both positions once, and clears the overlay', () => {
+        const bounds = { extend: vi.fn() };
+        mapMocks.leaflet.circle.mockImplementationOnce(() => Object.assign({ addTo: vi.fn().mockReturnThis() }, { getBounds: () => bounds }));
+        const locations = [CAPEN];
+        const { rerender } = render(<LocationsMap locations={locations} selectedId={CAPEN.location_id} readOnly circleRadius={100} fitCircle
+            userLocation={{ lat: 42.99, lng: -78.8, accuracy: 25 }} />);
+        expect(bounds.extend).toHaveBeenCalledWith([42.99, -78.8]);
+        expect(mapMocks.leaflet.circle).toHaveBeenLastCalledWith([42.99, -78.8], expect.objectContaining({ radius: 25, interactive: false }));
+        expect(mapMocks.leaflet.circleMarker).toHaveBeenLastCalledWith([42.99, -78.8], expect.objectContaining({ fillColor: '#1677d2' }));
+        expect(mapMocks.leaflet.circleMarker.mock.results.at(-1).value.bindTooltip.mock.calls[0][0].textContent).toBe('Your location');
+        const map = mapMocks.maps[0];
+        rerender(<LocationsMap locations={locations} selectedId={CAPEN.location_id} readOnly circleRadius={100} fitCircle
+            userLocation={{ lat: 42.991, lng: -78.8, accuracy: 50 }} />);
+        expect(map.fitBounds).toHaveBeenCalledTimes(1);
+        expect(mapMocks.leaflet.circle).toHaveBeenLastCalledWith([42.991, -78.8], expect.objectContaining({ radius: 50 }));
+        const userLayer = mapMocks.leaflet.layerGroup.mock.results[1].value;
+        userLayer.clearLayers.mockClear();
+        mapMocks.leaflet.circleMarker.mockClear();
+        rerender(<LocationsMap locations={locations} selectedId={CAPEN.location_id} readOnly circleRadius={100} fitCircle />);
+        expect(userLayer.clearLayers).toHaveBeenCalledOnce();
+        expect(mapMocks.leaflet.circleMarker).not.toHaveBeenCalled();
+    });
     it('keeps the default 45 m circle and frames the full 100 m check-in area when requested', () => {
         const { rerender } = render(<LocationsMap locations={[CAPEN]} selectedId={CAPEN.location_id} />);
         expect(mapMocks.leaflet.circle).toHaveBeenLastCalledWith([CAPEN.lat, CAPEN.lng], expect.objectContaining({ radius: 45 }));
