@@ -19,7 +19,6 @@ const INITIAL_FORM = {
     category: '',
     condition: '',
     price: '',
-    related_course: '',
     community: '',
     meeting_location_id: '',
     description: '',
@@ -31,7 +30,6 @@ const FIELD_LABELS = {
     category: 'Category',
     condition: 'Condition',
     price: 'Price',
-    related_course: 'Related course',
     community: 'Community',
     meeting_location_id: 'Preferred meeting location',
     description: 'Description',
@@ -57,9 +55,6 @@ function validateListing(values) {
 
     if (values.title.trim().length > 150) {
         errors.title = 'Item title must be 150 characters or fewer.';
-    }
-    if (values.related_course.trim().length > 100) {
-        errors.related_course = 'Related course must be 100 characters or fewer.';
     }
     if (values.description.trim().length > 1000) {
         errors.description = 'Description must be 1,000 characters or fewer.';
@@ -347,7 +342,6 @@ function CreateListing() {
             category: form.category,
             condition: form.condition,
             price: Number(form.price).toFixed(2),
-            related_course: form.related_course.trim(),
             community: form.community,
             meeting_location_id: Number(form.meeting_location_id),
             description: form.description.trim(),
@@ -364,7 +358,6 @@ function CreateListing() {
                     category: payload.category,
                     condition: payload.condition,
                     price: Number(payload.price).toFixed(2),
-                    related_course: payload.related_course || null,
                     community: payload.community,
                     meeting_location: locations.find(
                         (location) => Number(location.location_id) === payload.meeting_location_id,
@@ -524,17 +517,6 @@ function CreateListing() {
                                 placeholder="$ 0.00"
                                 error={errors.price}
                                 fieldRef={setFieldRef('price')}
-                            />
-                            <FormField
-                                label="RELATED COURSE"
-                                name="related_course"
-                                value={form.related_course}
-                                onChange={updateField}
-                                placeholder="e.g., ART 105"
-                                maxLength={100}
-                                optional
-                                error={errors.related_course}
-                                fieldRef={setFieldRef('related_course')}
                             />
                         </div>
 

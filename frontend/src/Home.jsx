@@ -112,6 +112,9 @@ function Home() {
                                                 Cancel Request
                                             </button>
                                         )}
+                                        {request.status === 'approved' && Number.isInteger(request.request_id) && request.request_id > 0 && (
+                                            <a className="mr-cancel" href={`./check-in.html?request_id=${encodeURIComponent(request.request_id)}`}>Check In</a>
+                                        )}
                                     </div>
                                 </li>
                             ))}

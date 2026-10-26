@@ -38,6 +38,20 @@ const noIncoming = {
 
 const callsTo = (fetchMock, file) => fetchMock.mock.calls.filter(([url]) => String(url).includes(file));
 
+it('shows Check In only for approved meetings with their own request ID (#205)', async () => {
+    serve({ ...noIncoming, 'get_my_meeting_requests.php': () => json(200, {
+        success: true, requests: ['pending', 'approved', 'denied', 'location_change_requested'].map((status, index) => ({
+            request_id: 700 + index, listing_id: 800 + index, name: `Meeting ${index}`, price: '12.00',
+            meeting_date: '2026-11-06', meeting_time: '12:00', location: 'Test location', status,
+        })),
+    }) });
+    render(<Home />);
+    const link = await screen.findByRole('link', { name: 'Check In' });
+    expect(link).toHaveAttribute('href', './check-in.html?request_id=701');
+    expect(screen.getAllByRole('link', { name: 'Check In' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Cancel Request' })).toBeVisible();
+});
+
 const open = (path) => window.history.replaceState({}, '', path);
 
 const workbook = { listing_id: 91002, name: 'Calculus Workbook', price: '20.00', condition: 'Like New', category: 'Textbooks', description: null };
