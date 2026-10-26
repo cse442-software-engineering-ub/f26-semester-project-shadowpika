@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import NavBar from './NavBar.jsx';
 import ItemCover from './ItemCover.jsx';
 import IncomingRequests from './IncomingRequests.jsx';
+import RecommendedItems from './RecommendedItems.jsx';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
 import { STATUS_LABELS, cancelMeetingRequest, fetchMyMeetingRequests, formatMeetingDate, formatMeetingTime } from './meetingRequests.js';
 
-// Home page: the logged-in buyer's meeting requests, in the order the server sends them.
+// Home page: recommended items, then the logged-in buyer's meeting requests, in the order the server sends them.
 function Home() {
     const [requests, setRequests] = useState([]);
     const [status, setStatus] = useState('loading'); // loading | done | error
@@ -64,6 +65,8 @@ function Home() {
             <NavBar />
             <main className="ps-frame id-frame">
                 <h1 className="ps-title">Home</h1>
+
+                <RecommendedItems />
 
                 <section className="mr-requests" aria-labelledby="mr-requests-title">
                     <h2 id="mr-requests-title" className="mr-section-title">My Purchase Requests</h2>
