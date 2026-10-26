@@ -43,6 +43,8 @@ export default function LocationsMap({
     onSelect,
     readOnly = false,
     onMapError,
+    circleRadius = 45,
+    fitCircle = false,
 }) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
@@ -103,20 +105,22 @@ export default function LocationsMap({
         const pins = pinsRef.current;
         if (!pins) return;
         pins.clearLayers();
+        let circleBounds;
 
         for (const location of locations) {
             const removing = removingIds.has(location.location_id);
             const selected = location.location_id === selectedId;
             const state = removing ? 'removing' : selected ? 'selected' : 'saved';
             if (selected) {
-                L.circle([location.lat, location.lng], {
-                    radius: 45,
+                const circle = L.circle([location.lat, location.lng], {
+                    radius: circleRadius,
                     color: removing ? '#9aa5b4' : '#24364f',
                     weight: 1,
                     fillColor: removing ? '#9aa5b4' : '#3f6fa0',
                     fillOpacity: 0.12,
                     interactive: false,
                 }).addTo(pins);
+                if (fitCircle) circleBounds = circle.getBounds();
             }
             const marker = L.marker([location.lat, location.lng], {
                 icon: pinIcon(state), title: location.label, riseOnHover: true, draggable: false,
@@ -138,13 +142,13 @@ export default function LocationsMap({
         }
 
         // Frame the saved pins once, when they first arrive, so later clicks don't move the map.
-        const frame = readOnly ? JSON.stringify(locations.map(({ lat, lng }) => [lat, lng])) : 'admin';
+        const frame = readOnly ? JSON.stringify([locations.map(({ lat, lng }) => [lat, lng]), circleRadius, fitCircle, selectedId]) : 'admin';
         if (locations.length > 0 && framedRef.current !== frame) {
             framedRef.current = frame;
-            const bounds = L.latLngBounds(locations.map((location) => [location.lat, location.lng]));
+            const bounds = circleBounds || L.latLngBounds(locations.map((location) => [location.lat, location.lng]));
             mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
         }
-    }, [locations, removingIds, selectedId, draft, readOnly]);
+    }, [locations, removingIds, selectedId, draft, readOnly, circleRadius, fitCircle]);
 
     return (
         <div

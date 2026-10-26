@@ -41,7 +41,7 @@ const mapMocks = vi.hoisted(() => {
             markers.push(marker);
             return marker;
         }),
-        circle: vi.fn(eventLayer),
+        circle: vi.fn(() => Object.assign(eventLayer(), { getBounds: vi.fn(() => 'circle-bounds') })),
         divIcon: vi.fn((options) => options),
         latLngBounds: vi.fn((points) => points),
         DomEvent: { stop: vi.fn() },
@@ -93,9 +93,9 @@ describe('Frontend #202: seller meeting-location map', () => {
         expect(screen.getByRole('heading', { name: 'Meeting Location' })).toBeInTheDocument();
         expect(screen.getByText(CAPEN.label)).toBeVisible();
         expect(screen.getByRole('region', { name: 'Meeting location map' })).toBeInTheDocument();
-        expect(mapMocks.leaflet.marker).toHaveBeenCalledExactlyOnceWith([CAPEN.lat, CAPEN.lng], expect.objectContaining({
+        await waitFor(() => expect(mapMocks.leaflet.marker).toHaveBeenCalledExactlyOnceWith([CAPEN.lat, CAPEN.lng], expect.objectContaining({
             title: CAPEN.label, draggable: false,
-        }));
+        })));
         expect(mapMocks.markers[0].bindTooltip.mock.calls[0][0].textContent).toBe(CAPEN.label);
         expect(mapMocks.maps[0].fitBounds).toHaveBeenCalledWith([[CAPEN.lat, CAPEN.lng]], expect.any(Object));
         expect(mapMocks.maps[0].handlers.click).toBeUndefined();
@@ -199,6 +199,14 @@ describe('Frontend #202: seller meeting-location map', () => {
 });
 
 describe('Shared map: administrator compatibility', () => {
+    it('keeps the default 45 m circle and frames the full 100 m check-in area when requested', () => {
+        const { rerender } = render(<LocationsMap locations={[CAPEN]} selectedId={CAPEN.location_id} />);
+        expect(mapMocks.leaflet.circle).toHaveBeenLastCalledWith([CAPEN.lat, CAPEN.lng], expect.objectContaining({ radius: 45 }));
+        rerender(<LocationsMap locations={[CAPEN]} selectedId={CAPEN.location_id} readOnly circleRadius={100} fitCircle />);
+        expect(mapMocks.leaflet.circle).toHaveBeenLastCalledWith([CAPEN.lat, CAPEN.lng], expect.objectContaining({ radius: 100 }));
+        expect(mapMocks.maps.at(-1).fitBounds).toHaveBeenLastCalledWith('circle-bounds', expect.any(Object));
+        expect(mapMocks.maps.at(-1).handlers.click).toBeUndefined();
+    });
     it('still reports administrator map clicks and pin selection', () => {
         const onMapClick = vi.fn();
         const onSelect = vi.fn();

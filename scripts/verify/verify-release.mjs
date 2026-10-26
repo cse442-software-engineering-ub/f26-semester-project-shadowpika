@@ -60,6 +60,7 @@ export function verifyRelease(directory, repo = repoDefault) {
     for (const file of ['home.html','product-search.html','sell.html','manage-listings.html','settings.html','settings/account-settings.html','settings/change-password.html','item.html','favorites.html','meet.html','session.php','leave_community.php','settings/admin-check.php','api/search_listings.php','listing/api/image.php']) {
         if (!(file in manifest.files)) errors.push(`Required route missing: ${file}`);
     }
+    if (!('check-in.html' in manifest.files)) errors.push('Required route missing: check-in.html');
     if (errors.length) throw new Error(`Release verification failed:\n${errors.join('\n')}`);
     console.log(`Release references and SHA-256 manifest verified (${Object.keys(manifest.files).length} files).`);
 }

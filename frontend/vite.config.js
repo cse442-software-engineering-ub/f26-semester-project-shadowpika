@@ -27,6 +27,7 @@ export default defineConfig({
                 item: 'item.html',
                 favorites: 'favorites.html',
                 meet: 'meet.html',
+                checkIn: 'check-in.html',
                 home: 'home.html',
                 settings: 'settings.html',
                 sell: 'sell.html',

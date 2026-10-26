@@ -110,7 +110,7 @@ describe('Page entry points', () => {
 
     it('covers every page that needs a login', () => {
         expect(protectedEntries.map(([path]) => path.split('/').pop()).sort()).toEqual([
-            'favorites-main.jsx', 'home-main.jsx', 'item-main.jsx', 'listings-main.jsx', 'meet-main.jsx', 'product-search-main.jsx', 'sell-main.jsx', 'settings-main.jsx',
+            'check-in-main.jsx', 'favorites-main.jsx', 'home-main.jsx', 'item-main.jsx', 'listings-main.jsx', 'meet-main.jsx', 'product-search-main.jsx', 'sell-main.jsx', 'settings-main.jsx',
         ]);
     });
 

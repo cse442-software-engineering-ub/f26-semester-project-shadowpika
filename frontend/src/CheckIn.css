@@ -1,0 +1,12 @@
+.ci-frame { max-width: 780px; }
+.ci-back { display: inline-block; margin-bottom: 16px; color: #24364f; }
+.ci-details { margin-bottom: 24px; overflow-wrap: anywhere; }
+.ci-details h2 { margin-bottom: 8px; }
+.ci-details p { margin: 6px 0; }
+.ci-actions { margin-top: 24px; padding-bottom: 24px; }
+.ci-buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+.ps-page .ci-frame .ci-buttons button, .ps-page .ci-frame .id-error button { min-height: 44px; padding: 10px 20px; border: 1px solid #24364f; border-radius: 8px; background: white; color: #24364f; font: inherit; cursor: pointer; }
+.ps-page .ci-frame .ci-buttons .ci-submit { background: #24364f; color: white; }
+.ps-page .ci-frame .ci-buttons button:disabled, .ps-page .ci-frame .id-error button:disabled { background: #e5e7eb; color: #59616e; border-color: #cbd0d6; cursor: not-allowed; }
+.ci-frame button:focus-visible, .ci-back:focus-visible { outline: 3px solid #b58a26; outline-offset: 3px; }
+@media (max-width: 480px) { .ci-buttons button { flex: 1 1 140px; } }

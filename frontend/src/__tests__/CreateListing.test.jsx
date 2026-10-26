@@ -108,7 +108,7 @@ async function fillValidListing(user) {
     await user.selectOptions(screen.getByLabelText(/CATEGORY/), 'Textbooks');
     await user.selectOptions(screen.getByLabelText(/CONDITION/), 'Good');
     await user.type(screen.getByLabelText(/PRICE/), '25.00');
-    await user.type(screen.getByLabelText(/RELATED COURSE/), 'CSE 442');
+    expect(screen.queryByLabelText(/RELATED COURSE/)).not.toBeInTheDocument();
     await user.type(screen.getByLabelText(/DESCRIPTION/), 'Community listing frontend test item.');
     const image = new File(['test image'], 'Community Listing Test.jpg', { type: 'image/jpeg' });
     await user.upload(document.querySelector('input[type="file"]'), image);
@@ -328,7 +328,6 @@ describe('Create listing Community selection', () => {
             category: 'Textbooks',
             condition: 'Good',
             price: '25.00',
-            related_course: 'CSE 442',
             community: CAMPUS,
             meeting_location_id: CAPEN.location_id,
             description: 'Community listing frontend test item.',
