@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchCheckin, geolocationError, LOCATION_OPTIONS, positionResult, submitCheckin, windowState } from './checkin.js';
+import { fetchCheckin, geolocationError, LOCATION_OPTIONS, positionResult, submitCheckin, validLocation, windowState } from './checkin.js';
 
 // One lifecycle owns requests, geolocation and timers. Generation checks discard callbacks
 // from an earlier page visit, hidden tab or superseded request (including StrictMode cleanup).
@@ -35,7 +35,15 @@ export default function useCheckin(requestId) {
             if (disposed) return;
             const state = meeting ? windowState(meeting, serverNow()) : null;
             const result = positionResult(position, meeting);
+            const coords = position?.coords;
+            const userLocation = !document.hidden && !meeting?.checked_in_at && coords
+                && validLocation({ lat: coords.latitude, lng: coords.longitude })
+                && Number.isFinite(coords.accuracy) && coords.accuracy >= 0
+                && Number.isFinite(position.timestamp) && Date.now() - position.timestamp <= 30000
+                && position.timestamp - Date.now() <= 5000
+                ? { lat: coords.latitude, lng: coords.longitude, accuracy: coords.accuracy } : null;
             setView({ meeting, loading, busy, error, state, geoMessage: geoError || result.message,
+                userLocation,
                 allowed: !document.hidden && !loading && !busy && !error && state === 'open' && result.allowed });
         };
         const acceptPosition = (value) => {

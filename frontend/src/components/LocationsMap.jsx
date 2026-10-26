@@ -45,10 +45,12 @@ export default function LocationsMap({
     onMapError,
     circleRadius = 45,
     fitCircle = false,
+    userLocation = null,
 }) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
     const pinsRef = useRef(null);
+    const userRef = useRef(null);
     const framedRef = useRef(null);
     const handlersRef = useRef({ onMapClick, onSelect, onMapError });
 
@@ -83,6 +85,7 @@ export default function LocationsMap({
                 map.on('click', (event) => handlersRef.current.onMapClick?.(event.latlng));
             }
             pinsRef.current = L.layerGroup().addTo(map);
+            userRef.current = L.layerGroup().addTo(map);
             mapRef.current = map;
             if (typeof ResizeObserver === 'function') {
                 observer = new ResizeObserver(() => map.invalidateSize());
@@ -97,6 +100,7 @@ export default function LocationsMap({
             map?.remove();
             mapRef.current = null;
             pinsRef.current = null;
+            userRef.current = null;
             framedRef.current = null;
         };
     }, [readOnly]);
@@ -142,13 +146,29 @@ export default function LocationsMap({
         }
 
         // Frame the saved pins once, when they first arrive, so later clicks don't move the map.
-        const frame = readOnly ? JSON.stringify([locations.map(({ lat, lng }) => [lat, lng]), circleRadius, fitCircle, selectedId]) : 'admin';
+        const frame = readOnly ? JSON.stringify([locations.map(({ lat, lng }) => [lat, lng]), circleRadius, fitCircle, selectedId, Boolean(userLocation)]) : 'admin';
         if (locations.length > 0 && framedRef.current !== frame) {
             framedRef.current = frame;
             const bounds = circleBounds || L.latLngBounds(locations.map((location) => [location.lat, location.lng]));
+            if (userLocation) bounds.extend([userLocation.lat, userLocation.lng]);
             mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
         }
-    }, [locations, removingIds, selectedId, draft, readOnly, circleRadius, fitCircle]);
+    }, [locations, removingIds, selectedId, draft, readOnly, circleRadius, fitCircle, userLocation]);
+
+    useEffect(() => {
+        const layer = userRef.current;
+        if (!layer) return;
+        layer.clearLayers();
+        if (!userLocation) return;
+        const point = [userLocation.lat, userLocation.lng];
+        L.circle(point, {
+            radius: userLocation.accuracy, color: '#1677d2', weight: 1,
+            fillColor: '#1677d2', fillOpacity: 0.15, interactive: false,
+        }).addTo(layer);
+        L.circleMarker(point, {
+            radius: 7, color: '#fff', weight: 2, fillColor: '#1677d2', fillOpacity: 1,
+        }).bindTooltip(labelContent('Your location'), LABEL_OPTIONS).addTo(layer);
+    }, [userLocation, readOnly]);
 
     return (
         <div

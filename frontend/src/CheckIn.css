@@ -4,6 +4,7 @@
 .ci-details h2 { margin-bottom: 8px; }
 .ci-details p { margin: 6px 0; }
 .ci-actions { margin-top: 24px; padding-bottom: 24px; }
+.ci-location-key { color: #24364f; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .ci-buttons { display: flex; flex-wrap: wrap; gap: 12px; }
 .ps-page .ci-frame .ci-buttons button, .ps-page .ci-frame .id-error button { min-height: 44px; padding: 10px 20px; border: 1px solid #24364f; border-radius: 8px; background: white; color: #24364f; font: inherit; cursor: pointer; }
 .ps-page .ci-frame .ci-buttons .ci-submit { background: #24364f; color: white; }
