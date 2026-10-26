@@ -47,6 +47,7 @@ function karavan_format_meeting_request(array $row): array
     $imageUrl = $row['image_url'] ?? null;
 
     return [
+        'request_id'   => (int) $row['request_id'],
         'listing_id'   => (int) $row['listing_id'],
         'name'         => $row['name'],
         'price'        => number_format((float) $row['price'], 2, '.', ''),
@@ -59,7 +60,7 @@ function karavan_format_meeting_request(array $row): array
 }
 
 const KARAVAN_MEETING_REQUEST_SELECT =
-    'SELECT r.listing_id, l.name, l.price, l.image_url, r.meeting_date, r.meeting_time,
+    'SELECT r.request_id, r.listing_id, l.name, l.price, l.image_url, r.meeting_date, r.meeting_time,
             r.location_label, r.status
        FROM meeting_requests r
        JOIN listings l ON l.listing_id = r.listing_id';
