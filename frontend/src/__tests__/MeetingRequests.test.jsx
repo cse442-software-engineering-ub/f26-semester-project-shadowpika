@@ -30,8 +30,11 @@ function serve(routes) {
     return fetchMock;
 }
 
-// Home also loads Requests for My Items; most tests only care about My Purchase Requests.
-const noIncoming = { 'get_incoming_meeting_requests.php': () => json(200, { success: true, requests: [] }) };
+// Home also loads Requests for My Items and Recommended Items; most tests only care about My Purchase Requests.
+const noIncoming = {
+    'get_incoming_meeting_requests.php': () => json(200, { success: true, requests: [] }),
+    'get_recommended_items.php': () => json(200, { success: true, items: [] }),
+};
 
 const callsTo = (fetchMock, file) => fetchMock.mock.calls.filter(([url]) => String(url).includes(file));
 
@@ -293,6 +296,7 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
         open('home.html');
         const fetchMock = serve({
             'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }),
+            'get_recommended_items.php': () => json(200, { success: true, items: [] }),
             'get_incoming_meeting_requests.php': () => json(200, { success: true, requests }),
             ...extraRoutes,
         });
@@ -333,6 +337,7 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
         open('home.html');
         serve({
             'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }),
+            'get_recommended_items.php': () => json(200, { success: true, items: [] }),
             'get_incoming_meeting_requests.php': () => json(200, { success: false }),
         });
         render(<Home />);
