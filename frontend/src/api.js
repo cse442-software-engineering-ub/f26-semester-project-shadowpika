@@ -8,18 +8,24 @@ async function readJson(response) {
     }
 }
 
+// Approve/join bodies also have "status" (approved|denied|pending). Keep the HTTP code on `status`.
+async function jsonWithHttpStatus(response) {
+    const body = await readJson(response);
+    return { ...body, status: response.status };
+}
+
 export async function submitAdminRegistration(formData) {
     const response = await fetch(apiUrl('admin_register.php'), {
         method: 'POST',
         body: formData,
         credentials: 'same-origin',
     });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 export async function fetchPendingRequests() {
     const response = await fetch(apiUrl('moderator_requests.php'), { credentials: 'same-origin' });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 export async function decideRequest(requestId, action) {
@@ -29,13 +35,13 @@ export async function decideRequest(requestId, action) {
         credentials: 'same-origin',
         body: JSON.stringify({ request_id: requestId, action }),
     });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 // Doubles as the admin check: anyone who isn't an admin gets a 403.
 export async function fetchApprovedLocations() {
     const response = await fetch(apiUrl('get_approved_locations.php'), { credentials: 'same-origin' });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 export async function addApprovedLocation({ lat, lng, label }) {
@@ -45,7 +51,7 @@ export async function addApprovedLocation({ lat, lng, label }) {
         credentials: 'same-origin',
         body: JSON.stringify({ lat, lng, label }),
     });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 export async function removeApprovedLocation(locationId) {
@@ -55,7 +61,7 @@ export async function removeApprovedLocation(locationId) {
         credentials: 'same-origin',
         body: JSON.stringify({ location_id: locationId }),
     });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 // The navbar and Sell form both need this list when Sell first opens. Share only
@@ -69,7 +75,7 @@ export async function fetchCommunities() {
 
     const request = (async () => {
         const response = await fetch(apiUrl('list_communities.php'), { credentials: 'same-origin' });
-        return { status: response.status, ...(await readJson(response)) };
+        return jsonWithHttpStatus(response);
     })();
     communitiesRequest = request;
 
@@ -85,17 +91,17 @@ export async function fetchMeetingLocations(community) {
     const response = await fetch(apiUrl(`api/get_meeting_locations.php?${query.toString()}`), {
         credentials: 'same-origin',
     });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 export async function fetchAdminStatus() {
     const response = await fetch(apiUrl('admin_status.php'), { credentials: 'same-origin' });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 export async function fetchJoinRequests() {
     const response = await fetch(apiUrl('get_join_requests.php'), { credentials: 'same-origin' });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 export async function decideJoinRequest(userId, communityId, action) {
@@ -105,7 +111,7 @@ export async function decideJoinRequest(userId, communityId, action) {
         credentials: 'same-origin',
         body: JSON.stringify({ user_id: userId, community_id: communityId, action }),
     });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 export async function joinCommunity(communityId) {
@@ -127,7 +133,7 @@ export async function leaveCommunity(communityId) {
         credentials: 'same-origin',
         body: JSON.stringify({ community_id: communityId }),
     });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 export async function setShoppingCommunities(communityIds) {
@@ -137,7 +143,7 @@ export async function setShoppingCommunities(communityIds) {
         credentials: 'same-origin',
         body: JSON.stringify({ community_ids: communityIds }),
     });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 // `npm run dev` on localhost has no PHP, so the login page fakes accounts in localStorage;
@@ -150,7 +156,7 @@ export function isLocalMockBackend(location = window.location) {
 // 200 with logged_in: true for a signed-in user (restoring a remembered login if needed), 401 otherwise.
 export async function fetchSession() {
     const response = await fetch(apiUrl('session.php'), { credentials: 'same-origin' });
-    return { status: response.status, ...(await readJson(response)) };
+    return jsonWithHttpStatus(response);
 }
 
 export const isLoggedIn = (session) => session.status === 200 && session.logged_in === true;

@@ -27,9 +27,18 @@ function jsonResponse(status, body) {
     return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }));
 }
 
+const JOIN_REQUEST = {
+    user_id: 42,
+    username: 'pmdemo',
+    email: 'pmdemo3841@test.com',
+    community_id: 91080,
+    community_name: 'Shopping Test Hall',
+};
+
 function mockBackend({
     adminStatus = [200, { success: true, is_admin: true, application_status: 'approved' }],
     requests = [200, { success: true, requests: [] }],
+    decide = [200, { success: true, user_id: 42, community_id: 91080, status: 'approved' }],
     list = [200, { success: true, locations: [CAPEN] }],
     add = [201, { success: true, location_id: 2 }],
     remove,
@@ -37,6 +46,7 @@ function mockBackend({
     const fetchMock = vi.fn((url, options = {}) => {
         if (url.endsWith('admin_status.php')) return jsonResponse(...adminStatus);
         if (url.endsWith('get_join_requests.php')) return jsonResponse(...requests);
+        if (url.endsWith('approve_join_request.php')) return jsonResponse(...decide);
         if (url.endsWith('get_approved_locations.php')) return jsonResponse(...list);
         if (url.endsWith('add_approved_location.php')) return jsonResponse(...add);
         if (url.endsWith('remove_approved_location.php')) {
@@ -225,6 +235,20 @@ describe('Settings page', () => {
         expect(options.method).toBe('POST');
         expect(JSON.parse(options.body)).toEqual({ location_id: 1 });
         expect(screen.getByText('Changes saved.')).toBeInTheDocument();
+    });
+
+    it('treats a successful join approve as success even when the body status is approved', async () => {
+        const user = userEvent.setup();
+        mockBackend({ requests: [200, { success: true, requests: [JOIN_REQUEST] }] });
+        render(<Settings />);
+
+        await user.click(await screen.findByRole('button', { name: 'Approve' }));
+
+        expect(await screen.findByRole('status')).toHaveTextContent(
+            "Approved pmdemo3841@test.com's request to join Shopping Test Hall."
+        );
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.queryByText('pmdemo3841@test.com')).not.toBeInTheDocument();
     });
 
     it('lets the admin undo a removal before saving', async () => {
