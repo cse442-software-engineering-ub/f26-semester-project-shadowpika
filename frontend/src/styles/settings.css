@@ -1,5 +1,12 @@
 /* Settings page. Colors and tab layout follow the Account Settings design (branch 89). */
 
+/* Same inset as settings/account-settings.css .main so Account → Admin does not jump. */
+.ps-page > .ps-frame {
+  box-sizing: border-box;
+  min-height: 0;
+  padding: 32px 40px 48px;
+}
+
 .kv-settings-description {
   margin: 6px 0 24px;
   font-size: 15px;
@@ -7,7 +14,7 @@
 }
 
 .kv-settings-card {
-  max-width: 1078px;
+  width: 100%;
   border: 1px solid #e3e0d9;
   border-radius: 11px;
   overflow: hidden;
@@ -303,6 +310,12 @@
 .kv-join-requests__error {
   background: #fdecea;
   color: #c0392b;
+}
+
+@media (max-width: 768px) {
+  .ps-page > .ps-frame {
+    padding: 20px 15px 40px;
+  }
 }
 
 @media (max-width: 600px) {
