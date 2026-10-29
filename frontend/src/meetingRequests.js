@@ -28,12 +28,12 @@ export async function fetchMeetingLocations(community) {
 }
 
 export async function fetchMyMeetingRequests() {
-    const response = await fetch('./api/get_my_meeting_requests.php', { credentials: 'same-origin' });
+    const response = await fetch('./api/get_my_meeting_requests.php', { credentials: 'same-origin', cache: 'no-store' });
     return response.json();
 }
 
 export async function fetchIncomingMeetingRequests() {
-    const response = await fetch('./api/get_incoming_meeting_requests.php', { credentials: 'same-origin' });
+    const response = await fetch('./api/get_incoming_meeting_requests.php', { credentials: 'same-origin', cache: 'no-store' });
     return response.json();
 }
 

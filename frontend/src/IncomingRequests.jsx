@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import ItemCover from './ItemCover.jsx';
+import MeetingProgress from './MeetingProgress.jsx';
+import useMeetingList from './useMeetingList.js';
 import { fetchMeetingLocations } from './api.js';
 import { STATUS_LABELS, fetchIncomingMeetingRequests, formatMeetingDate, formatMeetingTime, respondMeetingRequest } from './meetingRequests.js';
 
@@ -11,40 +13,16 @@ const SUCCESS_TEXT = {
 
 // Home page: meeting requests other students made on the logged-in user's items, in the order the server sends them.
 function IncomingRequests() {
-    const [requests, setRequests] = useState([]);
-    const [status, setStatus] = useState('loading'); // loading | done | error
-    const [error, setError] = useState('');
+    const { requests, setRequests, status, error, startMutation, finishMutation, refresh } =
+        useMeetingList(fetchIncomingMeetingRequests, 'Unable to load requests for your items.');
     const [message, setMessage] = useState(null); // result of the last action: { kind, text }
     const [busy, setBusy] = useState(false);
     const [picker, setPicker] = useState(null); // { requestId, locations, choice } while a Change Location picker is open
 
-    useEffect(() => {
-        let cancelled = false;
-
-        fetchIncomingMeetingRequests()
-            .then((data) => {
-                if (cancelled) return;
-                if (data.success && Array.isArray(data.requests)) {
-                    setRequests(data.requests);
-                    setStatus('done');
-                } else {
-                    setError(data.error || 'Unable to load requests for your items.');
-                    setStatus('error');
-                }
-            })
-            .catch(() => {
-                if (cancelled) return;
-                setError('Could not connect to the server.');
-                setStatus('error');
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
     // Only a pending request can be answered; the server refuses anything else and its error is shown.
     async function respond(request, action, locationId) {
+        if (request.status !== 'pending' || !startMutation()) return;
+        let reload = false;
         setMessage(null);
         setBusy(true);
         try {
@@ -54,17 +32,24 @@ function IncomingRequests() {
                 setPicker(null);
                 setMessage({ kind: 'success', text: SUCCESS_TEXT[action] });
             } else {
+                reload = true;
+                setPicker(null);
                 setMessage({ kind: 'error', text: data.error || 'Unable to answer the meeting request.' });
             }
         } catch {
+            reload = true;
+            setPicker(null);
             setMessage({ kind: 'error', text: 'Could not connect to the server.' });
         } finally {
+            finishMutation();
+            if (reload) refresh();
             setBusy(false);
         }
     }
 
     // The picker offers the community's approved locations except the one the request already uses.
     async function openPicker(request) {
+        if (request.status !== 'pending' || !startMutation()) return;
         setMessage(null);
         setBusy(true);
         try {
@@ -78,11 +63,14 @@ function IncomingRequests() {
         } catch {
             setMessage({ kind: 'error', text: 'The meeting locations could not be loaded.' });
         } finally {
+            finishMutation();
+            await refresh();
             setBusy(false);
         }
     }
 
     function sendNewLocation(request) {
+        if (request.status !== 'pending' || !picker) return;
         if (!picker.choice) {
             setMessage({ kind: 'error', text: 'Select a different meeting location.' });
             return;
@@ -100,7 +88,7 @@ function IncomingRequests() {
             <h2 id="mr-incoming-title" className="mr-section-title">Requests for My Items</h2>
 
             {status === 'loading' && <p className="id-message">Loading requests for your items...</p>}
-            {status === 'error' && <p className="id-message id-error" role="alert">{error}</p>}
+            {error && <p className="id-message id-error" role="alert">{error} <button type="button" className="mr-cancel" onClick={refresh}>Reload incoming requests</button></p>}
             {message && (
                 <p
                     className={`mr-message mr-cancel-message ${message.kind === 'error' ? 'id-error' : 'mr-success'}`}
@@ -116,7 +104,7 @@ function IncomingRequests() {
             {status === 'done' && requests.length > 0 && (
                 <ul className="mr-request-list">
                     {requests.map((request) => {
-                        const pickerOpen = picker?.requestId === request.request_id;
+                        const pickerOpen = request.status === 'pending' && picker?.requestId === request.request_id;
                         return (
                             <li className="mr-request" key={request.request_id}>
                                 <div className="mr-request-cover">
@@ -133,6 +121,7 @@ function IncomingRequests() {
                                     <span className={`mr-status mr-status-${request.status}`}>
                                         {STATUS_LABELS[request.status] ?? request.status}
                                     </span>
+                                    <MeetingProgress request={request} seller />
                                     {request.status === 'pending' && !pickerOpen && (
                                         <div className="mr-actions">
                                             <button type="button" className="mr-cancel" disabled={busy} onClick={() => respond(request, 'approve')}>Approve</button>
