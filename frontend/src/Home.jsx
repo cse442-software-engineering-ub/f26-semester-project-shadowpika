@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import NavBar from './NavBar.jsx';
 import ItemCover from './ItemCover.jsx';
 import IncomingRequests from './IncomingRequests.jsx';
 import RecommendedItems from './RecommendedItems.jsx';
+import MeetingProgress from './MeetingProgress.jsx';
+import useMeetingList from './useMeetingList.js';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
@@ -10,39 +12,15 @@ import { STATUS_LABELS, cancelMeetingRequest, fetchMyMeetingRequests, formatMeet
 
 // Home page: recommended items, then the logged-in buyer's meeting requests, in the order the server sends them.
 function Home() {
-    const [requests, setRequests] = useState([]);
-    const [status, setStatus] = useState('loading'); // loading | done | error
-    const [error, setError] = useState('');
+    const { requests, setRequests, status, error, startMutation, finishMutation, refresh } =
+        useMeetingList(fetchMyMeetingRequests, 'Unable to load your purchase requests.');
     const [message, setMessage] = useState(null); // result of the last cancel: { kind, text }
     const [cancellingId, setCancellingId] = useState(null);
 
-    useEffect(() => {
-        let cancelled = false;
-
-        fetchMyMeetingRequests()
-            .then((data) => {
-                if (cancelled) return;
-                if (data.success && Array.isArray(data.requests)) {
-                    setRequests(data.requests);
-                    setStatus('done');
-                } else {
-                    setError(data.error || 'Unable to load your purchase requests.');
-                    setStatus('error');
-                }
-            })
-            .catch(() => {
-                if (cancelled) return;
-                setError('Could not connect to the server.');
-                setStatus('error');
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
     // Only a pending request can be canceled; the server refuses anything else and its error is shown.
     async function handleCancel(listingId) {
+        if (!startMutation()) return;
+        let reload = false;
         setMessage(null);
         setCancellingId(listingId);
         try {
@@ -51,11 +29,15 @@ function Home() {
                 setRequests((current) => current.filter((request) => !(request.listing_id === listingId && request.status === 'pending')));
                 setMessage({ kind: 'success', text: 'Your meeting request was canceled.' });
             } else {
+                reload = true;
                 setMessage({ kind: 'error', text: data.error || 'Unable to cancel your meeting request.' });
             }
         } catch {
+            reload = true;
             setMessage({ kind: 'error', text: 'Could not connect to the server.' });
         } finally {
+            finishMutation();
+            if (reload) refresh();
             setCancellingId(null);
         }
     }
@@ -72,7 +54,7 @@ function Home() {
                     <h2 id="mr-requests-title" className="mr-section-title">My Purchase Requests</h2>
 
                     {status === 'loading' && <p className="id-message">Loading your purchase requests...</p>}
-                    {status === 'error' && <p className="id-message id-error" role="alert">{error}</p>}
+                    {error && <p className="id-message id-error" role="alert">{error} <button type="button" className="mr-cancel" onClick={refresh}>Reload purchase requests</button></p>}
                     {message && (
                         <p
                             className={`mr-message mr-cancel-message ${message.kind === 'error' ? 'id-error' : 'mr-success'}`}
@@ -102,6 +84,7 @@ function Home() {
                                         <span className={`mr-status mr-status-${request.status}`}>
                                             {STATUS_LABELS[request.status] ?? request.status}
                                         </span>
+                                        <MeetingProgress request={request} />
                                         {request.status === 'pending' && (
                                             <button
                                                 type="button"
@@ -112,7 +95,7 @@ function Home() {
                                                 Cancel Request
                                             </button>
                                         )}
-                                        {request.status === 'approved' && Number.isInteger(request.request_id) && request.request_id > 0 && (
+                                        {request.status === 'approved' && !request.checked_in_at && Number.isInteger(request.request_id) && request.request_id > 0 && (
                                             <a className="mr-cancel" href={`./check-in.html?request_id=${encodeURIComponent(request.request_id)}`}>Check In</a>
                                         )}
                                     </div>

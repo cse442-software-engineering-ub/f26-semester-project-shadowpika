@@ -258,6 +258,9 @@
   align-self: stretch;
 }
 
+.mr-progress { align-self: stretch; overflow-wrap: anywhere; }
+.mr-location-locked, .mr-checkin { margin: 6px 0; font-size: 13px; line-height: 1.5; }
+
 @media (max-width: 768px) {
   .mr-meet {
     grid-template-columns: minmax(0, 1fr);

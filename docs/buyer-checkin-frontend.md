@@ -1,5 +1,55 @@
 # Buyer location check-in frontend — #205
 
+## October 29 follow-up — both participants' progress and locked locations
+
+Requires the #206 follow-up (backend commit `108320d` or its merged equivalent):
+both meeting-list APIs return nullable UTC `checked_in_at`. On Home, buyers see
+**Not checked in yet.** or **Checked in at …**, and sellers see **Buyer has not
+checked in yet.** or **Buyer checked in at …**. Times include the date and use
+America/New_York. A recorded check-in removes the buyer's Check In entry; it does
+not mark the meeting complete, change approval or sell the item. Sellers still
+cannot submit a buyer check-in.
+
+Both lists refresh every **15 seconds while the page is visible**, immediately
+on return/focus, and on restoration from the back/forward cache. Requests bypass
+the browser cache. Slow reads do not overlap on periodic ticks; late responses
+from previous reads or preceding a mutation are discarded. Failed background
+reads retain known progress and show an error/retry control; they do not invent
+success or clear a known timestamp. Reads pause during local mutations and while
+hidden, and timers/listeners are removed on unmount.
+
+Approved cards show **Meeting location locked after approval.** Only pending
+cards can render Change Location or its picker. A poll finding an approved request
+hides an old picker; finishing a slow location-options request refreshes the
+authoritative status before the picker remains usable. Rejected/stale response
+mutations close the picker and reload the server's meeting. The backend's 409
+remains the final authority, including races with another session.
+
+Reusable test files (publish these through the existing #205 branch):
+
+- `frontend/src/__tests__/MeetingProgress.test.jsx`: 11 independent mocked tests
+  for both roles, timestamps, polling, visibility/focus and cleanup, retry without
+  losing known progress, stale polls after mutations, duplicate clicks, picker
+  invalidation, server rejection, cancellation and invalid timestamps.
+- `frontend/src/__tests__/MeetingRequests.test.jsx`: existing buyer/seller request
+  regression tests, updated only for the new approved-card text.
+
+```powershell
+npm --prefix frontend ci
+npm --prefix frontend test -- src/__tests__/MeetingProgress.test.jsx src/__tests__/MeetingRequests.test.jsx
+npm --prefix frontend test
+```
+
+Expected current results: **2 files / 34 tests** for the focused command, and
+**19 files / 273 tests** for the complete frontend suite, with zero failures and
+exit code 0. These tests mock API responses and require no PHP, real accounts,
+database, device trip or grading fixture. Local results passed on October 29.
+Targeted lint, production build and all **4 release checks** also pass.
+
+Merge the #205 and #206 follow-ups into dev before generating the deployment
+bundle to upload; building only the frontend branch does not include unmerged
+backend work. Physical acceptance and live deployment require separate evidence.
+
 ## Behavior
 
 Home shows **Check In** only on approved buyer meetings with an integer `request_id`. It opens `check-in.html?request_id=...`, protected by the existing login guard. The page loads details from #206's `api/get_meeting_checkin.php`; there is no production mock or local-success fallback.
