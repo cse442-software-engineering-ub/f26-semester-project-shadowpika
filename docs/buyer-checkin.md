@@ -46,6 +46,71 @@ The browser must not treat enabled controls as authoritative server validation. 
 
 ## Backend verification
 
+### October 29 follow-up: shared progress and approved locations (#206)
+
+Both `api/get_my_meeting_requests.php` and
+`api/get_incoming_meeting_requests.php` now include nullable `checked_in_at`.
+Before check-in it is `null`; after success, both participants receive the same
+UTC ISO-8601 timestamp as the submission response, for example
+`2026-11-06T17:00:00.000Z`. The meeting remains `approved`. No raw device coordinates
+are added to either list. Lists remain scoped to the authenticated buyer or the
+owner of the requested listing; the seller cannot submit the buyer's check-in.
+
+The frontend must refresh these lists to show changes made in another session.
+This backend update alone does not add live updates to Home. The #205 follow-up
+will display the progress and refresh it while visible and on return to the page.
+
+Approved meetings already reject response mutations through a conditional
+`status = 'pending'` update. Changing an approved location now returns an explicit
+409 message: `The meeting location is locked after approval.` Other stale
+responses continue returning 409. A location-change proposal and approval racing
+on a pending request cannot both succeed. Editing the listing's preferred location
+does not alter the meeting's own stored location. Administrative deletion of a
+location continues to make check-in unavailable; this is not a substitute location
+or an address change. No new schema migration or data reset is required; the
+existing `012_meeting_checkin.sql` must already be applied.
+
+Reusable follow-up checks, run from the repository root:
+
+```powershell
+php vendor/phpunit/phpunit/phpunit tests/backend/Unit/MeetingCheckinTest.php
+node scripts/build/build-release.mjs
+php vendor/phpunit/phpunit/phpunit tests/backend/Http/MeetingCheckinHttpTest.php
+```
+
+The unit file now covers both participants' progress, unrelated-account isolation,
+locked locations before/after check-in, and listing edits, in addition to existing
+validation and time/distance boundaries: **13 tests / 105 assertions**. The HTTP
+file verifies an actual buyer POST followed by both accounts' list reads and a
+rejected seller edit: **3 tests / 72 assertions**. Both passed locally on October 29.
+
+With the same disposable loopback MySQL prerequisites described below:
+
+```powershell
+$env:KARAVAN_CHECKIN_TEST_DSN = 'mysql:host=127.0.0.1;port=33316'
+php tests/mysql/meeting_location_lock_test.php
+php tests/mysql/meeting_checkin_test.php
+Remove-Item Env:KARAVAN_CHECKIN_TEST_DSN
+```
+
+The new location-lock script creates and deletes only its random
+`meeting_lock_test_*` database and temporary workers. It prints **3 PASS lines**:
+exactly one concurrent response wins; the losing stale response cannot overwrite
+that winner's location; an approved meeting with an existing check-in cannot be
+edited. The original migration/check-in script continues printing **7 PASS lines**.
+Both passed on a separate local MariaDB instance, which was shut down afterward.
+These tests do not access Aptitude/Cattle, the Station fixture or grading meetings.
+
+Full backend regression on October 29: **253 tests / 941 assertions**, with the
+same **3 existing ConfigTest errors** caused by duplicate
+`KARAVAN_NOT_LOGGED_IN_ERROR` definitions. The dedicated check-in files pass
+independently; the complete backend suite is not fully green. Release build,
+manifest verification and all **4 release tests** also pass.
+
+GitHub source links are the repository's `dev` paths once the user merges this
+follow-up; the new script is not available there until that merge. Local passing
+results do not establish that the deployed application contains these changes.
+
 From the repository root, with PHP available:
 
 ```powershell

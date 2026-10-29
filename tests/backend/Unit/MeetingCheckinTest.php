@@ -138,4 +138,61 @@ final class MeetingCheckinTest extends TestCase
         $this->assertSame('checked_in', $detail['checkin_state']);
         $this->assertSame($first[1]['checked_in_at'], $detail['checked_in_at']);
     }
+
+    public function testBothParticipantsSeeTheSameProgressWithoutExposingDeviceCoordinates(): void
+    {
+        foreach (['buyer', 'seller'] as $role) {
+            $result = $role === 'buyer'
+                ? karavan_list_my_meeting_requests($this->pdo, $this->ids[$role])
+                : karavan_list_incoming_meeting_requests($this->pdo, $this->ids[$role]);
+            $this->assertNull($result[1]['requests'][0]['checked_in_at']);
+        }
+        $saved = $this->post()[1]['checked_in_at'];
+        foreach (['buyer', 'seller'] as $role) {
+            $result = $role === 'buyer'
+                ? karavan_list_my_meeting_requests($this->pdo, $this->ids[$role])
+                : karavan_list_incoming_meeting_requests($this->pdo, $this->ids[$role]);
+            $request = $result[1]['requests'][0];
+            $this->assertSame($saved, $request['checked_in_at']);
+            $this->assertSame('approved', $request['status']);
+            foreach (['latitude', 'longitude', 'accuracy_m', 'captured_at'] as $key) $this->assertArrayNotHasKey($key, $request);
+        }
+        $outsider = TestDatabase::addUser($this->pdo, 'unrelated-meeting-user');
+        $this->assertSame([], karavan_list_incoming_meeting_requests($this->pdo, $outsider)[1]['requests']);
+        $this->assertSame([], karavan_list_my_meeting_requests($this->pdo, $outsider)[1]['requests']);
+        $this->assertSame(401, karavan_list_incoming_meeting_requests($this->pdo, null)[0]);
+        $this->assertSame(401, karavan_list_my_meeting_requests($this->pdo, null)[0]);
+    }
+
+    public function testApprovalLocksTheMeetingLocationBeforeAndAfterCheckin(): void
+    {
+        $this->pdo->exec("UPDATE meeting_requests SET status = 'pending'");
+        $id = $this->ids['request'];
+        $seller = $this->ids['seller'];
+        $other = TestDatabase::addLocation($this->pdo, 42, -78, 'Another spot');
+        $approve = karavan_respond_meeting_request($this->pdo, $seller, ['request_id' => $id, 'action' => 'approve']);
+        $this->assertSame(200, $approve[0]);
+        $this->assertNull($approve[1]['request']['checked_in_at']);
+        foreach ([false, true] as $checkedIn) {
+            if ($checkedIn) $this->assertSame(200, $this->post()[0]);
+            $before = $this->pdo->query('SELECT * FROM meeting_requests')->fetch();
+            foreach (['change_location', 'deny', 'approve'] as $action) {
+                $response = karavan_respond_meeting_request($this->pdo, $seller,
+                    ['request_id' => $id, 'action' => $action, 'location_id' => $other]);
+                $this->assertSame(409, $response[0]);
+            }
+            $this->assertSame($before, $this->pdo->query('SELECT * FROM meeting_requests')->fetch());
+        }
+    }
+
+    public function testListingLocationChangesDoNotMoveTheApprovedMeeting(): void
+    {
+        $other = TestDatabase::addLocation($this->pdo, 42, -78, 'Changed listing spot');
+        $this->pdo->prepare('UPDATE listings SET meeting_location_id = ?, meeting_location = ?')
+            ->execute([$other, 'Changed listing spot']);
+        $meeting = karavan_get_meeting_checkin($this->pdo, $this->ids['buyer'], $this->ids['request'], $this->now)[1]['meeting'];
+        $this->assertSame($this->ids['location'], $meeting['location']['location_id']);
+        $this->assertSame('Test Meeting Spot', $meeting['location_label']);
+        $this->assertSame(200, $this->post()[0]);
+    }
 }
