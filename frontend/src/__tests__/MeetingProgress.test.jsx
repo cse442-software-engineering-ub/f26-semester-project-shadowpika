@@ -194,3 +194,17 @@ it('handles malformed stored timestamps without crashing or offering another che
     expect(screen.getByText('Check-in status unavailable.')).toBeVisible();
     expect(screen.queryByRole('link', { name: 'Check In' })).not.toBeInTheDocument();
 });
+
+it('does not describe a missing API field as an unchecked-in buyer', async () => {
+    const legacy = { ...REQUEST };
+    delete legacy.checked_in_at;
+    purchases = [legacy]; incoming = [legacy];
+    await mount();
+    expect(screen.getAllByText('Check-in status unavailable.')).toHaveLength(2);
+    expect(screen.queryByText('Buyer has not checked in yet.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Not checked in yet.')).not.toBeInTheDocument();
+    purchases = [{ ...REQUEST, checked_in_at: CHECKED_AT }]; incoming = purchases;
+    await tick();
+    expect(screen.getByText(/Buyer checked in at/)).toBeVisible();
+    expect(screen.queryByText('Check-in status unavailable.')).not.toBeInTheDocument();
+});

@@ -13,7 +13,7 @@ export default function MeetingProgress({ request, seller = false }) {
         <p className={valid ? 'mr-checkin mr-success' : 'mr-checkin'} role="status">
             {valid ? <>{seller ? 'Buyer checked in at ' : 'Checked in at '}
                 <time dateTime={checked}>{checkedTime.format(new Date(checked))}</time>.</>
-                : checked ? 'Check-in status unavailable.'
+                : checked !== null ? 'Check-in status unavailable.'
                     : seller ? 'Buyer has not checked in yet.' : 'Not checked in yet.'}
         </p>
     </div>;
