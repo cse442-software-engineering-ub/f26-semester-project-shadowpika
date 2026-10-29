@@ -2,6 +2,14 @@
 
 ## October 29 follow-up — both participants' progress and locked locations
 
+Deployment compatibility correction: only an explicit `checked_in_at: null` means
+not yet checked in. A missing, empty or malformed field displays **Check-in status
+unavailable.**, rather than incorrectly reporting that a buyer has not arrived.
+This covers a new frontend paired with an older list API. The added regression
+also verifies that a subsequent response with a valid timestamp restores progress.
+Updated frontend expectations: **2 files / 35 focused tests**, **19 files / 274
+tests** in the full suite. The 34/273 figures below record the preceding revision.
+
 Requires the #206 follow-up (backend commit `108320d` or its merged equivalent):
 both meeting-list APIs return nullable UTC `checked_in_at`. On Home, buyers see
 **Not checked in yet.** or **Checked in at …**, and sellers see **Buyer has not
