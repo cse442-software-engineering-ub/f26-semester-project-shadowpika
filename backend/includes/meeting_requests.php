@@ -56,12 +56,21 @@ function karavan_format_meeting_request(array $row): array
         'meeting_time' => substr($row['meeting_time'], 0, 5),
         'location'     => $row['location_label'],
         'status'       => $row['status'],
+        'checked_in_at' => karavan_meeting_checked_in_at($row),
     ];
+}
+
+/** Database timestamps are UTC; return the same wire format as the check-in endpoint. */
+function karavan_meeting_checked_in_at(array $row): ?string
+{
+    if (empty($row['checked_in_at'])) return null;
+    return (new DateTimeImmutable($row['checked_in_at'], new DateTimeZone('UTC')))
+        ->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.v\Z');
 }
 
 const KARAVAN_MEETING_REQUEST_SELECT =
     'SELECT r.request_id, r.listing_id, l.name, l.price, l.image_url, r.meeting_date, r.meeting_time,
-            r.location_label, r.status
+            r.location_label, r.status, r.checked_in_at
        FROM meeting_requests r
        JOIN listings l ON l.listing_id = r.listing_id';
 
@@ -264,7 +273,7 @@ function karavan_cancel_meeting_request(PDO $pdo, ?int $userId, $input): array
 // Seller side: requests on listings the logged-in user owns, with the buyer's email.
 const KARAVAN_INCOMING_REQUEST_SELECT =
     'SELECT r.request_id, r.listing_id, l.name, l.price, l.image_url, l.community, u.email AS buyer,
-            r.meeting_date, r.meeting_time, r.location_id, r.location_label, r.status, l.owner_id
+            r.meeting_date, r.meeting_time, r.location_id, r.location_label, r.status, r.checked_in_at, l.owner_id
        FROM meeting_requests r
        JOIN listings l ON l.listing_id = r.listing_id
        JOIN users u ON u.id = r.buyer_id';
@@ -285,6 +294,7 @@ function karavan_format_incoming_request(array $row): array
         'meeting_time' => substr($row['meeting_time'], 0, 5),
         'location'     => $row['location_label'],
         'status'       => $row['status'],
+        'checked_in_at' => karavan_meeting_checked_in_at($row),
     ];
 }
 
@@ -328,6 +338,9 @@ function karavan_respond_meeting_request(PDO $pdo, ?int $userId, $input): array
         return [403, ['success' => false, 'error' => 'You can only respond to requests for your own items.']];
     }
     if ($row['status'] !== 'pending') {
+        if ($row['status'] === 'approved' && $action === 'change_location') {
+            return [409, ['success' => false, 'error' => 'The meeting location is locked after approval.']];
+        }
         return [409, ['success' => false, 'error' => 'Only pending requests can be answered.']];
     }
 

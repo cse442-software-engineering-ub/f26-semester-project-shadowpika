@@ -106,4 +106,32 @@ final class MeetingCheckinHttpTest extends TestCase
         $list = $this->request('GET', 'get_my_meeting_requests.php', null, $buyer);
         $this->assertSame(1, $list[1]['requests'][0]['request_id']);
     }
+
+    public function testBothAccountsReceiveProgressAndApprovedLocationCannotBeChanged(): void
+    {
+        $seller = $this->ids['seller'];
+        $buyer = $this->ids['buyer'];
+        $requestId = $this->ids['request'];
+        $before = $this->request('GET', 'get_incoming_meeting_requests.php', null, $seller);
+        $this->assertSame(200, $before[0]);
+        $this->assertNull($before[1]['requests'][0]['checked_in_at']);
+        $good = $this->request('POST', 'check_in_meeting.php', $this->body(), $buyer);
+        $this->assertSame(200, $good[0]);
+        foreach ([['get_my_meeting_requests.php', $buyer], ['get_incoming_meeting_requests.php', $seller]] as [$endpoint, $user]) {
+            $result = $this->request('GET', $endpoint, null, $user);
+            $this->assertSame(200, $result[0]);
+            $this->assertSame($good[1]['checked_in_at'], $result[1]['requests'][0]['checked_in_at']);
+            $this->assertSame('approved', $result[1]['requests'][0]['status']);
+        }
+        $original = $this->pdo->query('SELECT * FROM meeting_requests')->fetch();
+        $newLocation = TestDatabase::addLocation($this->pdo, 42, -78, 'Other meeting spot');
+        $change = $this->request('POST', 'respond_meeting_request.php',
+            ['request_id' => $requestId, 'action' => 'change_location', 'location_id' => $newLocation], $seller);
+        $this->assertSame(409, $change[0]);
+        $this->assertSame('The meeting location is locked after approval.', $change[1]['error']);
+        $this->assertSame($original, $this->pdo->query('SELECT * FROM meeting_requests')->fetch());
+        $outsider = TestDatabase::addUser($this->pdo, 'http-outsider');
+        $this->assertSame([], $this->request('GET', 'get_incoming_meeting_requests.php', null, $outsider)[1]['requests']);
+        $this->assertSame(401, $this->request('GET', 'get_incoming_meeting_requests.php')[0]);
+    }
 }
