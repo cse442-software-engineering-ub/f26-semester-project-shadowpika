@@ -22,6 +22,8 @@ const BASE = {
     radius_m: 100, max_accuracy_m: 100, max_age_seconds: 30, timezone: 'America/New_York',
     opens_at: '2026-11-06T16:45:00Z', closes_at: '2026-11-06T19:00:00Z',
     server_now: '2026-11-06T17:00:00Z', checked_in_at: null, checkin_state: 'open',
+    participant_role: 'buyer', self_checked_in_at: null, buyer_checked_in_at: null, seller_checked_in_at: null,
+    listing_status: 'active', both_checked_in: false, can_mark_sold: false,
 };
 const position = (overrides = {}) => ({ coords: { latitude: 43, longitude: -78.78, accuracy: 20, ...overrides }, timestamp: Date.now() });
 let meeting, geo, watchSuccess, watchFailure, freshSuccess, freshFailure, fetchMock, hidden, postResponse;
@@ -33,7 +35,9 @@ beforeEach(() => {
     meeting = { ...BASE };
     hidden = false;
     vi.spyOn(document, 'hidden', 'get').mockImplementation(() => hidden);
-    postResponse = () => new Response(JSON.stringify({ success: true, checked_in_at: '2026-11-06T17:03:00Z' }), { status: 200 });
+    postResponse = () => new Response(JSON.stringify({ success: true, participant_role: 'buyer',
+        checked_in_at: '2026-11-06T17:03:00Z', buyer_checked_in_at: '2026-11-06T17:03:00Z',
+        seller_checked_in_at: null, both_checked_in: false, can_mark_sold: false }), { status: 200 });
     geo = {
         watchPosition: vi.fn((success, failure) => { watchSuccess = success; watchFailure = failure; return 12; }),
         clearWatch: vi.fn(),
@@ -201,6 +205,7 @@ describe('Frontend #205 check-in', () => {
 
     it('reads persisted success on initial load without requesting location', async () => {
         meeting.checked_in_at = '2026-11-06T17:03:00Z';
+        meeting.self_checked_in_at = meeting.buyer_checked_in_at = meeting.checked_in_at;
         await mount();
         expect(screen.getByText('Checked in at 12:03 PM.')).toBeVisible();
         expect(screen.queryByRole('button', { name: 'Allow location' })).not.toBeInTheDocument();
@@ -256,6 +261,7 @@ describe('Frontend #205 check-in', () => {
     it('recovers a successful server check-in after the POST response is lost', async () => {
         postResponse = () => {
             meeting.checked_in_at = '2026-11-06T17:03:00Z';
+            meeting.self_checked_in_at = meeting.buyer_checked_in_at = meeting.checked_in_at;
             throw new Error('Connection lost');
         };
         await mount(); await locate();
@@ -273,6 +279,73 @@ describe('Frontend #205 check-in', () => {
         fireEvent(document, new Event('visibilitychange'));
         await act(async () => freshSuccess(position()));
         expect(postCalls()).toHaveLength(0);
+    });
+});
+
+describe('independent buyer and seller check-in', () => {
+    it.each(['buyer', 'seller'])('lets the %s check in after the other participant without inheriting their timestamp', async (role) => {
+        const otherTime = '2026-11-06T16:59:00Z';
+        const ownTime = '2026-11-06T17:03:00Z';
+        meeting = { ...BASE, participant_role: role, checked_in_at: role === 'seller' ? otherTime : null,
+            buyer_checked_in_at: role === 'seller' ? otherTime : null,
+            seller_checked_in_at: role === 'buyer' ? otherTime : null };
+        postResponse = () => new Response(JSON.stringify({ success: true, participant_role: role,
+            checked_in_at: ownTime, buyer_checked_in_at: role === 'buyer' ? ownTime : otherTime,
+            seller_checked_in_at: role === 'seller' ? ownTime : otherTime,
+            both_checked_in: true, can_mark_sold: role === 'seller' }), { status: 200 });
+        await mount();
+        expect(screen.getByText(`You are checking in as the ${role}.`)).toBeVisible();
+        expect(screen.queryByText(/Checked in at/)).not.toBeInTheDocument();
+        await locate();
+        expect(screen.getByRole('button', { name: "I'm here" })).toBeEnabled();
+        fireEvent.click(screen.getByRole('button', { name: "I'm here" }));
+        await act(async () => freshSuccess(position()));
+        expect(screen.getByText('Checked in at 12:03 PM.')).toBeVisible();
+        expect(screen.queryByRole('button', { name: "I'm here" })).not.toBeInTheDocument();
+        expect(postCalls()).toHaveLength(1);
+        expect(fetchMock.mock.calls.some(([url]) => url.includes('update_listing.php'))).toBe(false);
+        expect(JSON.parse(postCalls()[0][1]?.body ?? '{}')).not.toHaveProperty('role');
+    });
+
+    it('reads a saved seller timestamp while the buyer is still absent without asking for location', async () => {
+        meeting = { ...BASE, participant_role: 'seller', seller_checked_in_at: '2026-11-06T17:03:00Z',
+            self_checked_in_at: '2026-11-06T17:03:00Z' };
+        await mount();
+        expect(screen.getByText('Checked in at 12:03 PM.')).toBeVisible();
+        expect(screen.queryByRole('button', { name: 'Allow location' })).not.toBeInTheDocument();
+        expect(geo.watchPosition).not.toHaveBeenCalled();
+    });
+
+    it('recovers the sellers own success after losing a POST response', async () => {
+        meeting = { ...BASE, participant_role: 'seller', checked_in_at: '2026-11-06T16:59:00Z',
+            buyer_checked_in_at: '2026-11-06T16:59:00Z' };
+        postResponse = () => {
+            meeting.self_checked_in_at = meeting.seller_checked_in_at = '2026-11-06T17:03:00Z';
+            meeting.both_checked_in = true;
+            meeting.can_mark_sold = true;
+            throw new TypeError('Connection lost');
+        };
+        await mount(); await locate();
+        fireEvent.click(screen.getByRole('button', { name: "I'm here" }));
+        await act(async () => freshSuccess(position()));
+        expect(screen.getByText('Checked in at 12:03 PM.')).toBeVisible();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(postCalls()).toHaveLength(1);
+    });
+
+    it('does not offer new attendance for an already sold listing', async () => {
+        meeting = { ...BASE, participant_role: 'seller', listing_status: 'sold' };
+        await mount();
+        expect(screen.getByText('This listing is no longer available.')).toBeVisible();
+        expect(screen.queryByRole('button', { name: "I'm here" })).not.toBeInTheDocument();
+        expect(geo.watchPosition).not.toHaveBeenCalled();
+    });
+
+    it.each(['participant_role', 'self_checked_in_at', 'seller_checked_in_at'])('blocks submission when %s is missing from an outdated API', async (field) => {
+        delete meeting[field];
+        await mount();
+        expect(screen.getByRole('alert')).toHaveTextContent('The meeting response is unavailable.');
+        expect(screen.queryByRole('button', { name: "I'm here" })).not.toBeInTheDocument();
     });
 });
 

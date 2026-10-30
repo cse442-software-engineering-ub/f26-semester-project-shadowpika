@@ -13,7 +13,8 @@ vi.mock('../RecommendedItems.jsx', () => ({ default: () => <section>Recommendati
 
 const REQUEST = { request_id: 71, listing_id: 81, name: 'Temporary meeting', price: '12.00', image_url: null,
     meeting_date: '2026-11-06', meeting_time: '12:00', location: 'Agreed spot', community: 'QA', buyer: 'buyer@test.invalid',
-    status: 'approved', checked_in_at: null };
+    status: 'approved', checked_in_at: null, buyer_checked_in_at: null, seller_checked_in_at: null,
+    both_checked_in: false, can_mark_sold: false, listing_status: 'active' };
 const CHECKED_AT = '2026-11-06T17:03:00.000Z';
 const json = (body) => new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
 const deferred = () => {
@@ -21,7 +22,7 @@ const deferred = () => {
     const promise = new Promise((done) => { resolve = done; });
     return { promise, resolve };
 };
-let purchases, incoming, buyerLoad, sellerLoad, respond, cancel, locations, fetchMock, hidden;
+let purchases, incoming, buyerLoad, sellerLoad, respond, cancel, locations, sale, fetchMock, hidden;
 beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-11-06T17:00:00Z'));
@@ -34,12 +35,14 @@ beforeEach(() => {
     respond = () => json({ success: true, request: { ...REQUEST, status: 'approved' } });
     cancel = () => json({ success: true });
     locations = () => json({ success: true, locations: [{ location_id: 92, label: 'Other spot' }] });
+    sale = () => json({ success: true, listing_id: 81, status: 'sold', request_id: 71 });
     fetchMock = vi.fn((url) => {
         if (url.includes('get_my_meeting_requests.php')) return Promise.resolve(buyerLoad());
         if (url.includes('get_incoming_meeting_requests.php')) return Promise.resolve(sellerLoad());
         if (url.includes('respond_meeting_request.php')) return Promise.resolve(respond());
         if (url.includes('cancel_meeting_request.php')) return Promise.resolve(cancel());
         if (url.includes('get_meeting_locations.php')) return Promise.resolve(locations());
+        if (url.includes('update_listing.php')) return Promise.resolve(sale());
         throw new Error(`Unexpected URL: ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -49,9 +52,82 @@ const mount = async () => { let view; await act(async () => { view = render(<Hom
 const tick = async () => act(async () => vi.advanceTimersByTime(MEETING_REFRESH_MS));
 const calls = (endpoint) => fetchMock.mock.calls.filter(([url]) => url.includes(endpoint));
 
+const READY = { ...REQUEST, checked_in_at: CHECKED_AT, buyer_checked_in_at: CHECKED_AT,
+    seller_checked_in_at: '2026-11-06T17:04:00Z', both_checked_in: true, can_mark_sold: true };
+
+it.each(['buyer', 'seller'])('shows independent progress and only the remaining participants entry after %s arrives first', async (first) => {
+    const row = { ...REQUEST, checked_in_at: first === 'buyer' ? CHECKED_AT : null,
+        buyer_checked_in_at: first === 'buyer' ? CHECKED_AT : null,
+        seller_checked_in_at: first === 'seller' ? CHECKED_AT : null };
+    purchases = [row]; incoming = [row];
+    await mount();
+    const buyer = within(screen.getByRole('region', { name: 'My Purchase Requests' }));
+    const seller = within(screen.getByRole('region', { name: 'Requests for My Items' }));
+    expect(buyer.queryByRole('link', { name: 'Check In' }) !== null).toBe(first !== 'buyer');
+    expect(seller.queryByRole('link', { name: 'Check In' }) !== null).toBe(first !== 'seller');
+    expect(screen.queryByRole('button', { name: 'Mark as sold' })).not.toBeInTheDocument();
+    incoming = [READY]; purchases = [{ ...READY, can_mark_sold: false }];
+    await tick();
+    expect(screen.queryByRole('link', { name: 'Check In' })).not.toBeInTheDocument();
+    expect(seller.getByRole('button', { name: 'Mark as sold' })).toBeEnabled();
+    expect(buyer.queryByRole('button', { name: 'Mark as sold' })).not.toBeInTheDocument();
+    expect(seller.getByText(/You checked in at/)).toHaveTextContent('12:04 PM');
+    expect(buyer.getByText(/Seller checked in at/)).toHaveTextContent('12:04 PM');
+    expect(calls('update_listing.php')).toHaveLength(0);
+});
+
+it('confirms an explicit sale, blocks double clicks, invalidates old polls and updates every request for that listing', async () => {
+    incoming = [READY, { ...REQUEST, request_id: 72 }];
+    await mount();
+    const old = deferred(); const pending = deferred();
+    sellerLoad = () => old.promise;
+    await tick();
+    sale = () => pending.promise;
+    const button = screen.getByRole('button', { name: 'Mark as sold' });
+    fireEvent.click(button); fireEvent.click(button);
+    expect(calls('update_listing.php')).toHaveLength(1);
+    expect(screen.queryByText('Listing marked as sold.')).not.toBeInTheDocument();
+    expect(JSON.parse(calls('update_listing.php')[0][1].body)).toEqual({
+        action: 'update_status', listing_id: 81, status: 'sold', request_id: 71,
+    });
+    incoming = incoming.map((row) => ({ ...row, listing_status: 'sold', can_mark_sold: false }));
+    sellerLoad = () => json({ success: true, requests: incoming });
+    await act(async () => pending.resolve(json({ success: true, status: 'sold' })));
+    await act(async () => old.resolve(json({ success: true, requests: [READY] })));
+    expect(screen.getByText('Listing marked as sold.')).toBeVisible();
+    expect(screen.getAllByText('Listing sold.')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Mark as sold' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Check In' })).not.toBeInTheDocument();
+});
+
+it('shows a Sold rejection and reloads attendance without claiming success', async () => {
+    incoming = [READY];
+    await mount();
+    incoming = [{ ...REQUEST }];
+    sale = () => new Response(JSON.stringify({ success: false, code: 'checkins_required', error: 'Both parties must check in first.' }), { status: 409 });
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as sold' })));
+    expect(screen.getByRole('alert')).toHaveTextContent('Both parties must check in first.');
+    expect(screen.queryByText('Listing marked as sold.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Listing sold.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mark as sold' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Check In' })).toBeVisible();
+});
+
+it('does not trust a sale hint when one timestamp is missing or the listing is already sold', async () => {
+    incoming = [
+        { ...READY, seller_checked_in_at: null },
+        { ...READY, request_id: 72, buyer_checked_in_at: null },
+        { ...READY, request_id: 73, listing_status: 'sold' },
+        { ...READY, request_id: 74, status: 'pending' },
+    ];
+    await mount();
+    expect(screen.queryByRole('button', { name: 'Mark as sold' })).not.toBeInTheDocument();
+    expect(calls('update_listing.php')).toHaveLength(0);
+});
+
 it('shows persisted check-in for both roles in New York time, with locked addresses and no submit entry', async () => {
     purchases = [{ ...REQUEST, checked_in_at: CHECKED_AT }];
-    incoming = [{ ...REQUEST, checked_in_at: CHECKED_AT }];
+    incoming = [{ ...REQUEST, checked_in_at: CHECKED_AT, seller_checked_in_at: CHECKED_AT }];
     await mount();
     const buyer = screen.getByRole('region', { name: 'My Purchase Requests' });
     const seller = screen.getByRole('region', { name: 'Requests for My Items' });
@@ -67,11 +143,12 @@ it('polls both lists and shows a check-in performed from another account', async
     purchases = [{ ...REQUEST }]; incoming = [{ ...REQUEST }];
     await mount();
     expect(screen.getByText('Buyer has not checked in yet.')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Check In' })).toHaveAttribute('href', './check-in.html?request_id=71');
+    expect(within(screen.getByRole('region', { name: 'My Purchase Requests' })).getByRole('link', { name: 'Check In' })).toHaveAttribute('href', './check-in.html?request_id=71');
     purchases = [{ ...REQUEST, checked_in_at: CHECKED_AT }]; incoming = purchases;
     await tick();
     expect(screen.getByText(/Buyer checked in at/)).toBeVisible();
-    expect(screen.queryByRole('link', { name: 'Check In' })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'My Purchase Requests' })).queryByRole('link', { name: 'Check In' })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Requests for My Items' })).getByRole('link', { name: 'Check In' })).toBeVisible();
     for (const name of ['get_my_meeting_requests.php', 'get_incoming_meeting_requests.php']) {
         expect(calls(name)).toHaveLength(2);
         expect(calls(name)[1][1]).toMatchObject({ credentials: 'same-origin', cache: 'no-store' });

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ItemCover from './ItemCover.jsx';
 import MeetingProgress from './MeetingProgress.jsx';
 import useMeetingList from './useMeetingList.js';
+import { canCheckIn, canMarkSold, updateListing } from './listingSales.js';
 import { fetchMeetingLocations } from './api.js';
 import { STATUS_LABELS, fetchIncomingMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl, respondMeetingRequest } from './meetingRequests.js';
 
@@ -43,6 +44,28 @@ function IncomingRequests() {
         } finally {
             finishMutation();
             if (reload) refresh();
+            setBusy(false);
+        }
+    }
+
+    async function markSold(request) {
+        if (!canMarkSold(request) || !startMutation()) return;
+        setBusy(true);
+        setMessage(null);
+        try {
+            await updateListing({ action: 'update_status', listing_id: request.listing_id,
+                status: 'sold', request_id: request.request_id });
+            // A listing can have several requests; none should offer a new arrival or sale.
+            setRequests((current) => current.map((item) => item.listing_id === request.listing_id
+                ? { ...item, listing_status: 'sold', can_mark_sold: false } : item));
+            setMessage({ kind: 'success', text: 'Listing marked as sold.' });
+        } catch (failure) {
+            setMessage({ kind: 'error', text: failure instanceof TypeError
+                ? 'Could not connect to the server. Reload to check the listing status.'
+                : failure.message || 'Unable to mark the listing as sold.' });
+        } finally {
+            finishMutation();
+            await refresh();
             setBusy(false);
         }
     }
@@ -124,6 +147,14 @@ function IncomingRequests() {
                                         {STATUS_LABELS[request.status] ?? request.status}
                                     </span>
                                     <MeetingProgress request={request} seller />
+                                    {request.status === 'approved' && (
+                                        <div className="mr-actions">
+                                            {canCheckIn(request, true) && <a className="mr-cancel"
+                                                href={`./check-in.html?request_id=${encodeURIComponent(request.request_id)}`}>Check In</a>}
+                                            {canMarkSold(request) && <button type="button" className="mr-cancel"
+                                                disabled={busy} onClick={() => markSold(request)}>Mark as sold</button>}
+                                        </div>
+                                    )}
                                     {request.status === 'pending' && !pickerOpen && (
                                         <div className="mr-actions">
                                             <button type="button" className="mr-cancel" disabled={busy} onClick={() => respond(request, 'approve')}>Approve</button>

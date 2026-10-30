@@ -36,7 +36,7 @@ export default function useCheckin(requestId) {
             const state = meeting ? windowState(meeting, serverNow()) : null;
             const result = positionResult(position, meeting);
             const coords = position?.coords;
-            const userLocation = !document.hidden && !meeting?.checked_in_at && coords
+            const userLocation = !document.hidden && !meeting?.self_checked_in_at && coords
                 && validLocation({ lat: coords.latitude, lng: coords.longitude })
                 && Number.isFinite(coords.accuracy) && coords.accuracy >= 0
                 && Number.isFinite(position.timestamp) && Date.now() - position.timestamp <= 30000
@@ -61,11 +61,11 @@ export default function useCheckin(requestId) {
                 publish();
                 return;
             }
-            if (document.hidden || disposed || meeting?.checked_in_at) return;
+            if (document.hidden || disposed || meeting?.self_checked_in_at || meeting?.listing_status !== 'active') return;
             if (!preserveReading) geoError = 'Checking your location...';
             const token = generation;
             watchId = navigator.geolocation.watchPosition((value) => {
-                if (!disposed && token === generation && !document.hidden && !meeting?.checked_in_at) acceptPosition(value);
+                if (!disposed && token === generation && !document.hidden && !meeting?.self_checked_in_at) acceptPosition(value);
             }, (failure) => {
                 if (disposed || token !== generation || document.hidden) return;
                 position = null;
@@ -91,7 +91,7 @@ export default function useCheckin(requestId) {
                 anchor = Date.parse(next.server_now);
                 anchorTick = performance.now();
                 previousWindow = windowState(meeting, serverNow());
-                if (meeting.checked_in_at) { generation++; stopWatch(); position = null; busy = false; }
+                if (meeting.self_checked_in_at || meeting.listing_status !== 'active') { generation++; stopWatch(); position = null; busy = false; }
                 else if (wanted && watchId === null && !busy) startWatch(true);
                 clearTimeout(boundaryTimer);
                 const boundary = previousWindow === 'not_open' ? Date.parse(meeting.opens_at)
@@ -105,7 +105,7 @@ export default function useCheckin(requestId) {
             }
         };
         const allow = () => {
-            if (busy || disposed || meeting?.checked_in_at) return;
+            if (busy || disposed || meeting?.self_checked_in_at) return;
             wanted = true;
             generation++;
             error = '';
@@ -125,9 +125,11 @@ export default function useCheckin(requestId) {
                 acceptPosition(fresh);
                 const result = positionResult(fresh, meeting);
                 if (!result.allowed || windowState(meeting, serverNow()) !== 'open') return;
-                const checkedAt = await submitCheckin(requestId, fresh);
+                const progress = await submitCheckin(requestId, fresh);
+                if (progress.participant_role !== meeting.participant_role) throw new Error('The meeting response is unavailable. Reload and try again.');
                 if (disposed || token !== generation || document.hidden) return;
-                meeting = { ...meeting, checked_in_at: checkedAt, checkin_state: 'checked_in' };
+                meeting = { ...meeting, ...progress, checked_in_at: progress.buyer_checked_in_at,
+                    self_checked_in_at: progress.checked_in_at, checkin_state: 'checked_in' };
                 stopWatch();
                 position = null;
             } catch (failure) {
@@ -139,12 +141,12 @@ export default function useCheckin(requestId) {
                     // authoritative result before offering another submission.
                     const failureMessage = error;
                     await refresh();
-                    if (!disposed && token === generation && !meeting?.checked_in_at) error = failureMessage;
+                    if (!disposed && token === generation && !meeting?.self_checked_in_at) error = failureMessage;
                 }
             } finally {
                 if (!disposed && token === generation) {
                     busy = false;
-                    if (!meeting?.checked_in_at && wanted && !geoError && !error) startWatch(true);
+                    if (!meeting?.self_checked_in_at && wanted && !geoError && !error) startWatch(true);
                     publish();
                 }
             }
