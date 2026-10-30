@@ -28,7 +28,13 @@ function mockBackend({ communities = [KARAVAN, KELLER], joined = [] } = {}) {
         success: true,
         communities: backend.communities.map((c) => {
             const isIn = c.automatic || backend.joined.has(c.community_id);
-            return { ...c, joined: isIn, shopping: isIn, pending: !isIn && backend.pending.has(c.community_id) };
+            return {
+                ...c,
+                joined: isIn,
+                shopping: isIn,
+                pending: !isIn && backend.pending.has(c.community_id),
+                administrator: Boolean(c.administrator),
+            };
         }),
     });
     backend.fetch = vi.fn((url, options = {}) => {
@@ -349,5 +355,82 @@ describe('Sign up and log in remember the account for the community picker', () 
 
         await waitFor(() => expect(localStorage.getItem('karavan_community_prompt')).toBe('1'));
         window.history.replaceState({}, '', '/');
+    });
+});
+
+describe('Community administrator flag', () => {
+    const adminList = {
+        success: true,
+        communities: [
+            {
+                community_id: 1,
+                name: 'Keller Properties LLC',
+                joined: false,
+                shopping: false,
+                automatic: false,
+                pending: false,
+                administrator: true,
+            },
+            {
+                community_id: 2,
+                name: 'Second Community LLC',
+                joined: true,
+                shopping: true,
+                automatic: false,
+                pending: false,
+                administrator: false,
+            },
+        ],
+    };
+
+    it('shows Administrator instead of join or leave on the administered community', async () => {
+        const backend = mockBackend();
+        backend.list = [200, adminList];
+        const user = userEvent.setup();
+        render(<NavBar />);
+
+        await user.click(await navButton('2 Communities'));
+        const dialog = await screen.findByRole('dialog', { name: 'Join a Community' });
+        const keller = within(dialog).getByText('Keller Properties LLC').closest('li');
+        const second = within(dialog).getByText('Second Community LLC').closest('li');
+
+        expect(within(keller).getByText('Administrator')).toBeInTheDocument();
+        expect(within(keller).getByText('Administrator')).toHaveClass('kv-communities-admin');
+        expect(within(keller).queryByRole('button')).not.toBeInTheDocument();
+        expect(within(second).getByRole('button', { name: 'Joined Second Community LLC' })).toBeDisabled();
+        expect(within(second).getByRole('button', { name: 'Leave Second Community LLC' })).toBeInTheDocument();
+        expect(within(second).queryByText('Administrator')).not.toBeInTheDocument();
+    });
+
+    it('does not send join or leave when the Administrator label is clicked', async () => {
+        const backend = mockBackend();
+        backend.list = [200, adminList];
+        const user = userEvent.setup();
+        render(<NavBar />);
+
+        await user.click(await navButton('2 Communities'));
+        await screen.findByRole('dialog');
+        backend.fetch.mockClear();
+        await user.click(screen.getByText('Administrator'));
+
+        expect(callsTo(backend.fetch, 'join_community.php')).toHaveLength(0);
+        expect(callsTo(backend.fetch, 'leave_community.php')).toHaveLength(0);
+    });
+
+    it('counts the administered community on the nav button even when joined is false', async () => {
+        const backend = mockBackend();
+        backend.list = [200, adminList];
+        render(<NavBar />);
+
+        expect(await navButton('2 Communities')).toBeInTheDocument();
+    });
+
+    it('never shows Administrator for a regular shopper', async () => {
+        mockBackend({ communities: [KELLER, RIVERSIDE] });
+        const user = userEvent.setup();
+        render(<NavBar />);
+
+        await user.click(await navButton('Join a Community'));
+        expect(within(await screen.findByRole('dialog')).queryByText('Administrator')).not.toBeInTheDocument();
     });
 });

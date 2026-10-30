@@ -155,7 +155,7 @@ function useCommunities() {
                 setCommunities(result.communities);
                 setError('');
                 // The server knows best, e.g. after leaving or joining on another device.
-                const current = result.communities.filter((c) => c.joined && !c.automatic);
+                const current = result.communities.filter((c) => !c.automatic && (c.joined || c.administrator));
                 setJoined(current);
                 saveJoinedCommunities(current);
                 return true;
