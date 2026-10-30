@@ -36,6 +36,9 @@ final class ManageListingsTest extends TestCase
         $mine = TestDatabase::addListing($this->pdo, $this->ownerId);
         $theirs = TestDatabase::addListing($this->pdo, $this->otherId);
 
+        TestDatabase::addMeeting($this->pdo, $this->otherId, $mine, [
+            'checked_in_at' => '2026-11-06 17:00:00', 'seller_checked_in_at' => '2026-11-06 17:01:00',
+        ]);
         [$mineStatus] = update_my_listing($this->pdo, $this->ownerId, [
             'action' => 'update_status', 'listing_id' => $mine, 'status' => 'sold',
         ]);

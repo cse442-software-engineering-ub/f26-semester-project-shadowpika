@@ -103,7 +103,32 @@ final class TestDatabase
             )"
         );
 
+        $pdo->exec("CREATE TABLE meeting_requests (
+            request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            buyer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            listing_id INTEGER NOT NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
+            meeting_date TEXT NOT NULL, meeting_time TEXT NOT NULL,
+            location_id INTEGER NULL REFERENCES approved_locations(id) ON DELETE SET NULL,
+            location_label TEXT NOT NULL, status TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            checked_in_at TEXT NULL, seller_checked_in_at TEXT NULL)");
+
         return $pdo;
+    }
+
+    public static function addMeeting(PDO $pdo, int $buyerId, int $listingId, array $overrides = []): int
+    {
+        $row = array_merge([
+            'meeting_date' => '2026-11-06', 'meeting_time' => '12:00:00',
+            'location_id' => null, 'location_label' => 'Test Meeting Spot', 'status' => 'approved',
+            'checked_in_at' => null, 'seller_checked_in_at' => null,
+        ], $overrides);
+        $stmt = $pdo->prepare('INSERT INTO meeting_requests
+            (buyer_id, listing_id, meeting_date, meeting_time, location_id, location_label, status, checked_in_at, seller_checked_in_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$buyerId, $listingId, $row['meeting_date'], $row['meeting_time'], $row['location_id'],
+            $row['location_label'], $row['status'], $row['checked_in_at'], $row['seller_checked_in_at']]);
+        return (int) $pdo->lastInsertId();
     }
 
     public static function addLocation(

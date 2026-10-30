@@ -1,5 +1,9 @@
 # Buyer location check-in frontend — #205
 
+## October 30 backend handoff — frontend implementation pending
+
+The #206 backend now permits buyer and seller check-in in either order and requires both timestamps on one approved meeting before the seller can explicitly mark Sold. The code in this frontend branch still implements the buyer-only UI described below. Before deployment, complete the seller entry, separate progress, role-aware check-in state and reliable Sold handling described in `docs/buyer-checkin.md` under Explicit Sold action. In particular, GET/list `checked_in_at` still means buyer arrival; use `self_checked_in_at` for the current check-in page. A buyer timestamp must not hide a seller's uncompleted check-in. Manage Listings must await the status API result before changing local status and show the server's 409 error. Neither a second check-in nor polling should automatically submit Sold. No Message Seller or Message navigation dependency is needed.
+
 ## October 29 follow-up — both participants' progress and locked locations
 
 Deployment compatibility correction: only an explicit `checked_in_at: null` means
