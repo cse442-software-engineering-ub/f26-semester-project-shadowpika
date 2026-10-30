@@ -200,7 +200,7 @@ function CreateListing() {
                 }
 
                 const names = result.communities
-                    .filter((community) => community?.joined === true)
+                    .filter((community) => community?.joined === true || community?.administrator === true)
                     .map((community) => (typeof community?.name === 'string' ? community.name.trim() : ''))
                     .filter(Boolean);
                 setCommunities([...new Set(names)]);

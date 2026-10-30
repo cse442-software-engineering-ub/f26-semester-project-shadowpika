@@ -67,6 +67,7 @@
 
 .kv-communities-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -117,7 +118,22 @@
 .kv-communities-actions {
   display: flex;
   flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+}
+
+.kv-communities-admin {
+  flex: none;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #24364f;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 22px;
+  white-space: nowrap;
 }
 
 .kv-communities-leave {
@@ -180,5 +196,18 @@
 @media (max-width: 768px) {
   .kv-communities-layer {
     padding-top: 104px;
+  }
+
+  .kv-communities-dialog {
+    width: min(100%, 390px);
+    overflow-x: hidden;
+  }
+
+  .kv-communities-item {
+    align-items: flex-start;
+  }
+
+  .kv-communities-actions {
+    width: 100%;
   }
 }

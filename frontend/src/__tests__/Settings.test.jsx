@@ -129,7 +129,7 @@ describe('Settings page', () => {
     // Frontend Test 1
     it('shows the Admin tab to admins with a map of the saved locations', async () => {
         const user = userEvent.setup();
-        mockBackend();
+        const fetchMock = mockBackend();
         render(<Settings />);
 
         await openAdminTab(user);
@@ -137,6 +137,24 @@ describe('Settings page', () => {
         expect(await screen.findByRole('heading', { name: 'Approved Meeting Locations' })).toBeInTheDocument();
         expect(screen.getByTestId('locations-map')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Pin: Capen Hall Main Entrance @ 42.9612,-78.8328' })).toBeInTheDocument();
+        const locationCalls = callsTo(fetchMock, 'get_approved_locations.php');
+        expect(locationCalls).not.toHaveLength(0);
+        expect(locationCalls[0][0]).toMatch(/get_approved_locations\.php$/);
+        expect(String(locationCalls[0][0])).not.toMatch(/[?&]community/);
+    });
+
+    it('renders the administered community locations from the server list as-is', async () => {
+        const user = userEvent.setup();
+        const fetchMock = mockBackend({
+            list: [200, { success: true, locations: [{ location_id: 1, lat: 43.0009, lng: -78.7894, label: 'Keller HQ' }] }],
+        });
+        render(<Settings />);
+
+        await openAdminTab(user);
+
+        expect(screen.getByRole('button', { name: 'Pin: Keller HQ @ 43.0009,-78.7894' })).toBeInTheDocument();
+        expect(screen.queryByText(/Second Community Office/)).not.toBeInTheDocument();
+        expect(callsTo(fetchMock, 'get_approved_locations.php')[0][0]).toMatch(/get_approved_locations\.php$/);
     });
 
     it('says so when there are no locations yet', async () => {

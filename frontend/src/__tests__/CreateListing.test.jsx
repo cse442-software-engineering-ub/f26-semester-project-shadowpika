@@ -137,6 +137,21 @@ describe('Create listing Community selection', () => {
         expect(callsContaining(backend.fetch, 'get_meeting_locations.php')).toHaveLength(0);
     });
 
+    it('offers the administered community even when joined is false', async () => {
+        const backend = mockBackend();
+        backend.communities[1].communities = backend.communities[1].communities.map((community) => (
+            community.name === KELLER
+                ? { ...community, joined: false, administrator: true }
+                : { ...community, joined: community.name === CAMPUS }
+        ));
+        render(<CreateListing />);
+
+        await waitFor(() => expect(communitySelect()).toBeEnabled());
+        expect(within(communitySelect()).getByRole('option', { name: KELLER })).toBeInTheDocument();
+        expect(within(communitySelect()).getByRole('option', { name: CAMPUS })).toBeInTheDocument();
+        expect(within(communitySelect()).queryByRole('option', { name: 'Riverside Apartments' })).not.toBeInTheDocument();
+    });
+
     it('prompts an account with no joined Communities to join before listing', async () => {
         const backend = mockBackend();
         backend.communities[1].communities = backend.communities[1].communities.map((community) => ({
@@ -271,7 +286,7 @@ describe('Create listing Community selection', () => {
 
         expect(await screen.findByText('Community is required.')).toBeVisible();
         expect(screen.getByText('Preferred meeting location is required.')).toBeVisible();
-        expect(communitySelect()).toHaveFocus();
+        await waitFor(() => expect(communitySelect()).toHaveFocus());
         expect(callsContaining(backend.fetch, 'upload_image.php')).toHaveLength(0);
         expect(callsContaining(backend.fetch, 'create_listing.php')).toHaveLength(0);
     });
