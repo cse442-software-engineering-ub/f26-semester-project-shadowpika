@@ -65,7 +65,7 @@ final class CommunitiesTest extends TestCase
 
         $this->assertSame(200, $status);
         $this->assertSame(
-            '{"success":true,"communities":[{"community_id":' . $keller . ',"name":"Keller Properties LLC","joined":false,"shopping":false,"automatic":false,"pending":false}]}',
+            '{"success":true,"communities":[{"community_id":' . $keller . ',"name":"Keller Properties LLC","joined":false,"shopping":false,"automatic":false,"pending":false,"administrator":false}]}',
             json_encode($body)
         );
     }
@@ -76,8 +76,8 @@ final class CommunitiesTest extends TestCase
         $keller = $this->approvedCommunity('Keller Properties LLC');
 
         $this->assertSame([
-            ['community_id' => $allOfUb, 'name' => 'All of UB', 'joined' => true, 'shopping' => true, 'automatic' => true, 'pending' => false],
-            ['community_id' => $keller, 'name' => 'Keller Properties LLC', 'joined' => false, 'shopping' => false, 'automatic' => false, 'pending' => false],
+            ['community_id' => $allOfUb, 'name' => 'All of UB', 'joined' => true, 'shopping' => true, 'automatic' => true, 'pending' => false, 'administrator' => false],
+            ['community_id' => $keller, 'name' => 'Keller Properties LLC', 'joined' => false, 'shopping' => false, 'automatic' => false, 'pending' => false, 'administrator' => false],
         ], $this->listed());
         $this->assertSame([], $this->rowsOf($this->studentId), 'All of UB needs no row.');
     }
@@ -549,5 +549,44 @@ final class CommunitiesTest extends TestCase
             'status'  => 'pending',
         ]);
         $this->assertSame('pending', karavan_admin_tab_status($this->pdo, $this->studentId)[1]['application_status']);
+    }
+
+    public function testListMarksTheAdministeredCommunityWithoutAMembershipRow(): void
+    {
+        $adminId = TestDatabase::addUser($this->pdo, 'morgan.keller', 'admin', 'morgan.keller1@test.com');
+        $keller = TestDatabase::addRequest($this->pdo, [
+            'business_name' => 'Keller Properties LLC',
+            'email'         => 'morgan.keller1@test.com',
+            'status'        => 'approved',
+            'user_id'       => $adminId,
+        ]);
+        $second = $this->approvedCommunity('Second Community LLC');
+        $this->becomeMember($second, $adminId);
+
+        $byId = array_column($this->listed($adminId), null, 'community_id');
+        $this->assertFalse($byId[$keller]['joined']);
+        $this->assertTrue($byId[$keller]['administrator']);
+        $this->assertTrue($byId[$second]['joined']);
+        $this->assertFalse($byId[$second]['administrator']);
+        $count = (int) $this->pdo->query(
+            "SELECT COUNT(*) FROM community_members WHERE user_id = {$adminId} AND community_id = {$keller}"
+        )->fetchColumn();
+        $this->assertSame(0, $count);
+    }
+
+    public function testAdministratorCanShopTheirCommunityWithoutJoining(): void
+    {
+        $adminId = TestDatabase::addUser($this->pdo, 'morgan.keller', 'admin', 'morgan.keller1@test.com');
+        TestDatabase::addRequest($this->pdo, [
+            'business_name' => 'Keller Properties LLC',
+            'email'         => 'morgan.keller1@test.com',
+            'status'        => 'approved',
+            'user_id'       => $adminId,
+        ]);
+
+        $this->assertTrue(karavan_can_shop_listing($this->pdo, $adminId, [
+            'owner_id'  => $this->studentId,
+            'community' => 'Keller Properties LLC',
+        ]));
     }
 }

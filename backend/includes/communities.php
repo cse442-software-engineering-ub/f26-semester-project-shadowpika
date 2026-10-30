@@ -121,6 +121,12 @@ function karavan_member_listing_communities(PDO $pdo, int $userId, bool $shoppin
             array_push($names, ...$communities[$listedId]['names']);
         }
     }
+    // An approved partner can shop their community's items without a community_members row.
+    foreach (karavan_administered_community_ids($pdo, $userId) as $listedId) {
+        if (isset($communities[$listedId])) {
+            array_push($names, ...$communities[$listedId]['names']);
+        }
+    }
     // Campus listings stay visible on a database where no campus partner was approved.
     if (!$campusListed) {
         $names[] = KARAVAN_CAMPUS_COMMUNITY;
@@ -167,17 +173,19 @@ function karavan_list_communities(PDO $pdo, ?int $userId): array
     $communities = karavan_approved_communities($pdo);
     $memberships = karavan_user_memberships($pdo, (int) $user['id'], $communities);
     $pending = karavan_pending_join_ids($pdo, (int) $user['id'], $communities);
+    $administered = array_fill_keys(karavan_administered_community_ids($pdo, (int) $user['id']), true);
 
     $list = [];
     foreach ($communities as $listedId => $community) {
         $joined = array_key_exists($listedId, $memberships);
         $list[] = [
-            'community_id' => $listedId,
-            'name'         => $community['name'],
-            'joined'       => $joined,
-            'shopping'     => $memberships[$listedId] ?? false,
-            'automatic'    => $community['automatic'],
-            'pending'      => !$joined && isset($pending[$listedId]),
+            'community_id'  => $listedId,
+            'name'          => $community['name'],
+            'joined'        => $joined,
+            'shopping'      => $memberships[$listedId] ?? false,
+            'automatic'     => $community['automatic'],
+            'pending'       => !$joined && isset($pending[$listedId]),
+            'administrator' => isset($administered[$listedId]),
         ];
     }
 
@@ -403,6 +411,19 @@ function karavan_administered_community_ids(PDO $pdo, int $userId): array
         }
     }
     return array_keys($ids);
+}
+
+/** Exact listings.community / approved_locations.community names this partner administers. */
+function karavan_administered_community_names(PDO $pdo, int $userId): array
+{
+    $communities = karavan_approved_communities($pdo);
+    $names = [];
+    foreach (karavan_administered_community_ids($pdo, $userId) as $listedId) {
+        if (isset($communities[$listedId])) {
+            array_push($names, ...$communities[$listedId]['names']);
+        }
+    }
+    return array_values(array_unique($names));
 }
 
 function karavan_admin_tab_status(PDO $pdo, ?int $userId): array
