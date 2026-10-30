@@ -53,7 +53,7 @@ Both meeting lists add `buyer_checked_in_at`, `seller_checked_in_at`, `both_chec
 
 MySQL check-in and Sold both lock the listing before locking the meeting. Duplicate submissions retain each participant's first timestamp. New attendance for an already sold listing is rejected, but existing successful attendance remains readable and repeatable.
 
-The #205 frontend follow-up now implements seller Check In access, separate buyer/seller progress, `self_checked_in_at` on the check-in page, and an explicit eligible Sold action on Home and My Listings. It waits for successful status updates, shows server errors and refreshes authoritative progress. See `docs/buyer-checkin-frontend.md` for the local implementation and validation status. Integrate both branches before publishing; no Message Seller or Message link is required.
+The #205 frontend follow-up implements seller Check In access, separate buyer/seller progress, `self_checked_in_at` on the check-in page, and an explicit eligible Sold action on Home and My Listings. It waits for successful status updates, shows server errors and refreshes authoritative progress. Sold listings disappear from both Home request lists while remaining in My Listings → View Sold and in the historical list/detail APIs. See `docs/buyer-checkin-frontend.md` for the local implementation and validation status. Integrate both branches before publishing; no Message Seller or Message link is required.
 
 ## Database and release
 

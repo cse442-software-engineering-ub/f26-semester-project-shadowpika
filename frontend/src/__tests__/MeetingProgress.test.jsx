@@ -95,7 +95,8 @@ it('confirms an explicit sale, blocks double clicks, invalidates old polls and u
     await act(async () => pending.resolve(json({ success: true, status: 'sold' })));
     await act(async () => old.resolve(json({ success: true, requests: [READY] })));
     expect(screen.getByText('Listing marked as sold.')).toBeVisible();
-    expect(screen.getAllByText('Listing sold.')).toHaveLength(2);
+    expect(screen.queryByText('Temporary meeting')).not.toBeInTheDocument();
+    expect(screen.getByText('No one has requested your items yet.')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Mark as sold' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Check In' })).not.toBeInTheDocument();
 });
@@ -123,6 +124,77 @@ it('does not trust a sale hint when one timestamp is missing or the listing is a
     await mount();
     expect(screen.queryByRole('button', { name: 'Mark as sold' })).not.toBeInTheDocument();
     expect(calls('update_listing.php')).toHaveLength(0);
+});
+
+it('hides sold listings from both Home lists on first load while keeping all unsold statuses', async () => {
+    const rows = [
+        { ...READY, name: 'Sold approved item', listing_status: 'sold' },
+        { ...REQUEST, request_id: 72, name: 'Sold pending item', status: 'pending', listing_status: 'sold' },
+        { ...READY, request_id: 73, listing_id: 83, name: 'Checked in but still active' },
+        { ...REQUEST, request_id: 74, listing_id: 84, name: 'Denied active item', status: 'denied' },
+    ];
+    purchases = rows; incoming = rows;
+    await mount();
+    expect(screen.queryByText('Sold approved item')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sold pending item')).not.toBeInTheDocument();
+    for (const name of ['My Purchase Requests', 'Requests for My Items']) {
+        const region = within(screen.getByRole('region', { name }));
+        expect(region.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent))
+            .toEqual(['Checked in but still active', 'Denied active item']);
+    }
+    expect(screen.queryByText('Listing sold.')).not.toBeInTheDocument();
+});
+
+it('shows the normal empty states when every request belongs to a sold listing', async () => {
+    purchases = [{ ...READY, listing_status: 'sold' }];
+    incoming = purchases;
+    await mount();
+    expect(screen.getByText('You have no purchase requests yet.')).toBeVisible();
+    expect(screen.getByText('No one has requested your items yet.')).toBeVisible();
+    expect(screen.queryByText('Temporary meeting')).not.toBeInTheDocument();
+});
+
+it.each(['poll', 'focus', 'return'])('removes a listing sold in another session on %s and keeps unrelated requests', async (trigger) => {
+    const other = { ...REQUEST, request_id: 73, listing_id: 83, name: 'Still active' };
+    purchases = [READY, other];
+    incoming = [READY, { ...READY, request_id: 72 }, other];
+    await mount();
+    purchases = purchases.map((row) => row.listing_id === 81 ? { ...row, listing_status: 'sold' } : row);
+    incoming = incoming.map((row) => row.listing_id === 81 ? { ...row, listing_status: 'sold' } : row);
+    if (trigger === 'poll') await tick();
+    else if (trigger === 'focus') await act(async () => fireEvent(window, new Event('focus')));
+    else {
+        hidden = true; fireEvent(document, new Event('visibilitychange'));
+        hidden = false;
+        await act(async () => fireEvent(document, new Event('visibilitychange')));
+    }
+    expect(screen.queryByText('Temporary meeting')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 3, name: 'Still active' })).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Mark as sold' })).not.toBeInTheDocument();
+});
+
+it('removes a confirmed sale immediately even when the follow-up refresh fails', async () => {
+    incoming = [READY, { ...READY, request_id: 72 }];
+    await mount();
+    sellerLoad = () => { throw new TypeError('Failed to fetch'); };
+    await act(async () => fireEvent.click(screen.getAllByRole('button', { name: 'Mark as sold' })[0]));
+    expect(screen.getByText('Listing marked as sold.')).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not connect to the server.');
+    expect(screen.queryByText('Temporary meeting')).not.toBeInTheDocument();
+    expect(screen.getByText('No one has requested your items yet.')).toBeVisible();
+});
+
+it('hides a remotely confirmed sale after its POST response is lost without inventing success', async () => {
+    incoming = [READY];
+    await mount();
+    sale = () => {
+        incoming = [{ ...READY, listing_status: 'sold', can_mark_sold: false }];
+        throw new TypeError('Connection lost');
+    };
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as sold' })));
+    expect(screen.getByRole('alert')).toHaveTextContent('Reload to check the listing status.');
+    expect(screen.queryByText('Listing marked as sold.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Temporary meeting')).not.toBeInTheDocument();
 });
 
 it('shows persisted check-in for both roles in New York time, with locked addresses and no submit entry', async () => {
