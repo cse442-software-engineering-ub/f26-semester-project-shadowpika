@@ -156,6 +156,21 @@
   padding: 4px;
 }
 
+.mr-request-link {
+  display: flex;
+  width: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+h3 > .mr-request-link {
+  display: inline;
+}
+
+h3 > .mr-request-link:hover {
+  text-decoration: underline;
+}
+
 .mr-request-body {
   display: flex;
   flex-direction: column;

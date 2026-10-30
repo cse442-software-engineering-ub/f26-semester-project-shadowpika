@@ -26,7 +26,17 @@ function BackToSearch() {
     );
 }
 
+// Opened from a purchase request: back goes to Home.
+function BackToHome() {
+    return (
+        <a className="id-back" href="./home.html">
+            <span aria-hidden="true">←</span> Back to home
+        </a>
+    );
+}
+
 function ItemDetails() {
+    const fromRequest = new URLSearchParams(window.location.search).get('from') === 'request';
     const [listing, setListing] = useState(null);
     const [status, setStatus] = useState('loading'); // loading | done | error
     const [error, setError] = useState('');
@@ -101,7 +111,7 @@ function ItemDetails() {
         <div className="ps-page">
             <NavBar />
             <main className="ps-frame id-frame">
-                <BackToSearch />
+                {fromRequest ? <BackToHome /> : <BackToSearch />}
 
                 {status === 'loading' && <p className="id-message">Loading item details...</p>}
                 {status === 'error' && <p className="id-message id-error" role="alert">{error}</p>}
@@ -130,7 +140,7 @@ function ItemDetails() {
                             <p className="id-price">${listing.price}</p>
                             {saveError && <p className="id-error id-save-error" role="alert">{saveError}</p>}
 
-                            {canBuy && (
+                            {canBuy && !fromRequest && (
                                 <div className="id-actions">
                                     <button
                                         type="button"
@@ -174,7 +184,7 @@ function ItemDetails() {
                                     : <p className="id-muted">The seller didn't add a description.</p>}
                             </section>
                         </div>
-                        <ListingMeetingLocation listing={listing} />
+                        {!fromRequest && <ListingMeetingLocation listing={listing} />}
                     </article>
                 )}
             </main>

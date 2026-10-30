@@ -8,7 +8,7 @@ import useMeetingList from './useMeetingList.js';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
-import { STATUS_LABELS, cancelMeetingRequest, fetchMyMeetingRequests, formatMeetingDate, formatMeetingTime } from './meetingRequests.js';
+import { STATUS_LABELS, cancelMeetingRequest, fetchMyMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl } from './meetingRequests.js';
 
 // Home page: recommended items, then the logged-in buyer's meeting requests, in the order the server sends them.
 function Home() {
@@ -72,10 +72,12 @@ function Home() {
                             {requests.map((request, index) => (
                                 <li className="mr-request" key={`${request.listing_id}-${index}`}>
                                     <div className="mr-request-cover">
-                                        <ItemCover name={request.name} imageUrl={request.image_url} />
+                                        <a className="mr-request-link" href={requestItemUrl(request.listing_id)}>
+                                            <ItemCover name={request.name} imageUrl={request.image_url} />
+                                        </a>
                                     </div>
                                     <div className="mr-request-body">
-                                        <h3 className="mr-request-name">{request.name}</h3>
+                                        <h3 className="mr-request-name"><a className="mr-request-link" href={requestItemUrl(request.listing_id)}>{request.name}</a></h3>
                                         <p className="mr-request-price">${request.price}</p>
                                         <p className="mr-request-when">
                                             {formatMeetingDate(request.meeting_date)}, {formatMeetingTime(request.meeting_time)}
