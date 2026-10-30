@@ -25,6 +25,7 @@ export default function CheckIn() {
                 {meeting && <>
                     <section className="ci-details" aria-label="Meeting details">
                         <h2>{meeting.name}</h2>
+                        <p>You are checking in as the {meeting.participant_role}.</p>
                         <p>${meeting.price}</p>
                         <p>{formatMeetingDate(meeting.meeting_date)}, {formatMeetingTime(meeting.meeting_time)}</p>
                         <p>{meeting.location_label}</p>
@@ -35,7 +36,7 @@ export default function CheckIn() {
                     {mapError && <p role="status">The map could not load. The agreed meeting location is shown above.</p>}
                     <section className="ci-actions" aria-label="Check in">
                         <p role="status">{windowMessage(meeting, state)}</p>
-                        {!meeting.checked_in_at && <>
+                        {!meeting.self_checked_in_at && state !== 'listing_unavailable' && <>
                             <p role="status">{geoMessage}</p>
                             <div className="ci-buttons">
                                 <button type="button" onClick={allow} disabled={busy || loading}>Allow location</button>

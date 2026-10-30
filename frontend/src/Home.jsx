@@ -5,6 +5,7 @@ import IncomingRequests from './IncomingRequests.jsx';
 import RecommendedItems from './RecommendedItems.jsx';
 import MeetingProgress from './MeetingProgress.jsx';
 import useMeetingList from './useMeetingList.js';
+import { canCheckIn } from './listingSales.js';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
@@ -97,7 +98,7 @@ function Home() {
                                                 Cancel Request
                                             </button>
                                         )}
-                                        {request.status === 'approved' && !request.checked_in_at && Number.isInteger(request.request_id) && request.request_id > 0 && (
+                                        {canCheckIn(request) && (
                                             <a className="mr-cancel" href={`./check-in.html?request_id=${encodeURIComponent(request.request_id)}`}>Check In</a>
                                         )}
                                     </div>

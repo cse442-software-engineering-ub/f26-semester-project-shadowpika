@@ -43,6 +43,7 @@ it('shows Check In only for approved meetings with their own request ID (#205)',
         success: true, requests: ['pending', 'approved', 'denied', 'location_change_requested'].map((status, index) => ({
             request_id: 700 + index, listing_id: 800 + index, name: `Meeting ${index}`, price: '12.00',
             meeting_date: '2026-11-06', meeting_time: '12:00', location: 'Test location', status,
+            checked_in_at: null, seller_checked_in_at: null, listing_status: 'active',
         })),
     }) });
     render(<Home />);
@@ -208,7 +209,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         const cards = [...container.querySelectorAll('.mr-request')].map((card) => card.querySelector('.mr-request-body').textContent);
         expect(cards).toEqual([
             'Physics Lab Manual$7.50Jan 3, 9:05 AMCapen Hall Main EntrancePendingCancel Request',
-            'Graphing Calculator$60.00Jan 4, 12:00 PMStudent Union Main EntranceApprovedMeeting location locked after approval.Check-in status unavailable.',
+            'Graphing Calculator$60.00Jan 4, 12:00 PMStudent Union Main EntranceApprovedMeeting location locked after approval.Check-in status unavailable.Seller check-in status unavailable.',
             'Desk Chair$25.00Jan 5, 6:45 PMLockwood Memorial Library Main EntranceDenied',
             'Mini Fridge$50.00Jan 6, 12:30 AMStudent Union Main EntranceLocation Change Requested',
         ]);
@@ -334,7 +335,7 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
         const cards = [...container.querySelectorAll('.mr-request')].map((card) => card.querySelector('.mr-request-body').textContent);
         expect(cards).toEqual([
             'Calculus Textbook$20.00Requested by Chun BuyerDec 11, 1:00 PMCapen Hall Main EntrancePendingApproveDenyChange Location',
-            'Mini Fridge$20.00Requested by Chun BuyerDec 11, 1:00 PMStudent Union Main EntranceApprovedMeeting location locked after approval.Check-in status unavailable.',
+            'Mini Fridge$20.00Requested by Chun BuyerDec 11, 1:00 PMStudent Union Main EntranceApprovedMeeting location locked after approval.Check-in status unavailable.Seller check-in status unavailable.',
             'Desk Chair$20.00Requested by Chun BuyerDec 11, 1:00 PMCapen Hall Main EntranceDenied',
             'Graphing Calculator$20.00Requested by Chun BuyerDec 11, 1:00 PMCapen Hall Main EntranceLocation Change Requested',
         ]);

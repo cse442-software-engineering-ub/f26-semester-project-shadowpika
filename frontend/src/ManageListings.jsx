@@ -4,43 +4,61 @@ import './ManageListings.css';
 import NavBar from './NavBar.jsx';
 import './NavBar.css';
 import { apiUrl } from './routes.js';
+import { updateListing } from './listingSales.js';
+import { MEETING_REFRESH_MS } from './useMeetingList.js';
 
 const BASE_API_PATH = apiUrl('listing/api');
 
-export default function ManageListings({ onCreateListing }) {
-    const [currentView, setCurrentView] = useState('manage');
+export default function ManageListings() {
+    const [currentView, setCurrentView] = useState(() => window.location.hash.startsWith('#edit=') ? 'edit' : 'manage');
     const [currentTab, setCurrentTab] = useState('active');
     const [listings, setListings] = useState([]);
     const [selectedListing, setSelectedListing] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [notice, setNotice] = useState(null);
+    const [busyId, setBusyId] = useState(null);
+    const loadSequence = React.useRef({ value: 0 });
+    const loadPending = React.useRef(false);
+    const mutating = React.useRef(false);
+    const mounted = React.useRef(false);
 
     const [uploadFile, setUploadFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const fileInputRef = React.useRef(null);
 
-    const loadDatabaseListings = async () => {
-        setLoading(true);
+    const loadDatabaseListings = async (force = true) => {
+        if (!mounted.current || document.hidden || mutating.current
+            || (!force && loadPending.current)) return;
+        const sequence = ++loadSequence.current.value;
+        loadPending.current = true;
         try {
             const response = await fetch(`${BASE_API_PATH}/get_my_listings.php`, {
-                method: 'GET',
-                headers: { 'Cache-Control': 'no-cache' }
+                method: 'GET', credentials: 'same-origin', cache: 'no-store',
             });
             const data = await response.json();
-            
-            if (data.success && data.results && data.results.length > 0) {
-                setListings(data.results);
-                setSelectedListing(data.results[0]);
-            } else {
-                setListings([]);
+            if (!mounted.current || sequence !== loadSequence.current.value || document.hidden) return;
+            if (!response.ok || data.success !== true || !Array.isArray(data.results)) {
+                throw new Error(data.error || 'Unable to load your listings.');
             }
+            setListings(data.results);
+            setSelectedListing((current) => data.results.find((item) => item.listing_id === current?.listing_id) ?? data.results[0] ?? null);
+            setLoadError('');
         } catch (err) {
-            console.error("Failed to sync live rows from database:", err);
+            if (mounted.current && sequence === loadSequence.current.value) {
+                setLoadError(err instanceof TypeError ? 'Could not connect to the server.' : err.message || 'Unable to load your listings.');
+            }
         } finally {
-            setLoading(false);
+            if (mounted.current && sequence === loadSequence.current.value) {
+                loadPending.current = false;
+                setLoading(false);
+            }
         }
     };
 
     useEffect(() => {
+        const sequenceState = loadSequence.current;
+        mounted.current = true;
         const styleOverride = document.createElement('style');
         styleOverride.innerHTML = `
             html, body, #root { 
@@ -98,7 +116,7 @@ export default function ManageListings({ onCreateListing }) {
         `;
         document.head.appendChild(styleOverride);
 
-        loadDatabaseListings();
+        queueMicrotask(() => loadDatabaseListings());
 
         const handleHashRouting = () => {
             if (window.location.hash.startsWith('#edit=')) {
@@ -107,10 +125,34 @@ export default function ManageListings({ onCreateListing }) {
                 setCurrentView('manage');
             }
         };
-        handleHashRouting();
-        window.addEventListener('hashchange', handleHashRouting);
+        const handleHashChange = () => {
+            ++loadSequence.current.value;
+            loadPending.current = false;
+            handleHashRouting();
+            if (!window.location.hash.startsWith('#edit=')) loadDatabaseListings();
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        const refresh = () => { if (!document.hidden && !window.location.hash.startsWith('#edit=')) loadDatabaseListings(); };
+        const visibility = () => {
+            ++loadSequence.current.value;
+            loadPending.current = false;
+            refresh();
+        };
+        const restored = (event) => { if (event.persisted) visibility(); };
+        const timer = setInterval(() => {
+            if (!window.location.hash.startsWith('#edit=')) loadDatabaseListings(false);
+        }, MEETING_REFRESH_MS);
+        window.addEventListener('focus', refresh);
+        window.addEventListener('pageshow', restored);
+        document.addEventListener('visibilitychange', visibility);
         return () => {
-            window.removeEventListener('hashchange', handleHashRouting);
+            mounted.current = false;
+            ++sequenceState.value;
+            clearInterval(timer);
+            window.removeEventListener('focus', refresh);
+            window.removeEventListener('pageshow', restored);
+            document.removeEventListener('visibilitychange', visibility);
+            window.removeEventListener('hashchange', handleHashChange);
             document.head.removeChild(styleOverride);
         };
     }, []);
@@ -121,29 +163,35 @@ export default function ManageListings({ onCreateListing }) {
     };
 
     const handleAction = async (id, actionType) => {
+        if (mutating.current) return;
+        const item = listings.find((listing) => listing.listing_id === id);
+        if (!item || (actionType === 'mark_sold' && item.can_mark_sold !== true)) return;
         const nextStatus = actionType === 'mark_sold' ? 'sold' : actionType === 'mark_active' ? 'active' : 'deleted';
-        
-        if (nextStatus === 'deleted') {
-            setListings(curr => curr.filter(item => item.listing_id !== id));
-            try {
-                await fetch(`${BASE_API_PATH}/update_listing.php`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'delete', listing_id: id })
-                });
-            } catch (err) {
-                console.error("Database connection error:", err);
-            }
-        } else {
-            setListings(curr => curr.map(item => item.listing_id === id ? { ...item, status: nextStatus } : item));
-            try {
-                await fetch(`${BASE_API_PATH}/update_listing.php`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'update_status', listing_id: id, status: nextStatus })
-                });
-            } catch (err) {
-                console.error("Database connection error:", err);
+        mutating.current = true;
+        ++loadSequence.current.value;
+        loadPending.current = false;
+        setBusyId(id);
+        setNotice(null);
+        const body = nextStatus === 'deleted' ? { action: 'delete', listing_id: id }
+            : { action: 'update_status', listing_id: id, status: nextStatus };
+        if (nextStatus === 'sold' && Number.isInteger(item.sale_request_id)) body.request_id = item.sale_request_id;
+        try {
+            await updateListing(body);
+            if (!mounted.current) return;
+            if (nextStatus === 'deleted') setListings((current) => current.filter((listing) => listing.listing_id !== id));
+            else setListings((current) => current.map((listing) => listing.listing_id === id
+                ? { ...listing, status: nextStatus, can_mark_sold: false } : listing));
+            setNotice({ kind: 'success', text: nextStatus === 'sold' ? 'Listing marked as sold.'
+                : nextStatus === 'active' ? 'Listing marked as available.' : 'Listing deleted.' });
+        } catch (err) {
+            if (mounted.current) setNotice({ kind: 'error', text: err instanceof TypeError
+                ? 'Could not connect to the server. Reload to check the listing status.'
+                : err.message || 'Unable to update the listing.' });
+        } finally {
+            mutating.current = false;
+            if (mounted.current) {
+                await loadDatabaseListings();
+                setBusyId(null);
             }
         }
     };
@@ -338,8 +386,11 @@ export default function ManageListings({ onCreateListing }) {
             <main style={{ width: '100%', maxWidth: '1240px', margin: '0 auto', padding: '40px 20px', display: 'flex', flexDirection: 'column', gap: 8, boxSizing: 'border-box', textAlign: 'left' }}>
                 <div style={{ color: '#1F2F46', fontSize: 30, fontFamily: 'DM Sans', fontWeight: '700', lineHeight: '42px', marginTop: 20 }}>My listings</div>
                 <div style={{ color: '#6E87A0', fontSize: 15, fontFamily: 'DM Sans', fontWeight: '400', lineHeight: '21px' }}>
-                    {listings.length === 0 ? 'Your listing was deleted.' : currentTab === 'active' ? 'Only items published by you appear here. Manage their details and availability.' : 'Sold items remain visible to you but are hidden from marketplace search.'}
+                    {currentTab === 'active' ? 'Only items published by you appear here. Manage their details and availability.' : 'Sold items remain visible to you but are hidden from marketplace search.'}
                 </div>
+                {loading && <p role="status">Loading listings...</p>}
+                {loadError && <p role="alert">{loadError} <button type="button" onClick={() => loadDatabaseListings()}>Reload listings</button></p>}
+                {notice && <p role={notice.kind === 'error' ? 'alert' : 'status'}>{notice.text}</p>}
                 
                 <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                     <button type="button" onClick={() => setCurrentTab('active')} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #1F2F46', cursor: 'pointer', background: currentTab === 'active' ? '#1F2F46' : '#FFF', color: currentTab === 'active' ? '#FFF' : '#1F2F46', fontWeight: '700', fontSize: '14px', fontFamily: 'DM Sans' }}>View Active ({activeItems.length})</button>
@@ -350,7 +401,7 @@ export default function ManageListings({ onCreateListing }) {
                     {currentTab === 'active' ? `${activeItems.length} Active` : `${soldItems.length} Sold`} Listing
                 </div>
 
-                {listings.length === 0 ? (
+                {!loading && !loadError && listings.length === 0 ? (
                     <div style={{ width: '100%', height: 360, background: 'white', borderRadius: 18, border: '1px solid #D1D6DB', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32, boxSizing: 'border-box' }}>
                         <div style={{ color: '#1F2F46', fontSize: 28, fontFamily: 'DM Sans', fontWeight: '700' }}>No listings yet</div>
                         <div style={{ color: '#6E87A0', fontSize: 16, fontFamily: 'DM Sans', fontWeight: '400' }}>Create a new listing when you are ready to sell another item.</div>
@@ -396,16 +447,21 @@ export default function ManageListings({ onCreateListing }) {
                                         <div style={{ color: '#6E87A0', fontSize: 16, fontFamily: 'DM Sans', fontWeight: '400' }}>{item.related_course}</div>
                                         
                                         <div style={{ color: '#1F2F46', fontSize: 13, fontFamily: 'DM Sans', fontWeight: '700' }}>LISTING ACTIONS</div>
-                                        <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
-                                            <div onClick={() => { setSelectedListing(item); window.location.hash = `edit=${item.listing_id}`; }} style={{ width: 180, height: 48, background: '#1F2F46', borderRadius: 8, justifyContent: 'center', alignItems: 'center', display: 'inline-flex', cursor: 'pointer' }}>
-                                                <div style={{ color: '#F7F3EA', fontSize: 16, fontFamily: 'DM Sans', fontWeight: '700' }}>Edit listing</div>
-                                            </div>
-                                            <div onClick={() => handleAction(item.listing_id, itemStatus === 'active' ? 'mark_sold' : 'mark_active')} style={{ width: 200, height: 48, background: 'white', borderRadius: 8, outline: '1px #1F2F46 solid', outlineOffset: '-1px', justifyContent: 'center', alignItems: 'center', display: 'inline-flex', cursor: 'pointer' }}>
-                                                <div style={{ color: '#1F2F46', fontSize: 16, fontFamily: 'DM Sans', fontWeight: '700' }}>{itemStatus === 'active' ? 'Mark as sold' : 'Mark as available'}</div>
-                                            </div>
-                                            <div onClick={() => handleAction(item.listing_id, 'delete')} style={{ width: 140, height: 48, background: 'white', borderRadius: 8, outline: '1px #C72929 solid', outlineOffset: '-1px', justifyContent: 'center', alignItems: 'center', display: 'inline-flex', cursor: 'pointer' }}>
-                                                <div style={{ color: '#C72929', fontSize: 16, fontFamily: 'DM Sans', fontWeight: '700' }}>Delete</div>
-                                            </div>
+                                        {itemStatus === 'active' && item.can_mark_sold !== true && <p className="ml-sale-hint">
+                                            {item.can_mark_sold === false
+                                                ? 'Both buyer and seller must check in to the same approved meeting before you can mark this listing as sold.'
+                                                : 'Check-in status unavailable. Reload listings.'}
+                                        </p>}
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 4 }}>
+                                            <button type="button" className="ml-status-action ml-edit" disabled={busyId !== null}
+                                                onClick={() => { setSelectedListing(item); window.location.hash = `edit=${item.listing_id}`; }}>Edit listing</button>
+                                            <button type="button" className="ml-status-action"
+                                                disabled={busyId !== null || (itemStatus === 'active' && item.can_mark_sold !== true)}
+                                                onClick={() => handleAction(item.listing_id, itemStatus === 'active' ? 'mark_sold' : 'mark_active')}>
+                                                {itemStatus === 'active' ? 'Mark as sold' : 'Mark as available'}
+                                            </button>
+                                            <button type="button" className="ml-status-action ml-delete" disabled={busyId !== null}
+                                                onClick={() => handleAction(item.listing_id, 'delete')}>Delete</button>
                                         </div>
                                     </div>
                                 </div>

@@ -34,8 +34,9 @@ export function positionResult(position, meeting, now = Date.now()) {
 }
 
 export function windowState(meeting, serverNow) {
-    if (meeting.checked_in_at) return 'checked_in';
+    if (meeting.self_checked_in_at) return 'checked_in';
     if (meeting.status !== 'approved') return 'not_approved';
+    if (meeting.listing_status !== 'active') return 'listing_unavailable';
     if (!validLocation(meeting.location)) return 'location_unavailable';
     if (serverNow < Date.parse(meeting.opens_at)) return 'not_open';
     if (serverNow > Date.parse(meeting.closes_at)) return 'closed';
@@ -54,7 +55,8 @@ export function windowMessage(meeting, state) {
     if (state === 'closed') return 'Check-in has closed.';
     if (state === 'not_approved') return 'This meeting is not approved.';
     if (state === 'location_unavailable') return 'The agreed meeting location is unavailable.';
-    if (state === 'checked_in') return `Checked in at ${campusTime(meeting.checked_in_at)}.`;
+    if (state === 'listing_unavailable') return 'This listing is no longer available.';
+    if (state === 'checked_in') return `Checked in at ${campusTime(meeting.self_checked_in_at)}.`;
     return `Check-in is open until ${campusTime(meeting.closes_at)}.`;
 }
 
@@ -71,11 +73,19 @@ async function jsonRequest(url, options) {
     return data;
 }
 
+const validTimestamp = (value) => typeof value === 'string' && value.length > 0 && Number.isFinite(Date.parse(value));
+const validProgress = (data) => ['buyer', 'seller'].includes(data.participant_role)
+    && [data.buyer_checked_in_at, data.seller_checked_in_at].every((value) => value === null || validTimestamp(value))
+    && typeof data.both_checked_in === 'boolean' && typeof data.can_mark_sold === 'boolean';
+
 export async function fetchCheckin(requestId, signal) {
     const { meeting } = await jsonRequest(`./api/get_meeting_checkin.php?request_id=${encodeURIComponent(requestId)}`, { signal });
     if (!meeting || meeting.request_id !== Number(requestId)
         || ![meeting.server_now, meeting.opens_at, meeting.closes_at].every((value) => Number.isFinite(Date.parse(value)))
-        || (meeting.checked_in_at && !Number.isFinite(Date.parse(meeting.checked_in_at)))) {
+        || !validProgress(meeting)
+        || !['active', 'sold'].includes(meeting.listing_status)
+        || (meeting.self_checked_in_at !== null && !validTimestamp(meeting.self_checked_in_at))
+        || meeting.self_checked_in_at !== (meeting.participant_role === 'seller' ? meeting.seller_checked_in_at : meeting.buyer_checked_in_at)) {
         throw new Error('The meeting response is unavailable. Reload and try again.');
     }
     return meeting;
@@ -87,6 +97,9 @@ export async function submitCheckin(requestId, position) {
         body: JSON.stringify({ request_id: Number(requestId), latitude: position.coords.latitude,
             longitude: position.coords.longitude, accuracy_m: position.coords.accuracy, captured_at: position.timestamp }),
     });
-    if (!Number.isFinite(Date.parse(data.checked_in_at))) throw new Error('Check-in could not be confirmed. Reload to check its status.');
-    return data.checked_in_at;
+    if (!validProgress(data) || !validTimestamp(data.checked_in_at)
+        || data.checked_in_at !== (data.participant_role === 'seller' ? data.seller_checked_in_at : data.buyer_checked_in_at)) {
+        throw new Error('Check-in could not be confirmed. Reload to check its status.');
+    }
+    return data;
 }
