@@ -6,17 +6,23 @@ The #205 worktree is based on dev merge `14d24c5`, which includes the #206 contr
 
 The check-in page identifies the participant role and uses `self_checked_in_at` for its controls, saved confirmation and location lifecycle. GET/list `checked_in_at` retains its buyer meaning. Completing a seller check-in never overwrites that field with the seller time. An incomplete/outdated response cannot produce a false arrival or enable submission. A sold listing blocks new attendance; existing attendance remains readable.
 
-Requests for My Items shows **Mark as sold** only when both timestamps and the server's eligibility flag are present for that approved, active meeting. It submits the listing ID and that exact request ID. A successful response updates all displayed requests for that listing to **Listing sold.** Both arrival orders work; check-in and polling never automatically sell.
+Requests for My Items shows **Mark as sold** only when both timestamps and the server's eligibility flag are present for that approved, active meeting. It submits the listing ID and that exact request ID. After server confirmation, all requests for that listing are immediately removed from Home. Both arrival orders work; check-in and polling never automatically sell.
 
 My Listings keeps the existing **Mark as sold** action disabled until the server returns `can_mark_sold:true`. It sends `sale_request_id` when supplied. It also refreshes every 15 seconds while visible and on focus/return, preserves known rows on read failures, and suspends background reads while editing so drafts are not overwritten. Actions use native buttons with disabled and keyboard states.
 
 Both sale entry points wait for server confirmation, prevent duplicate submissions, display server rejection messages and reload authoritative state after a response failure. Earlier polls cannot restore an active row after a successful sale. Failed actions never optimistically claim Sold. Sold items remain in My Listings under **View Sold**. Existing Mark as Available and Delete actions also await the server result. No Message Seller or Message navigation dependency is needed.
 
-### Local verification (October 30)
+### Sold visibility correction (October 30)
 
-- Focused: `CheckIn.test.jsx`, `MeetingProgress.test.jsx`, `MeetingRequests.test.jsx`, `ManageListings.test.jsx`: **4 files / 82 tests**.
-- Complete frontend: **22 files / 314 tests**. Changed-file lint passes without warnings. The release build verifies **141 managed files** and all **4 release checks** pass.
-- Independent buyer/seller browser sessions against real local PHP/SQLite pass **40 integration checks**, covering both arrival orders and explicit sales from Home and My Listings, on 1440 px and 390 px viewports. Geolocation is browser-emulated; this is not physical or deployed acceptance. The disposable test never accesses application or grading data.
+Sold listings are excluded from **both** Home request lists, including initial loads, 15-second polls, focus/return refreshes and local request mutations. This applies to every request for that listing, including pending requests from other buyers. A confirmed local sale disappears even if its follow-up refresh fails; a rejected sale stays visible. Two check-ins alone do not hide an active listing. Empty lists use the existing empty-state messages.
+
+The database, meeting timestamps and list/detail API history are retained. **My Listings → View Sold** continues showing sold listings. This correction is frontend-only and requires no additional migration.
+
+### Local verification (October 30, including Sold visibility correction)
+
+- Focused: `CheckIn.test.jsx`, `MeetingProgress.test.jsx`, `MeetingRequests.test.jsx`, `ManageListings.test.jsx`: **4 files / 89 tests**.
+- Complete frontend: **22 files / 321 tests**. Changed-file lint passes without warnings. The release build verifies **141 managed files** and all **4 release checks** pass.
+- Independent buyer/seller browser sessions against real local PHP/SQLite pass **44 integration checks**, covering both arrival orders, explicit sales from Home and My Listings, removal from both Home lists after reload, and preserved Sold history on 1440 px and 390 px viewports. Geolocation is browser-emulated; this is not physical or deployed acceptance. The disposable test never accesses application or grading data.
 
 Run from the repository root:
 

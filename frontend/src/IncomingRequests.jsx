@@ -55,9 +55,8 @@ function IncomingRequests() {
         try {
             await updateListing({ action: 'update_status', listing_id: request.listing_id,
                 status: 'sold', request_id: request.request_id });
-            // A listing can have several requests; none should offer a new arrival or sale.
-            setRequests((current) => current.map((item) => item.listing_id === request.listing_id
-                ? { ...item, listing_status: 'sold', can_mark_sold: false } : item));
+            // Remove every request for this listing from Home after the confirmed sale.
+            setRequests((current) => current.filter((item) => item.listing_id !== request.listing_id));
             setMessage({ kind: 'success', text: 'Listing marked as sold.' });
         } catch (failure) {
             setMessage({ kind: 'error', text: failure instanceof TypeError

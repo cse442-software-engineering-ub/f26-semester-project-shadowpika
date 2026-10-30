@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 
 export const MEETING_REFRESH_MS = 15000;
 
+// Home contains current requests; sold listings remain available through history APIs.
+const withoutSoldListings = (requests) => requests.filter((request) => request.listing_status !== 'sold');
+
 // One lifecycle owns background reads. Mutations invalidate earlier reads so an
 // old poll cannot restore a canceled request or undo a successful approval.
 export default function useMeetingList(load, failureMessage) {
@@ -20,7 +23,7 @@ export default function useMeetingList(load, failureMessage) {
                 const data = await load();
                 if (disposed || token !== sequence || document.hidden) return;
                 if (!data.success || !Array.isArray(data.requests)) throw new Error(data.error || failureMessage);
-                setView({ requests: data.requests, status: 'done', error: '' });
+                setView({ requests: withoutSoldListings(data.requests), status: 'done', error: '' });
             } catch (failure) {
                 if (disposed || token !== sequence || document.hidden) return;
                 setView((previous) => ({ ...previous, status: previous.status === 'done' ? 'done' : 'error',
@@ -50,7 +53,7 @@ export default function useMeetingList(load, failureMessage) {
                 if (disposed) return;
                 ++sequence;
                 pending = false;
-                setView((previous) => ({ ...previous, status: 'done', error: '', requests: update(previous.requests) }));
+                setView((previous) => ({ ...previous, status: 'done', error: '', requests: withoutSoldListings(update(previous.requests)) }));
             },
         };
         refresh();
