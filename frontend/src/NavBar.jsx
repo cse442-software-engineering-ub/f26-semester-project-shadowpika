@@ -269,7 +269,7 @@ function NavBar() {
         const closeOnEscape = (event) => {
             if (event.key === 'Escape') close();
         };
-        const desktop = window.matchMedia('(min-width: 769px)');
+        const desktop = window.matchMedia('(width > 768px)');
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         document.addEventListener('keydown', closeOnEscape);

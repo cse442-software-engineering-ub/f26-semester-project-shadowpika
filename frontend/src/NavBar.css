@@ -248,8 +248,10 @@
 }
 
 /* Narrow desktop: tighter spacing so every item, Log Out included, fits on one line
-   without sideways scrolling down to 769px, even with a long community name */
-@media (min-width: 769px) and (max-width: 1100px) {
+   without sideways scrolling down to 769px, even with a long community name.
+   `width > 768px` (not min-width: 769px) so zoomed/scaled screens with fractional widths
+   such as 768.2px get this rule instead of falling between it and the mobile rule. */
+@media (width > 768px) and (max-width: 1100px) {
   .nav-bar {
     padding: 0 10px 0 12px;
   }
