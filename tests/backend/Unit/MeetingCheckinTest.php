@@ -50,8 +50,9 @@ final class MeetingCheckinTest extends TestCase
     {
         $this->assertSame(401, karavan_get_meeting_checkin($this->pdo, null, 1)[0]);
         $this->assertSame(401, karavan_check_in_meeting($this->pdo, null, $this->body())[0]);
-        $this->assertSame(404, karavan_get_meeting_checkin($this->pdo, $this->ids['seller'], $this->ids['request'])[0]);
-        $this->assertSame(404, karavan_check_in_meeting($this->pdo, $this->ids['seller'], $this->body())[0]);
+        $outsider = TestDatabase::addUser($this->pdo, 'checkin-outsider');
+        $this->assertSame(404, karavan_get_meeting_checkin($this->pdo, $outsider, $this->ids['request'])[0]);
+        $this->assertSame(404, karavan_check_in_meeting($this->pdo, $outsider, $this->body())[0]);
         $this->assertSame(404, $this->post(['request_id' => 99999])[0]);
         foreach ([null, [], true, 0, -1, '1.5', 'bad'] as $id) $this->assertSame(400, $this->post(['request_id' => $id])[0]);
     }

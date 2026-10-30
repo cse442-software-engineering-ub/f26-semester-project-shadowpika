@@ -53,7 +53,7 @@ final class MeetingCheckinHttpTest extends TestCase
 
     private function request(string $method, string $path, ?array $body = null, ?int $user = null): array
     {
-        $curl = curl_init(self::$url . '/api/' . $path);
+        $curl = curl_init(self::$url . (str_starts_with($path, '/') ? $path : '/api/' . $path));
         $headers = ['Content-Type: application/json'];
         if ($user !== null) {
             $session = bin2hex(random_bytes(16));
@@ -82,8 +82,9 @@ final class MeetingCheckinHttpTest extends TestCase
         $this->assertSame(405, $this->request('GET', 'check_in_meeting.php')[0]);
         $this->assertSame(401, $this->request('GET', 'get_meeting_checkin.php?request_id=1')[0]);
         $this->assertSame(401, $this->request('POST', 'check_in_meeting.php', $this->body())[0]);
-        $this->assertSame(404, $this->request('GET', 'get_meeting_checkin.php?request_id=1', null, $this->ids['seller'])[0]);
-        $this->assertSame(404, $this->request('POST', 'check_in_meeting.php', $this->body(), $this->ids['seller'])[0]);
+        $outsider = TestDatabase::addUser($this->pdo, 'http-unrelated');
+        $this->assertSame(404, $this->request('GET', 'get_meeting_checkin.php?request_id=1', null, $outsider)[0]);
+        $this->assertSame(404, $this->request('POST', 'check_in_meeting.php', $this->body(), $outsider)[0]);
         $this->assertSame(400, $this->request('GET', 'get_meeting_checkin.php?request_id[]=1', null, $this->ids['buyer'])[0]);
         $this->assertSame(400, $this->request('POST', 'check_in_meeting.php', [], $this->ids['buyer'])[0]);
     }
@@ -105,6 +106,43 @@ final class MeetingCheckinHttpTest extends TestCase
         $this->assertNotNull($this->pdo->query('SELECT checked_in_at FROM meeting_requests')->fetchColumn());
         $list = $this->request('GET', 'get_my_meeting_requests.php', null, $buyer);
         $this->assertSame(1, $list[1]['requests'][0]['request_id']);
+    }
+
+    public function testSellerFirstAndBuyerSecondUnlockOnlyASellerRequestedSale(): void
+    {
+        $seller = $this->ids['seller'];
+        $buyer = $this->ids['buyer'];
+        $sold = ['action' => 'update_status', 'listing_id' => $this->ids['listing'], 'status' => 'sold'];
+        $endpoint = '/listing/api/update_listing.php';
+        $this->assertSame(401, $this->request('POST', $endpoint, $sold)[0]);
+        $blocked = $this->request('POST', $endpoint, $sold, $seller);
+        $this->assertSame(409, $blocked[0]);
+        $this->assertSame('checkins_required', $blocked[1]['code']);
+        $one = $this->request('POST', 'check_in_meeting.php', $this->body(), $seller);
+        $this->assertSame(200, $one[0]);
+        $this->assertSame('seller', $one[1]['participant_role']);
+        $this->assertNull($one[1]['buyer_checked_in_at']);
+        $this->assertFalse($one[1]['both_checked_in']);
+        $this->assertSame(409, $this->request('POST', $endpoint, $sold, $seller)[0]);
+        $two = $this->request('POST', 'check_in_meeting.php', $this->body(), $buyer);
+        $this->assertSame(200, $two[0]);
+        $this->assertTrue($two[1]['both_checked_in']);
+        $this->assertSame('active', $this->pdo->query('SELECT status FROM listings')->fetchColumn());
+        $eligible = $this->request('GET', '/listing/api/get_my_listings.php', null, $seller);
+        $this->assertSame(200, $eligible[0]);
+        $this->assertTrue($eligible[1]['results'][0]['can_mark_sold']);
+        $this->assertSame($this->ids['request'], $eligible[1]['results'][0]['sale_request_id']);
+        $this->assertSame(404, $this->request('POST', $endpoint, $sold, $buyer)[0]);
+        $before = $this->pdo->query('SELECT * FROM meeting_requests')->fetch();
+        $this->assertSame(200, $this->request('POST', $endpoint, $sold, $seller)[0]);
+        $this->assertSame('sold', $this->pdo->query('SELECT status FROM listings')->fetchColumn());
+        $this->assertSame($before, $this->pdo->query('SELECT * FROM meeting_requests')->fetch());
+        $progress = $this->request('GET', 'get_incoming_meeting_requests.php', null, $seller)[1]['requests'][0];
+        $this->assertTrue($progress['both_checked_in']);
+        $this->assertSame('sold', $progress['listing_status']);
+        $this->assertFalse($progress['can_mark_sold']);
+        $this->assertSame($one[1]['checked_in_at'],
+            $this->request('POST', 'check_in_meeting.php', ['request_id' => $this->ids['request']], $seller)[1]['checked_in_at']);
     }
 
     public function testBothAccountsReceiveProgressAndApprovedLocationCannotBeChanged(): void

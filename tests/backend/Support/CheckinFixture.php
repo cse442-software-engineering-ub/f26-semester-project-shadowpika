@@ -8,12 +8,6 @@ final class CheckinFixture
 {
     public static function create(PDO $pdo, string $date = '2026-11-06', string $time = '12:00:00'): array
     {
-        $pdo->exec("CREATE TABLE meeting_requests (
-            request_id INTEGER PRIMARY KEY AUTOINCREMENT, buyer_id INTEGER NOT NULL,
-            listing_id INTEGER NOT NULL, meeting_date TEXT NOT NULL, meeting_time TEXT NOT NULL,
-            location_id INTEGER NULL REFERENCES approved_locations(id) ON DELETE SET NULL,
-            location_label TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            checked_in_at TEXT NULL)");
         $buyer = TestDatabase::addUser($pdo, 'checkin-buyer');
         $seller = TestDatabase::addUser($pdo, 'checkin-seller');
         $listing = TestDatabase::addListing($pdo, $seller, ['name' => 'Temporary Check-in Item']);
