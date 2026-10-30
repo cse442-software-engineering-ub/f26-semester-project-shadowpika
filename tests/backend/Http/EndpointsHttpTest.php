@@ -90,6 +90,16 @@ final class EndpointsHttpTest extends TestCase
         return $sessionId;
     }
 
+    private function linkAdminCommunity(int $userId, string $email, string $business = 'Keller Properties LLC'): int
+    {
+        return TestDatabase::addRequest($this->pdo, [
+            'business_name' => $business,
+            'email'         => $email,
+            'status'        => 'approved',
+            'user_id'       => $userId,
+        ]);
+    }
+
     private function request(string $method, string $path, $body = null, ?string $sessionId = null, array $headers = []): array
     {
         $ch = curl_init(self::$baseUrl . '/' . $path);
@@ -705,7 +715,8 @@ final class EndpointsHttpTest extends TestCase
     // Approved locations backend, Tests 1-3: an admin who signed in on the normal login page
     public function testAdminCanListAddAndRemoveLocationsAfterLoggingIn(): void
     {
-        TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin');
+        $adminId = TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin');
+        $this->linkAdminCommunity($adminId, 'alex.landlord@test.com');
         [$login, $session] = $this->login('alex.landlord@test.com', 'Password123!');
         $this->assertSame('admin', $login['role']);
 
@@ -793,7 +804,9 @@ final class EndpointsHttpTest extends TestCase
     // Approved locations backend, Test 5
     public function testInvalidCoordinatesReturn400AndCreateNoRow(): void
     {
-        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin'));
+        $adminId = TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin');
+        $this->linkAdminCommunity($adminId, 'alex.landlord@test.com');
+        $session = $this->sessionFor($adminId);
 
         [$status, , $raw] = $this->postJson('add_approved_location.php', '{"lat":999,"lng":-78.8328,"label":"InvalidSpot"}', $session);
 
@@ -804,7 +817,9 @@ final class EndpointsHttpTest extends TestCase
 
     public function testRemovingAMissingLocationReturns404(): void
     {
-        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin'));
+        $adminId = TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin');
+        $this->linkAdminCommunity($adminId, 'alex.landlord@test.com');
+        $session = $this->sessionFor($adminId);
 
         [$status, $json] = $this->postJson('remove_approved_location.php', '{"location_id":424242}', $session);
 
@@ -814,7 +829,9 @@ final class EndpointsHttpTest extends TestCase
 
     public function testLocationEndpointsRejectTheWrongMethod(): void
     {
-        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin'));
+        $adminId = TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin');
+        $this->linkAdminCommunity($adminId, 'alex.landlord@test.com');
+        $session = $this->sessionFor($adminId);
 
         [$getStatus] = $this->postJson('get_approved_locations.php', '{}', $session);
         [$addStatus] = $this->request('GET', 'add_approved_location.php', null, $session);
@@ -906,9 +923,9 @@ final class EndpointsHttpTest extends TestCase
         $this->assertSame(200, $listStatus);
         $this->assertSame(
             '{"success":true,"communities":['
-            . '{"community_id":' . $allOfUb . ',"name":"All of UB","joined":true,"shopping":true,"automatic":true,"pending":false},'
-            . '{"community_id":' . $keller . ',"name":"Keller Properties LLC","joined":false,"shopping":false,"automatic":false,"pending":false},'
-            . '{"community_id":' . $riverside . ',"name":"Riverside Apartments","joined":false,"shopping":false,"automatic":false,"pending":false}]}',
+            . '{"community_id":' . $allOfUb . ',"name":"All of UB","joined":true,"shopping":true,"automatic":true,"pending":false,"administrator":false},'
+            . '{"community_id":' . $keller . ',"name":"Keller Properties LLC","joined":false,"shopping":false,"automatic":false,"pending":false,"administrator":false},'
+            . '{"community_id":' . $riverside . ',"name":"Riverside Apartments","joined":false,"shopping":false,"automatic":false,"pending":false,"administrator":false}]}',
             $listRaw
         );
 
@@ -1043,6 +1060,103 @@ final class EndpointsHttpTest extends TestCase
         $this->assertSame([403, $listRaw], [$leaveStatus, $leaveRaw]);
         [$shopStatus, , $shopRaw] = $this->postJson('set_shopping_communities.php', json_encode(['community_ids' => [$keller]]), null);
         $this->assertSame([403, $listRaw], [$shopStatus, $shopRaw]);
+    }
+
+    // Community administrator flag backend, Tests 1-2: administered community is flagged without a membership row.
+    public function testListCommunitiesMarksTheAdministeredCommunityWithoutJoining(): void
+    {
+        $adminId = TestDatabase::addUser($this->pdo, 'morgan.keller1@test.com', 'admin', 'morgan.keller1@test.com');
+        $keller = $this->linkAdminCommunity($adminId, 'morgan.keller1@test.com', 'Keller Properties LLC');
+        $second = $this->approvedCommunity('Second Community LLC', 'pat.second204@test.com');
+        $this->grantMembership('morgan.keller1@test.com', $second);
+        $session = $this->sessionFor($adminId);
+
+        [$status, $body] = $this->request('GET', 'list_communities.php', null, $session);
+
+        $this->assertSame(200, $status);
+        $byId = array_column($body['communities'], null, 'community_id');
+        $this->assertSame(true, $byId[$keller]['administrator']);
+        $this->assertSame(false, $byId[$keller]['joined']);
+        $this->assertSame(false, $byId[$second]['administrator']);
+        $this->assertSame(true, $byId[$second]['joined']);
+        foreach ($body['communities'] as $community) {
+            if ((int) $community['community_id'] !== $keller) {
+                $this->assertSame(false, $community['administrator']);
+            }
+        }
+        $this->assertSame(0, (int) $this->pdo->query(
+            "SELECT COUNT(*) FROM community_members WHERE user_id = {$adminId} AND community_id = {$keller}"
+        )->fetchColumn());
+    }
+
+    // Community administrator flag backend, Test 3: shopping access still applies with joined:false.
+    public function testAdministratorCanViewTheirCommunityListingWithoutJoining(): void
+    {
+        $adminId = TestDatabase::addUser($this->pdo, 'morgan.keller1@test.com', 'admin', 'morgan.keller1@test.com');
+        $this->linkAdminCommunity($adminId, 'morgan.keller1@test.com');
+        $listingId = TestDatabase::addListing($this->pdo, TestDatabase::addUser($this->pdo, 'sam.seller'), [
+            'name'      => 'Mini Fridge',
+            'community' => 'Keller Properties LLC',
+        ]);
+
+        [$status, $body] = $this->request(
+            'GET',
+            "api/get_item_details.php?listing_id=$listingId",
+            null,
+            $this->sessionFor($adminId)
+        );
+
+        $this->assertSame(200, $status);
+        $this->assertSame('Mini Fridge', $body['listing']['name']);
+    }
+
+    // Community administrator flag backend, Tests 4-5: locations stay inside the administered community.
+    public function testApprovedLocationsStayInsideTheAdministeredCommunity(): void
+    {
+        $kellerAdmin = TestDatabase::addUser($this->pdo, 'morgan.keller1@test.com', 'admin', 'morgan.keller1@test.com');
+        $patId = TestDatabase::addUser($this->pdo, 'pat.second204@test.com', 'admin', 'pat.second204@test.com');
+        $this->linkAdminCommunity($kellerAdmin, 'morgan.keller1@test.com', 'Keller Properties LLC');
+        $second = $this->linkAdminCommunity($patId, 'pat.second204@test.com', 'Second Community LLC');
+        $kellerSession = $this->sessionFor($kellerAdmin);
+        $patSession = $this->sessionFor($patId);
+
+        [$addStatus, $added] = $this->postJson(
+            'add_approved_location.php',
+            '{"lat":43.0050,"lng":-78.7900,"label":"Second Community Office"}',
+            $patSession
+        );
+        $this->assertSame(201, $addStatus);
+        $secondLocationId = $added['location_id'];
+
+        [$kellerAddStatus] = $this->postJson(
+            'add_approved_location.php',
+            '{"lat":43.0009,"lng":-78.7894,"label":"Keller HQ"}',
+            $kellerSession
+        );
+        $this->assertSame(201, $kellerAddStatus);
+
+        [$listStatus, $list] = $this->request('GET', 'get_approved_locations.php', null, $kellerSession);
+        $this->assertSame(200, $listStatus);
+        $this->assertSame(['Keller HQ'], array_column($list['locations'], 'label'));
+
+        [$forbiddenAdd, , $forbiddenAddRaw] = $this->postJson(
+            'add_approved_location.php',
+            json_encode(['lat' => 43.0060, 'lng' => -78.7910, 'label' => 'Unauthorized Add', 'community_id' => $second]),
+            $kellerSession
+        );
+        $this->assertSame(403, $forbiddenAdd);
+        $this->assertSame('{"success":false,"error":"You do not have permission to perform this action."}', $forbiddenAddRaw);
+
+        [$forbiddenRemove, , $forbiddenRemoveRaw] = $this->postJson(
+            'remove_approved_location.php',
+            json_encode(['location_id' => $secondLocationId]),
+            $kellerSession
+        );
+        $this->assertSame(403, $forbiddenRemove);
+        $this->assertSame('{"success":false,"error":"You do not have permission to perform this action."}', $forbiddenRemoveRaw);
+        $this->assertNotFalse(
+            $this->pdo->query("SELECT id FROM approved_locations WHERE id = {$secondLocationId}")->fetch()
+        );
     }
 
     public function testCommunityEndpointsRejectTheWrongMethod(): void
