@@ -204,6 +204,11 @@
   cursor: pointer;
 }
 
+/* Hidden on every item page until Messages works; the button stays in ItemDetails.jsx. */
+.ps-page .id-message-seller {
+  display: none;
+}
+
 .ps-page .id-message-seller:hover,
 .ps-page .id-message-seller:focus-visible {
   background: var(--ps-cream);

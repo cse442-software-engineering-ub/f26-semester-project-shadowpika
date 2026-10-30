@@ -4,13 +4,15 @@
   --nav-navy: #1f2d44;
   --nav-cream: #f6f1ea;
   --nav-white: #ffffff;
+  --nav-gold: #d9a441;
+  --nav-hover: rgba(255, 255, 255, 0.12);
 
   /* Above page content (Leaflet panes use 400+) and the community picker (1100), so the nav stays clickable. */
   position: relative;
   z-index: 1200;
-  background: var(--nav-cream);
+  background: var(--nav-navy);
   font-family: 'DM Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
-  color: var(--nav-navy);
+  color: var(--nav-white);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -38,7 +40,12 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  border-radius: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.nav-logo:hover {
+  background: var(--nav-hover);
 }
 
 .nav-logo-icon {
@@ -61,47 +68,100 @@
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 60px;
+  gap: 22px;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 60px;
+  gap: 14px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.nav-link {
+/* The Message page is hidden from the navbar until Messages works; the links stay in NavBar.jsx. */
+.nav .nav-message-item {
+  display: none;
+}
+
+.nav .nav-link {
+  position: relative;
+  display: block;
+  padding: 8px 14px;
+  color: rgba(255, 255, 255, 0.86);
   font-size: 18px;
   line-height: 24px;
   font-weight: 400;
-  border-radius: 4px;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.nav-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+.nav-logo,
+.nav .nav-icon-btn,
+.nav .nav-community,
+.nav .nav-drawer-link {
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.nav .nav-link:hover,
+.nav .nav-link.is-current {
+  background: var(--nav-hover);
+  color: var(--nav-white);
+}
+
+/* Current page: gold bar under the link or icon. */
+.nav .nav-link.is-current {
+  font-weight: 700;
+}
+
+.nav .nav-link.is-current::after,
+.nav .nav-icon-btn.is-current::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--nav-gold);
+  transform: translateX(-50%);
+}
+
+.nav .nav-link.is-current::after {
+  width: calc(100% - 28px);
+}
+
+.nav .nav-icon-btn.is-current::after {
+  width: 22px;
 }
 
 .nav-icons {
   display: flex;
   align-items: center;
-  gap: 38px;
+  gap: 12px;
+}
+
+/* Divider between the text links and the icon group */
+.nav-icons::before {
+  content: '';
+  width: 1px;
+  height: 28px;
+  margin-right: 10px;
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .nav .nav-icon-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: none;
-  color: var(--nav-navy);
+  color: var(--nav-white);
   cursor: pointer;
 }
 
@@ -115,17 +175,19 @@
   height: 20px;
 }
 
-.nav-icon-btn:hover {
-  background: rgba(31, 45, 68, 0.08);
+.nav .nav-icon-btn:hover,
+.nav .nav-icon-btn.is-current {
+  background: var(--nav-hover);
 }
 
 /* A button that looks like the text links beside it (navbar and header Log Out). Repeats
    .nav-link's type because page-level button resets (e.g. `.ps-page button { font: inherit }`) outrank it. */
 .nav .nav-text-button {
-  padding: 0;
+  padding: 8px 14px;
+  border-radius: 8px;
   border: none;
   background: none;
-  color: inherit;
+  color: rgba(255, 255, 255, 0.86);
   font-family: inherit;
   font-size: 18px;
   line-height: 24px;
@@ -133,16 +195,22 @@
   cursor: pointer;
 }
 
+.nav .nav-text-button:hover {
+  background: var(--nav-hover);
+  color: var(--nav-white);
+}
+
+/* Join a Community: the one gold call-to-action in the bar */
 .nav .nav-community {
   display: flex;
   align-items: center;
   gap: 8px;
   max-width: 240px;
-  height: 32px;
+  height: 36px;
   padding: 0 12px;
-  border: 1.5px solid var(--nav-navy);
-  border-radius: 6px;
-  background: none;
+  border: none;
+  border-radius: 8px;
+  background: var(--nav-gold);
   color: var(--nav-navy);
   font: inherit;
   font-size: 13px;
@@ -151,7 +219,8 @@
 }
 
 .nav .nav-community:hover {
-  background: rgba(31, 45, 68, 0.08);
+  background: #e6b75a;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12);
 }
 
 .nav-community svg {
@@ -174,7 +243,7 @@
 
 .nav a:focus-visible,
 .nav button:focus-visible {
-  outline: 2px solid var(--nav-navy);
+  outline: 2px solid var(--nav-gold);
   outline-offset: 3px;
 }
 
@@ -182,11 +251,11 @@
 @media (min-width: 769px) and (max-width: 1100px) {
   .nav-right,
   .nav-links {
-    gap: 24px;
+    gap: 6px;
   }
 
   .nav-icons {
-    gap: 20px;
+    gap: 4px;
   }
 
   .nav-logo-text {
@@ -229,7 +298,18 @@
   }
 
   .nav-icons {
-    gap: 22px;
+    gap: 8px;
+  }
+
+  .nav-icons::before {
+    display: none;
+  }
+
+  /* On the mobile bar the current icon's bar sits inside the 40px button */
+  .nav .nav-icon-btn.is-current::after {
+    bottom: 1px;
+    width: 12px;
+    height: 2px;
   }
 
   .nav .nav-menu-btn {
@@ -280,7 +360,8 @@
     width: min(300px, 78vw);
     padding: 20px 16px 24px 24px;
     overflow-y: auto;
-    background: var(--nav-cream);
+    background: var(--nav-navy);
+    color: var(--nav-white);
     border-radius: 18px 0 0 18px;
     box-shadow: -8px 0 24px rgba(15, 22, 34, 0.2);
     transform: translateX(100%);
@@ -354,8 +435,14 @@
     line-height: 1;
   }
 
-  .nav-drawer-link:hover {
-    background: rgba(31, 45, 68, 0.08);
+  .nav .nav-drawer-link:hover,
+  .nav .nav-drawer-link.is-current {
+    background: var(--nav-hover);
+  }
+
+  .nav .nav-drawer-link.is-current {
+    font-weight: 700;
+    box-shadow: inset 3px 0 0 var(--nav-gold);
   }
 
   /* Community and Log Out are buttons, so they need the .nav prefix to beat the global button reset. */
@@ -379,9 +466,14 @@
   }
 }
 
-@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce) {
   .nav-backdrop,
-  .nav-drawer {
+  .nav-drawer,
+  .nav-logo,
+  .nav .nav-link,
+  .nav .nav-icon-btn,
+  .nav .nav-community,
+  .nav .nav-drawer-link {
     transition: none;
   }
 }

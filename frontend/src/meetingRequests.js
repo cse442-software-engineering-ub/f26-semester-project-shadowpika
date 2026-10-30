@@ -4,6 +4,9 @@ import { buildItemDetailsUrl, findLocalListing } from './localListings.js';
 
 export const meetPageUrl = (listingId) => `./meet.html?listing_id=${encodeURIComponent(listingId)}`;
 
+// The item page opened from a purchase request: no Buy Now or meeting location, back goes to Home.
+export const requestItemUrl = (listingId) => `./item.html?listing_id=${encodeURIComponent(listingId)}&from=request`;
+
 const isLocalPreview = () => window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 // LOCAL PREVIEW MODE answers from the seed rows because `npm run dev` can't run PHP.

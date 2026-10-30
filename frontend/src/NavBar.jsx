@@ -27,6 +27,16 @@ const NAV_LINKS = [
 const SEARCH_PAGE = 'product-search.html';
 const FAVORITES_PAGE = 'favorites.html';
 
+// Marks the link of the page being shown. Every page under settings/ counts as Settings.
+function isCurrentPage(page) {
+    const path = window.location.pathname;
+    if (page.startsWith('settings/')) return /\/settings\/|\/settings\.html$/.test(path);
+    return path.endsWith(`/${page}`);
+}
+
+const currentProps = (page) => (isCurrentPage(page) ? { 'aria-current': 'page' } : {});
+const currentClass = (page) => (isCurrentPage(page) ? ' is-current' : '');
+
 function SearchIcon() {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
@@ -281,17 +291,17 @@ function NavBar() {
                     {/* Desktop only */}
                     <ul className="nav-links">
                         {NAV_LINKS.map((link) => (
-                            <li key={link.label}>
-                                <a className="nav-link" href={base + link.page}>{link.label}</a>
+                            <li key={link.label} className={link.label === 'Message' ? 'nav-message-item' : undefined}>
+                                <a className={`nav-link${currentClass(link.page)}`} href={base + link.page} {...currentProps(link.page)}>{link.label}</a>
                             </li>
                         ))}
                     </ul>
 
                     <div className="nav-icons">
-                        <a className="nav-icon-btn nav-search" href={base + SEARCH_PAGE} aria-label="Search">
+                        <a className={`nav-icon-btn nav-search${currentClass(SEARCH_PAGE)}`} href={base + SEARCH_PAGE} aria-label="Search" title="Search" {...currentProps(SEARCH_PAGE)}>
                             <SearchIcon />
                         </a>
-                        <a className="nav-icon-btn nav-favorites" href={base + FAVORITES_PAGE} aria-label="Favorites" title="Favorites">
+                        <a className={`nav-icon-btn nav-favorites${currentClass(FAVORITES_PAGE)}`} href={base + FAVORITES_PAGE} aria-label="Favorites" title="Favorites" {...currentProps(FAVORITES_PAGE)}>
                             <HeartIcon />
                         </a>
                         {/* Desktop only */}
@@ -349,8 +359,8 @@ function NavBar() {
 
                 <ul className="nav-drawer-links">
                     {NAV_LINKS.map(({ label, page, icon: Icon }) => (
-                        <li key={label}>
-                            <a className="nav-drawer-link" href={base + page}>
+                        <li key={label} className={label === 'Message' ? 'nav-message-item' : undefined}>
+                            <a className={`nav-drawer-link${currentClass(page)}`} href={base + page} {...currentProps(page)}>
                                 <Icon />
                                 {label}
                             </a>

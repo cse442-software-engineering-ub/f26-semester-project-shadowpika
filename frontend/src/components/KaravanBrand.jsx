@@ -5,7 +5,7 @@ export function CaravanLogo({ className = 'nav-logo-icon' }) {
     return (
         <svg className={className} viewBox="0 0 52 36" fill="none" aria-hidden="true">
             {/* body */}
-            <path d="M6 5h30c7.2 0 13 5.8 13 13v7a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3z" stroke="#1f2d44" strokeWidth="2.4" />
+            <path d="M6 5h30c7.2 0 13 5.8 13 13v7a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3z" fill="#f6f1ea" stroke="#1f2d44" strokeWidth="2.4" />
             {/* windows */}
             <rect x="8" y="10" width="11" height="7" rx="1.5" stroke="#1f2d44" strokeWidth="2" />
             <path d="M39 10h1.5a5 5 0 0 1 5 5v2H39z" stroke="#1f2d44" strokeWidth="2" strokeLinejoin="round" />
