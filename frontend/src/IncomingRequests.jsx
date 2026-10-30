@@ -3,7 +3,7 @@ import ItemCover from './ItemCover.jsx';
 import MeetingProgress from './MeetingProgress.jsx';
 import useMeetingList from './useMeetingList.js';
 import { fetchMeetingLocations } from './api.js';
-import { STATUS_LABELS, fetchIncomingMeetingRequests, formatMeetingDate, formatMeetingTime, respondMeetingRequest } from './meetingRequests.js';
+import { STATUS_LABELS, fetchIncomingMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl, respondMeetingRequest } from './meetingRequests.js';
 
 const SUCCESS_TEXT = {
     approve: 'You approved the meeting request.',
@@ -108,10 +108,12 @@ function IncomingRequests() {
                         return (
                             <li className="mr-request" key={request.request_id}>
                                 <div className="mr-request-cover">
-                                    <ItemCover name={request.name} imageUrl={request.image_url} />
+                                    <a className="mr-request-link" href={requestItemUrl(request.listing_id)}>
+                                        <ItemCover name={request.name} imageUrl={request.image_url} />
+                                    </a>
                                 </div>
                                 <div className="mr-request-body">
-                                    <h3 className="mr-request-name">{request.name}</h3>
+                                    <h3 className="mr-request-name"><a className="mr-request-link" href={requestItemUrl(request.listing_id)}>{request.name}</a></h3>
                                     <p className="mr-request-price">${request.price}</p>
                                     <p className="mr-request-buyer">Requested by {request.buyer}</p>
                                     <p className="mr-request-when">
