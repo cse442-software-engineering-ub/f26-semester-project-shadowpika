@@ -33,13 +33,13 @@ $files = [];
 try {
     $pdo = $connect($database);
     $pdo->exec('CREATE TABLE users (id INT PRIMARY KEY, email VARCHAR(100)) ENGINE=InnoDB');
-    $pdo->exec('CREATE TABLE listings (listing_id INT PRIMARY KEY, owner_id INT, name VARCHAR(100), price DECIMAL(10,2), image_url VARCHAR(255), community VARCHAR(100)) ENGINE=InnoDB');
+    $pdo->exec('CREATE TABLE listings (listing_id INT PRIMARY KEY, owner_id INT, name VARCHAR(100), price DECIMAL(10,2), image_url VARCHAR(255), community VARCHAR(100), status VARCHAR(20) DEFAULT "active") ENGINE=InnoDB');
     $pdo->exec('CREATE TABLE approved_locations (id INT PRIMARY KEY, label VARCHAR(100), community VARCHAR(100)) ENGINE=InnoDB');
     $pdo->exec('CREATE TABLE meeting_requests (request_id INT PRIMARY KEY, buyer_id INT, listing_id INT,
         meeting_date DATE, meeting_time TIME, location_id INT, location_label VARCHAR(100),
-        status VARCHAR(30), checked_in_at DATETIME(6), created_at DATETIME DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB');
+        status VARCHAR(30), checked_in_at DATETIME(6), seller_checked_in_at DATETIME(6), created_at DATETIME DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB');
     $pdo->exec("INSERT INTO users VALUES (1, 'buyer@test.invalid'), (2, 'seller@test.invalid')");
-    $pdo->exec("INSERT INTO listings VALUES (1, 2, 'Disposable location-lock test', 10, NULL, 'QA')");
+    $pdo->exec("INSERT INTO listings (listing_id, owner_id, name, price, image_url, community) VALUES (1, 2, 'Disposable location-lock test', 10, NULL, 'QA')");
     $pdo->exec("INSERT INTO approved_locations VALUES (1, 'Original spot', 'QA'), (2, 'Proposed spot', 'QA')");
     $pdo->exec("INSERT INTO meeting_requests (request_id, buyer_id, listing_id, meeting_date, meeting_time,
         location_id, location_label, status) VALUES (1, 1, 1, '2026-11-06', '12:00:00', 1, 'Original spot', 'pending')");

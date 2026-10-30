@@ -46,7 +46,7 @@ function karavan_format_meeting_request(array $row): array
 {
     $imageUrl = $row['image_url'] ?? null;
 
-    return [
+    return array_merge([
         'request_id'   => (int) $row['request_id'],
         'listing_id'   => (int) $row['listing_id'],
         'name'         => $row['name'],
@@ -56,21 +56,37 @@ function karavan_format_meeting_request(array $row): array
         'meeting_time' => substr($row['meeting_time'], 0, 5),
         'location'     => $row['location_label'],
         'status'       => $row['status'],
-        'checked_in_at' => karavan_meeting_checked_in_at($row),
-    ];
+    ], karavan_meeting_progress($row));
 }
 
 /** Database timestamps are UTC; return the same wire format as the check-in endpoint. */
-function karavan_meeting_checked_in_at(array $row): ?string
+function karavan_meeting_checked_in_at(array $row, string $column = 'checked_in_at'): ?string
 {
-    if (empty($row['checked_in_at'])) return null;
-    return (new DateTimeImmutable($row['checked_in_at'], new DateTimeZone('UTC')))
+    if (empty($row[$column])) return null;
+    return (new DateTimeImmutable($row[$column], new DateTimeZone('UTC')))
         ->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.v\Z');
 }
 
+function karavan_meeting_progress(array $row, bool $seller = false): array
+{
+    $buyerTime = karavan_meeting_checked_in_at($row);
+    $sellerTime = karavan_meeting_checked_in_at($row, 'seller_checked_in_at');
+    $both = $buyerTime !== null && $sellerTime !== null;
+    return [
+        // Preserve the old field's buyer-only meaning in details and lists.
+        'checked_in_at' => $buyerTime,
+        'buyer_checked_in_at' => $buyerTime,
+        'seller_checked_in_at' => $sellerTime,
+        'both_checked_in' => $both,
+        'listing_status' => $row['listing_status'],
+        'can_mark_sold' => $seller && $both && (int) $row['buyer_id'] !== (int) $row['owner_id']
+            && $row['status'] === 'approved' && $row['listing_status'] === 'active',
+    ];
+}
+
 const KARAVAN_MEETING_REQUEST_SELECT =
-    'SELECT r.request_id, r.listing_id, l.name, l.price, l.image_url, r.meeting_date, r.meeting_time,
-            r.location_label, r.status, r.checked_in_at
+    'SELECT r.request_id, r.buyer_id, r.listing_id, l.owner_id, l.name, l.price, l.image_url, r.meeting_date, r.meeting_time,
+            r.location_label, r.status, r.checked_in_at, r.seller_checked_in_at, l.status AS listing_status
        FROM meeting_requests r
        JOIN listings l ON l.listing_id = r.listing_id';
 
@@ -272,8 +288,9 @@ function karavan_cancel_meeting_request(PDO $pdo, ?int $userId, $input): array
 
 // Seller side: requests on listings the logged-in user owns, with the buyer's email.
 const KARAVAN_INCOMING_REQUEST_SELECT =
-    'SELECT r.request_id, r.listing_id, l.name, l.price, l.image_url, l.community, u.email AS buyer,
-            r.meeting_date, r.meeting_time, r.location_id, r.location_label, r.status, r.checked_in_at, l.owner_id
+    'SELECT r.request_id, r.buyer_id, r.listing_id, l.name, l.price, l.image_url, l.community, u.email AS buyer,
+            r.meeting_date, r.meeting_time, r.location_id, r.location_label, r.status, r.checked_in_at,
+            r.seller_checked_in_at, l.status AS listing_status, l.owner_id
        FROM meeting_requests r
        JOIN listings l ON l.listing_id = r.listing_id
        JOIN users u ON u.id = r.buyer_id';
@@ -282,7 +299,7 @@ function karavan_format_incoming_request(array $row): array
 {
     $imageUrl = $row['image_url'] ?? null;
 
-    return [
+    return array_merge([
         'request_id'   => (int) $row['request_id'],
         'listing_id'   => (int) $row['listing_id'],
         'name'         => $row['name'],
@@ -294,8 +311,7 @@ function karavan_format_incoming_request(array $row): array
         'meeting_time' => substr($row['meeting_time'], 0, 5),
         'location'     => $row['location_label'],
         'status'       => $row['status'],
-        'checked_in_at' => karavan_meeting_checked_in_at($row),
-    ];
+    ], karavan_meeting_progress($row, true));
 }
 
 function karavan_list_incoming_meeting_requests(PDO $pdo, ?int $userId): array

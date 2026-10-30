@@ -21,6 +21,7 @@ SET @migration_sql = CONCAT(
         status         ENUM(''pending'', ''approved'', ''denied'', ''location_change_requested'') NOT NULL DEFAULT ''pending'',
         created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
         checked_in_at  DATETIME(6)   NULL DEFAULT NULL,
+        seller_checked_in_at DATETIME(6) NULL DEFAULT NULL,
         KEY idx_meeting_requests_buyer (buyer_id),
         KEY idx_meeting_requests_listing (listing_id),
         CONSTRAINT fk_meeting_requests_buyer
