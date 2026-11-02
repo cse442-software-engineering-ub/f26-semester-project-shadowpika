@@ -12,6 +12,14 @@
   color: #1f2d44;
 }
 
+/* Home and Sell load different page CSS. Keep this dialog's box model the same on both. */
+.kv-communities-layer,
+.kv-communities-layer *,
+.kv-communities-layer *::before,
+.kv-communities-layer *::after {
+  box-sizing: border-box;
+}
+
 .kv-communities-backdrop {
   position: absolute;
   inset: 0;
@@ -124,15 +132,20 @@
 }
 
 .kv-communities-admin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
+  height: 34px;
   min-height: 34px;
-  padding: 6px 12px;
+  padding: 0 16px;
+  margin: 0;
   border-radius: 8px;
   background: #24364f;
   color: #ffffff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  line-height: 22px;
+  line-height: 1;
   white-space: nowrap;
 }
 
