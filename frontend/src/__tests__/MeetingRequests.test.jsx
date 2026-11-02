@@ -5,6 +5,7 @@
 // Mirrors frontend task card #168 (Buyer Meeting Request Frontend), using the same payloads.
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ItemDetails from '../ItemDetails.jsx';
 import OrganizeMeet from '../OrganizeMeet.jsx';
@@ -55,7 +56,8 @@ it('shows Check In only for approved meetings with their own request ID (#205)',
 
 const open = (path) => window.history.replaceState({}, '', path);
 
-const workbook = { listing_id: 91002, name: 'Calculus Workbook', price: '20.00', condition: 'Like New', category: 'Textbooks', description: null };
+const workbook = { listing_id: 91002, name: 'Calculus Workbook', price: '20.00', condition: 'Like New', category: 'Textbooks',
+    description: null, meeting_location_id: 91001, meeting_location: 'Capen Hall Main Entrance' };
 const fridge = { listing_id: 91010, name: 'Dorm Fridge', price: '80.00', condition: 'Good', category: 'Dorm Living', description: null };
 const locations = {
     success: true,
@@ -70,18 +72,16 @@ async function openMeetPage(extraRoutes = {}) {
     open('meet.html?listing_id=91002');
     const fetchMock = serve({
         'get_item_details.php': () => json(200, { success: true, listing: { ...workbook, community: 'All of UB' } }),
-        'get_meeting_locations.php': () => json(200, locations),
         ...extraRoutes,
     });
     const view = render(<OrganizeMeet />);
-    await screen.findByRole('option', { name: 'Capen Hall Main Entrance' });
+    await screen.findByRole('textbox', { name: 'Meeting Location' });
     return { fetchMock, ...view };
 }
 
-const fill = (container, { date, time, location }) => {
+const fill = (container, { date, time }) => {
     if (date !== undefined) fireEvent.change(container.querySelector('input[type="date"]'), { target: { value: date } });
     if (time !== undefined) fireEvent.change(container.querySelector('input[type="time"]'), { target: { value: time } });
-    if (location !== undefined) fireEvent.change(screen.getByLabelText('Meeting Location'), { target: { value: location } });
 };
 
 const confirm = () => fireEvent.click(screen.getByRole('button', { name: 'Confirm Meeting Request' }));
@@ -103,7 +103,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(assign).toHaveBeenCalledWith('./meet.html?listing_id=91002');
     });
 
-    it('Test 1: the Organize a Meet page shows the item, the form, and every approved location', async () => {
+    it('Test 1: prepopulates the seller location as read-only and does not request alternative locations', async () => {
         const { fetchMock } = await openMeetPage();
 
         expect(screen.getByRole('heading', { name: 'Organize a Meet' })).toBeInTheDocument();
@@ -111,10 +111,53 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(screen.getByText('$20.00')).toBeInTheDocument();
         expect(screen.getByLabelText('Date')).toBeInTheDocument();
         expect(screen.getByLabelText('Preferred Time')).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: 'Student Union Main Entrance' })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: 'Lockwood Memorial Library Main Entrance' })).toBeInTheDocument();
-        expect(callsTo(fetchMock, 'get_meeting_locations.php')).toHaveLength(1);
-        expect(callsTo(fetchMock, 'get_meeting_locations.php')[0][0]).toContain('community=All+of+UB');
+        expect(screen.getByRole('textbox', { name: 'Meeting Location' })).toHaveValue('Capen Hall Main Entrance');
+        expect(screen.getByRole('textbox', { name: 'Meeting Location' })).toHaveAttribute('readonly');
+        expect(screen.queryByRole('combobox', { name: 'Meeting Location' })).not.toBeInTheDocument();
+        expect(screen.getByText('Set by the seller. This meeting location cannot be changed.')).toBeVisible();
+        expect(callsTo(fetchMock, 'get_meeting_locations.php')).toHaveLength(0);
+    });
+
+    it('uses each items saved seller location instead of a default or another approved location', async () => {
+        const { container, fetchMock } = await openMeetPage({
+            'get_item_details.php': () => json(200, { success: true, listing: { ...workbook,
+                meeting_location_id: 91003, meeting_location: 'Lockwood Memorial Library Main Entrance' } }),
+            'create_meeting_request.php': () => json(201, { success: true, request: {} }),
+        });
+        expect(screen.getByLabelText('Meeting Location')).toHaveValue('Lockwood Memorial Library Main Entrance');
+        fill(container, { date: '2026-12-12', time: '16:00' });
+        confirm();
+        await screen.findByText('Your meeting request was sent.');
+        expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[0][1].body).location_id).toBe(91003);
+        expect(callsTo(fetchMock, 'get_meeting_locations.php')).toHaveLength(0);
+    });
+
+    it('cannot edit the prefilled location by typing and submits the original seller ID', async () => {
+        const { container, fetchMock } = await openMeetPage({
+            'create_meeting_request.php': () => json(201, { success: true, request: {} }),
+        });
+        await userEvent.type(screen.getByLabelText('Meeting Location'), 'Student Union Main Entrance');
+        expect(screen.getByLabelText('Meeting Location')).toHaveValue(workbook.meeting_location);
+        fill(container, { date: '2026-12-12', time: '16:00' });
+        confirm();
+        await screen.findByText('Your meeting request was sent.');
+        expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[0][1].body).location_id).toBe(workbook.meeting_location_id);
+    });
+
+    it.each([
+        { meeting_location_id: null },
+        { meeting_location_id: undefined },
+        { meeting_location: '' },
+    ])('blocks booking rather than choosing another place when seller location data is unavailable: %o', async (missing) => {
+        const { container, fetchMock } = await openMeetPage({
+            'get_item_details.php': () => json(200, { success: true, listing: { ...workbook, ...missing } }),
+        });
+        expect(screen.getByRole('alert')).toHaveTextContent("The seller's meeting location is unavailable.");
+        expect(screen.getByRole('button', { name: 'Confirm Meeting Request' })).toBeDisabled();
+        fill(container, { date: '2026-12-12', time: '16:00' });
+        fireEvent.submit(container.querySelector('form'));
+        expect(callsTo(fetchMock, 'create_meeting_request.php')).toHaveLength(0);
+        expect(screen.queryByRole('combobox', { name: 'Meeting Location' })).not.toBeInTheDocument();
     });
 
     it("Test 2: hides Buy Now on the user's own item", async () => {
@@ -131,11 +174,11 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(screen.queryByRole('button', { name: 'Buy Now' })).not.toBeInTheDocument();
     });
 
-    it('Test 3: sends exactly the entered meeting details and confirms the request was sent', async () => {
+    it('Test 3: sends the seller location ID with the buyers entered date/time and confirms success', async () => {
         const { fetchMock, container } = await openMeetPage({
             'create_meeting_request.php': () => json(201, { success: true, request: {} }),
         });
-        fill(container, { date: '2026-12-12', time: '16:00', location: '91001' });
+        fill(container, { date: '2026-12-12', time: '16:00' });
         confirm();
 
         expect(await screen.findByText('Your meeting request was sent.')).toBeInTheDocument();
@@ -148,7 +191,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         const { container } = await openMeetPage({
             'create_meeting_request.php': () => json(409, { success: false, error: 'You already have a meeting request for this item.' }),
         });
-        fill(container, { date: '2026-12-13', time: '10:00', location: '91002' });
+        fill(container, { date: '2026-12-13', time: '10:00' });
         confirm();
 
         const alert = await screen.findByRole('alert');
@@ -157,7 +200,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(screen.queryByText('Your meeting request was sent.')).not.toBeInTheDocument();
     });
 
-    it('Test 5: blocks missing or past meeting details before sending', async () => {
+    it('Test 5: still validates the buyers date and time while the seller location is prefilled', async () => {
         const { fetchMock, container } = await openMeetPage();
         const expectBlocked = (text) => {
             expect(screen.getByRole('alert')).toHaveTextContent(text);
@@ -165,11 +208,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
             expect(callsTo(fetchMock, 'create_meeting_request.php')).toHaveLength(0);
         };
 
-        fill(container, { date: '2026-12-14', time: '11:00' });
-        confirm();
-        expectBlocked('A meeting location is required.');
-
-        fill(container, { location: '91001', date: '' });
+        fill(container, { date: '', time: '11:00' });
         confirm();
         expectBlocked('A date is required.');
 

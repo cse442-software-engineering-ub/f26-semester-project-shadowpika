@@ -1,5 +1,17 @@
 # Buyer and seller location check-in frontend — #205
 
+## November 2 — seller location fixed after Buy Now
+
+The #205 branch has been fast-forwarded to latest dev `68cca84`. Buy Now → Organize a Meet now prepopulates **Meeting Location** from the listing's `meeting_location` and `meeting_location_id`. The field is read-only; buyers enter only the date and time. The page no longer fetches alternative community locations or offers a location dropdown. Submitting sends the seller's saved location ID through the existing meeting-request endpoint.
+
+If the saved ID or location label is unavailable, the page shows **The seller's meeting location is unavailable. Return to the item and try again.** and disables confirmation. It never picks a different location. Existing date/time checks and server rejection messages remain.
+
+This is a frontend form change on #205. No backend, schema, database migration, live account or deployment changes are included. The backend's existing approved-meeting location lock is unchanged.
+
+The November 2 follow-up also removes **Related Course** from My Listings cards and the Edit your listing form. Price uses the full row. Saving other fields retains the existing hidden legacy value for compatibility with the current save endpoint, rather than clearing stored course data. The 11 existing Manage Listings regression tests and targeted lint pass; the 141-file bundle has been rebuilt.
+
+Local checks: `MeetingRequests.test.jsx` **28 tests passed**, including prepopulation, read-only typing, different seller locations, exact submitted IDs, missing data, and existing buyer/seller request regressions. The complete frontend suite passes **22 files / 326 tests**; changed-file lint, all **4 release checks**, and the **141-file release build** pass. A disposable browser run passes **32 checks** at 1440 px and 390 px, including actual typing into the read-only field and exact submitted IDs for two different seller locations; API responses are mocked. No live acceptance is claimed. Earlier test counts below describe their respective prior revisions.
+
 ## October 30 — independent attendance and explicit Sold implemented locally
 
 The #205 worktree is based on dev merge `14d24c5`, which includes the #206 contract. Buyers and sellers each have a Check In entry on their own approved, active meeting, until their own timestamp is recorded. Either can arrive first. Home displays both timestamps in New York time. Approved locations remain locked.
