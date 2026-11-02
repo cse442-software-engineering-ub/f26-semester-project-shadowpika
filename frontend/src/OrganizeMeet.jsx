@@ -5,42 +5,28 @@ import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
 import { itemPageUrl } from './localListings.js';
-import { createMeetingRequest, fetchMeetingLocations, loadListing, meetingRequestError } from './meetingRequests.js';
+import { createMeetingRequest, loadListing, meetingRequestError } from './meetingRequests.js';
 
 const CONNECTION_ERROR = 'Could not connect to the server.';
+const LOCATION_UNAVAILABLE = "The seller's meeting location is unavailable. Return to the item and try again.";
 
-// The page a buyer reaches from Buy Now: proposes a date, time, and approved location for one item.
+// Buy Now uses the seller's saved location. Buyers choose only the date and time.
 function OrganizeMeet() {
     const [listingId] = useState(() => new URLSearchParams(window.location.search).get('listing_id') ?? '');
     const [listing, setListing] = useState(null);
     const [status, setStatus] = useState('loading'); // loading | done | error
     const [loadError, setLoadError] = useState('');
-    const [locations, setLocations] = useState([]);
-    const [locationsError, setLocationsError] = useState('');
 
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
-    const [locationId, setLocationId] = useState('');
     const [message, setMessage] = useState(null); // { kind: 'success' | 'error', text }
     const [sending, setSending] = useState(false);
+    const locationId = listing?.meeting_location_id;
+    const locationLabel = typeof listing?.meeting_location === 'string' ? listing.meeting_location.trim() : '';
+    const hasLocation = Number.isInteger(locationId) && locationId > 0 && locationLabel !== '';
 
     useEffect(() => {
         let cancelled = false;
-
-        const loadLocations = (community) => {
-            fetchMeetingLocations(community)
-                .then((data) => {
-                    if (cancelled) return;
-                    if (data.success && Array.isArray(data.locations)) {
-                        setLocations(data.locations);
-                    } else {
-                        setLocationsError(data.error || 'The meeting locations could not be loaded.');
-                    }
-                })
-                .catch(() => {
-                    if (!cancelled) setLocationsError(CONNECTION_ERROR);
-                });
-        };
 
         loadListing(listingId)
             .then((data) => {
@@ -48,7 +34,6 @@ function OrganizeMeet() {
                 if (data.success && data.listing) {
                     setListing(data.listing);
                     setStatus('done');
-                    loadLocations(data.listing.community);
                 } else {
                     setLoadError(data.error || 'This item could not be loaded.');
                     setStatus('error');
@@ -67,6 +52,7 @@ function OrganizeMeet() {
 
     const handleSubmit = (event) => {
         event.preventDefault();
+        if (sending || !hasLocation) return;
         const error = meetingRequestError({ date, time, locationId });
         if (error) {
             setMessage({ kind: 'error', text: error });
@@ -120,16 +106,10 @@ function OrganizeMeet() {
                             </label>
                             <label className="mr-field">
                                 <span>Meeting Location</span>
-                                <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-                                    <option value="">Select a location</option>
-                                    {locations.map((location) => (
-                                        <option key={location.location_id} value={location.location_id}>
-                                            {location.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                <input type="text" value={locationLabel} readOnly aria-describedby="mr-location-note" />
                             </label>
-                            {locationsError && <p className="mr-message id-error">{locationsError}</p>}
+                            <p id="mr-location-note">Set by the seller. This meeting location cannot be changed.</p>
+                            {!hasLocation && <p className="mr-message id-error" role="alert">{LOCATION_UNAVAILABLE}</p>}
 
                             {message && (
                                 <p
@@ -140,7 +120,7 @@ function OrganizeMeet() {
                                 </p>
                             )}
 
-                            <button type="submit" className="mr-submit" disabled={sending}>
+                            <button type="submit" className="mr-submit" disabled={sending || !hasLocation}>
                                 Confirm Meeting Request
                             </button>
                         </form>

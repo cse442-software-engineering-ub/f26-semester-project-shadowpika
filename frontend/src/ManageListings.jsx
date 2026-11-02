@@ -251,6 +251,7 @@ export default function ManageListings() {
                                         price: selectedListing.price,
                                         category: selectedListing.category,
                                         condition: selectedListing.condition || '',
+                                        // Preserve the hidden legacy value when saving other fields.
                                         related_course: selectedListing.related_course || '',
                                         meeting_location: selectedListing.meeting_location,
                                         description: selectedListing.description,
@@ -339,14 +340,10 @@ export default function ManageListings() {
                                     </select>
                                 </div>
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                     <span style={{ fontSize: '11px', fontWeight: '700', color: '#1F2F46', fontFamily: 'DM Sans', textTransform: 'uppercase' }}>Price *</span>
                                     <input type="text" value={selectedListing.price || ''} onChange={(e) => updateField('price', e.target.value)} style={{ width: '100%', padding: '12px 16px', border: '1px solid #D1D9E0', borderRadius: '8px', fontSize: '15px', color: '#1F2F46', backgroundColor: '#ffffff', fontFamily: 'DM Sans', boxSizing: 'border-box' }} />
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#1F2F46', fontFamily: 'DM Sans', textTransform: 'uppercase' }}>Related Course</span>
-                                    <input type="text" value={selectedListing.related_course || ''} onChange={(e) => updateField('related_course', e.target.value)} style={{ width: '100%', padding: '12px 16px', border: '1px solid #D1D9E0', borderRadius: '8px', fontSize: '15px', color: '#1F2F46', backgroundColor: '#ffffff', fontFamily: 'DM Sans', boxSizing: 'border-box' }} />
                                 </div>
                             </div>
 
@@ -442,9 +439,6 @@ export default function ManageListings() {
                                         
                                         <div style={{ color: '#1F2F46', fontSize: 13, fontFamily: 'DM Sans', fontWeight: '700' }}>PREFERRED MEETING LOCATION</div>
                                         <div style={{ color: '#6E87A0', fontSize: 16, fontFamily: 'DM Sans', fontWeight: '400' }}>{item.meeting_location}</div>
-                                        
-                                        <div style={{ color: '#1F2F46', fontSize: 13, fontFamily: 'DM Sans', fontWeight: '700' }}>RELATED COURSE</div>
-                                        <div style={{ color: '#6E87A0', fontSize: 16, fontFamily: 'DM Sans', fontWeight: '400' }}>{item.related_course}</div>
                                         
                                         <div style={{ color: '#1F2F46', fontSize: 13, fontFamily: 'DM Sans', fontWeight: '700' }}>LISTING ACTIONS</div>
                                         {itemStatus === 'active' && item.can_mark_sold !== true && <p className="ml-sale-hint">
