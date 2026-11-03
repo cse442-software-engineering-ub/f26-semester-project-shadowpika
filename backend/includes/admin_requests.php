@@ -69,6 +69,23 @@ function karavan_regular_account_for_email(PDO $pdo, string $email): int|null|fa
 }
 
 /**
+ * Admin registration doesn't ask for a username, so an approved applicant gets the part of
+ * their email before the @, with a number added when another account already uses it.
+ */
+function karavan_username_for_email(PDO $pdo, string $email): string
+{
+    $base = substr(strstr($email, '@', true) ?: $email, 0, 45);
+    $taken = $pdo->prepare('SELECT 1 FROM users WHERE LOWER(username) = LOWER(?)');
+    for ($n = 1; ; $n++) {
+        $candidate = $n === 1 ? $base : $base . $n;
+        $taken->execute([$candidate]);
+        if ($taken->fetchColumn() === false) {
+            return $candidate;
+        }
+    }
+}
+
+/**
  * @param callable $moveFile fn(string $from, string $to): bool — move_uploaded_file in production.
  */
 function karavan_admin_register(PDO $pdo, array $post, array $files, string $uploadDir, callable $moveFile): array
@@ -92,7 +109,7 @@ function karavan_admin_register(PDO $pdo, array $post, array $files, string $upl
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return [400, ['success' => false, 'error' => 'Please enter a valid email address.']];
     }
-    // Approval copies the email into users.username, which is VARCHAR(50), and login.php caps input at 50.
+    // login.php rejects anything longer than 50 characters, so a longer email could never sign in.
     if (strlen($email) > 50) {
         return [400, ['success' => false, 'error' => 'Email must be 50 characters or fewer.']];
     }
@@ -270,9 +287,8 @@ function karavan_decide_request(PDO $pdo, ?int $userId, $input, string $uploadDi
                 $link = $pdo->prepare('UPDATE admin_requests SET user_id = ? WHERE id = ?');
                 $link->execute([(int) $linkedUser['id'], $requestId]);
             } else {
-                // login.php looks accounts up by email, so the applicant's email fills both columns.
                 $createUser = $pdo->prepare("INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'admin')");
-                $createUser->execute([$request['email'], $request['email'], $request['password_hash']]);
+                $createUser->execute([karavan_username_for_email($pdo, $request['email']), $request['email'], $request['password_hash']]);
                 $link = $pdo->prepare('UPDATE admin_requests SET user_id = ? WHERE id = ?');
                 $link->execute([(int) $pdo->lastInsertId(), $requestId]);
             }
