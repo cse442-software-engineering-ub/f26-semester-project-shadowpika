@@ -2,9 +2,13 @@
 // that run before anything is sent, and the formatting the Home page shows.
 import { buildItemDetailsUrl, findLocalListing } from './localListings.js';
 
-export const meetPageUrl = (listingId) => `./meet.html?listing_id=${encodeURIComponent(listingId)}`;
+export const meetPageUrl = (listingId, from = '') =>
+    `./meet.html?listing_id=${encodeURIComponent(listingId)}${from ? `&from=${from}` : ''}`;
 
-// The item page opened from a purchase request: no Buy Now or meeting location, back goes to Home.
+// Only known values pass, so the raw address value never reaches another URL.
+export const itemPageFrom = (search) => (new URLSearchParams(search).get('from') === 'request' ? 'request' : '');
+
+// The item page opened from a purchase request: back goes to Home.
 export const requestItemUrl = (listingId) => `./item.html?listing_id=${encodeURIComponent(listingId)}&from=request`;
 
 const isLocalPreview = () => window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';

@@ -19,16 +19,16 @@ CREATE TABLE IF NOT EXISTS listings (
 -- Add only missing fixtures. Existing rows are deliberately left unchanged because the shared
 -- development database can contain listings created by other task cards and testers.
 INSERT IGNORE INTO listings (listing_id, name, price, `condition`, image_url, category, related_course, community, status) VALUES
-    (91001, 'Calculus Textbook',               35.00, 'Good',       'uploads/calculus-textbook.jpg',   'Textbooks',   'MTH 141', 'All of UB', 'active'),
-    (91002, 'Calculus Workbook',               20.00, 'Like New',   'uploads/calculus-workbook.jpg',   'Textbooks',   'MTH 142', 'All of UB', 'active'),
-    (91003, 'Desk Lamp',                       15.00, 'Good',       'uploads/desk-lamp.jpg',           'Dorm Living', NULL,      'All of UB', 'active'),
-    (91004, 'Calculus Notes',                   5.00, 'Fair',       'uploads/calculus-notes.jpg',      'Textbooks',   'MTH 141', 'All of UB', 'sold'),
-    (91005, 'Physical Chemistry',              60.00, 'Good',       'uploads/physical-chemistry.jpg',  'Textbooks',   'CHE 203', 'All of UB', 'active'),
-    (91006, 'Genetics: A Conceptual Approach', 45.00, 'Like New',   'uploads/genetics.jpg',            'Textbooks',   'BIO 201', 'All of UB', 'active'),
-    (91007, 'Campbell Biology',                55.00, 'Acceptable', 'uploads/campbell-biology.jpg',    'Textbooks',   'BIO 200', 'All of UB', 'active'),
-    (91008, 'Organic Chemistry Textbook',      50.00, 'Good',       'uploads/organic-chemistry.jpg',   'Textbooks',   'CHE 201', 'All of UB', 'active'),
-    (91009, 'Introduction to Algorithms',      40.00, 'Like New',   'uploads/intro-algorithms.jpg',    'Textbooks',   'CSE 331', 'All of UB', 'active'),
-    (91010, 'Dorm Fridge',                     80.00, 'Good',       'uploads/dorm-fridge.jpg',         'Dorm Living', NULL,      'All of UB', 'active');
+    (91001, 'Calculus Textbook',               35.00, 'Good',       'uploads/calculus-textbook.jpg',   'Textbooks',   'MTH 141', 'Karavan',   'active'),
+    (91002, 'Calculus Workbook',               20.00, 'Like New',   'uploads/calculus-workbook.jpg',   'Textbooks',   'MTH 142', 'Karavan',   'active'),
+    (91003, 'Desk Lamp',                       15.00, 'Good',       'uploads/desk-lamp.jpg',           'Dorm Living', NULL,      'Karavan',   'active'),
+    (91004, 'Calculus Notes',                   5.00, 'Fair',       'uploads/calculus-notes.jpg',      'Textbooks',   'MTH 141', 'Karavan',    'sold'),
+    (91005, 'Physical Chemistry',              60.00, 'Good',       'uploads/physical-chemistry.jpg',  'Textbooks',   'CHE 203', 'Karavan',   'active'),
+    (91006, 'Genetics: A Conceptual Approach', 45.00, 'Like New',   'uploads/genetics.jpg',            'Textbooks',   'BIO 201', 'Karavan',   'active'),
+    (91007, 'Campbell Biology',                55.00, 'Acceptable', 'uploads/campbell-biology.jpg',    'Textbooks',   'BIO 200', 'Karavan',   'active'),
+    (91008, 'Organic Chemistry Textbook',      50.00, 'Good',       'uploads/organic-chemistry.jpg',   'Textbooks',   'CHE 201', 'Karavan',   'active'),
+    (91009, 'Introduction to Algorithms',      40.00, 'Like New',   'uploads/intro-algorithms.jpg',    'Textbooks',   'CSE 331', 'Karavan',   'active'),
+    (91010, 'Dorm Fridge',                     80.00, 'Good',       'uploads/dorm-fridge.jpg',         'Dorm Living', NULL,      'Karavan',   'active');
 
 -- Older copies of these fixtures predate related-course search. Fill only missing fixture values;
 -- never replace a course someone has already assigned in the shared development database.
@@ -48,6 +48,6 @@ UPDATE listings
    AND related_course IS NULL;
 
 UPDATE listings
-   SET community = 'All of UB'
+   SET community = 'Karavan'
  WHERE listing_id BETWEEN 91001 AND 91010
    AND (community IS NULL OR community = '');

@@ -93,6 +93,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         const fetchMock = serve({
             'get_item_details.php': () => json(200, { success: true, listing: workbook }),
             'get_listing_ownership.php': () => json(200, { success: true, listing_id: 91002, is_owner: false }),
+            'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }),
         });
         const assign = vi.fn();
         vi.stubGlobal('location', { ...window.location, assign, search: '?listing_id=91002' });

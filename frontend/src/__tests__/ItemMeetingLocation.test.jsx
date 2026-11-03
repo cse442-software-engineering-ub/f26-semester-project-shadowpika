@@ -69,7 +69,7 @@ const LISTING = {
 function mockBackend(status = 200, body = { success: true, listing: LISTING }) {
     const fetchMock = vi.fn((url) => {
         let responseStatus = 200;
-        let responseBody = { success: true, is_owner: false, saved: false };
+        let responseBody = { success: true, is_owner: false, saved: false, requests: [] };
         if (url.includes('get_item_details.php')) {
             responseStatus = status;
             responseBody = body;
