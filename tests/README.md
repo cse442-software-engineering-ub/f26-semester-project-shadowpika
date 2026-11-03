@@ -37,3 +37,12 @@ members with shopping disabled, approved partner administrators, community-name
 aliases and valid remember-me login retain publishing access. It also checks
 trusted owner/location values and existing method/body/location validation.
 Its temporary database, user, image, HTTP server and sessions are removed afterward.
+
+## Sprint 3 Task fixture reproducibility
+
+The fixture SQL and setup instructions live in
+`database/seeds/sprint3_task_fixtures.sql` and
+`database/seeds/README_sprint3_tasks.md`. On a disposable loopback MySQL server,
+set `KARAVAN_FIXTURE_TEST_DSN=mysql:host=127.0.0.1;port=33331`, then run
+`php tests/mysql/sprint3_task_fixtures_test.php`. It uses synthetic accounts and
+randomly named temporary databases, never the live Aptitude/Cattle records.
