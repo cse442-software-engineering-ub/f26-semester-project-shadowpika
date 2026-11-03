@@ -23,11 +23,8 @@ function karavan_list_recommended_items(PDO $pdo, ?int $userId): array
         return karavan_not_logged_in();
     }
 
-    // Only communities the user shops from; with none there is nothing to recommend (and no empty IN ()).
-    $communities = karavan_member_listing_communities($pdo, $userId, true);
-    if ($communities === []) {
-        return [200, ['success' => true, 'items' => []]];
-    }
+    // Every community the user belongs to, regardless of their search filter (never empty: includes the campus community).
+    $communities = karavan_member_listing_communities($pdo, $userId);
 
     $placeholders = implode(', ', array_fill(0, count($communities), '?'));
     $stmt = $pdo->prepare(

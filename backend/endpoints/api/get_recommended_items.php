@@ -1,5 +1,5 @@
 <?php
-// GET /api/get_recommended_items.php — up to 15 random active items from the communities the logged-in user shops from.
+// GET /api/get_recommended_items.php — up to 15 random active items from the communities the logged-in user is a member of.
 require_once __DIR__ . '/../includes/http.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/recommended_items.php';
