@@ -62,7 +62,7 @@ describe('Frontend #212: Requests for My Items links', () => {
 });
 
 describe('Frontend #212: item page opened by the seller from a request', () => {
-    it('shows the details and Back to home with no heart, Buy Now, Message Seller or Meeting Location', async () => {
+    it('shows the details, Meeting Location and Back to home with no heart, Buy Now or Message Seller', async () => {
         open('listing_id=91009&from=request');
         serve({
             'get_item_details.php': () => json(200, {
@@ -82,7 +82,7 @@ describe('Frontend #212: item page opened by the seller from a request', () => {
         expect(screen.queryByRole('button', { name: 'Save to Favorites' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Buy Now' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Message Seller' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('heading', { name: 'Meeting Location' })).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Meeting Location' })).toBeInTheDocument();
     });
 
     it('shows the error and Back to home when the listing is not found', async () => {

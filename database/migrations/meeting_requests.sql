@@ -43,6 +43,14 @@ INSERT INTO approved_locations (id, lat, lng, label) VALUES
     (91003, 43.000216, -78.785872, 'Lockwood Memorial Library Main Entrance')
 ON DUPLICATE KEY UPDATE lat = VALUES(lat), lng = VALUES(lng), label = VALUES(label);
 
+-- Give the test listings a meeting location so the item page's Meeting Location section has one to show; only rows with none are filled.
+UPDATE listings SET meeting_location = 'Capen Hall Main Entrance', meeting_location_id = 91001
+ WHERE listing_id IN (91001, 91002, 91004, 91005, 91006, 91010) AND meeting_location_id IS NULL AND (meeting_location IS NULL OR meeting_location = '');
+UPDATE listings SET meeting_location = 'Student Union Main Entrance', meeting_location_id = 91002
+ WHERE listing_id IN (91007, 91008) AND meeting_location_id IS NULL AND (meeting_location IS NULL OR meeting_location = '');
+UPDATE listings SET meeting_location = 'Lockwood Memorial Library Main Entrance', meeting_location_id = 91003
+ WHERE listing_id IN (91003, 91009) AND meeting_location_id IS NULL AND (meeting_location IS NULL OR meeting_location = '');
+
 SET @buyer_id = (SELECT id FROM users WHERE LOWER(email) = LOWER('chun.buyer@test.com') LIMIT 1);
 
 -- chun.buyer@test.com owns 91010 Dorm Fridge, so it cannot be requested and shows no Buy Now.
