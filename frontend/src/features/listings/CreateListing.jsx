@@ -1,5 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import NavBar from '../../NavBar.jsx';
+import { fetchCommunities, fetchMeetingLocations } from '../../api.js';
+import { onCommunitiesChanged } from '../../community.js';
 import './CreateListing.css';
 
 const CATEGORY_OPTIONS = [
@@ -12,21 +14,13 @@ const CATEGORY_OPTIONS = [
 
 const CONDITION_OPTIONS = ['New', 'Like New', 'Good', 'Fair', 'Acceptable'];
 
-const LOCATION_OPTIONS = [
-    'Capen Hall · Main entrance',
-    'Lockwood Memorial Library · Main entrance',
-    'Student Union · Main entrance',
-    'Center for the Arts · Main entrance',
-    'Abbott Library · Main entrance',
-];
-
 const INITIAL_FORM = {
     title: '',
     category: '',
     condition: '',
     price: '',
-    related_course: '',
-    meeting_location: '',
+    community: '',
+    meeting_location_id: '',
     description: '',
 };
 
@@ -36,12 +30,12 @@ const FIELD_LABELS = {
     category: 'Category',
     condition: 'Condition',
     price: 'Price',
-    related_course: 'Related course',
-    meeting_location: 'Preferred meeting location',
+    community: 'Community',
+    meeting_location_id: 'Preferred meeting location',
     description: 'Description',
 };
 
-const REQUIRED_FIELDS = ['title', 'category', 'condition', 'price', 'meeting_location', 'description'];
+const REQUIRED_FIELDS = ['title', 'category', 'condition', 'price', 'community', 'meeting_location_id', 'description'];
 const LOCAL_LISTING_KEY = 'karavan:last-created-listing';
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -61,9 +55,6 @@ function validateListing(values) {
 
     if (values.title.trim().length > 150) {
         errors.title = 'Item title must be 150 characters or fewer.';
-    }
-    if (values.related_course.trim().length > 100) {
-        errors.related_course = 'Related course must be 100 characters or fewer.';
     }
     if (values.description.trim().length > 1000) {
         errors.description = 'Description must be 1,000 characters or fewer.';
@@ -150,11 +141,18 @@ function FormField({
 
 function CreateListing() {
     const [form, setForm] = useState(INITIAL_FORM);
+    const [communities, setCommunities] = useState([]);
+    const [communitiesLoading, setCommunitiesLoading] = useState(true);
+    const [communityLoadError, setCommunityLoadError] = useState('');
+    const [locations, setLocations] = useState([]);
+    const [locationsLoading, setLocationsLoading] = useState(false);
+    const [locationLoadError, setLocationLoadError] = useState('');
     const [imageFile, setImageFile] = useState(null);
     const [errors, setErrors] = useState({});
     const [submitError, setSubmitError] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const fieldRefs = useRef({});
+    const selectedCommunityRef = useRef('');
     const imageInputRef = useRef(null);
     const imageButtonRef = useRef(null);
 
@@ -168,11 +166,119 @@ function CreateListing() {
         if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
     }, [imagePreviewUrl]);
 
+    const selectCommunity = useCallback((community) => {
+        selectedCommunityRef.current = community;
+        setForm((current) => ({ ...current, community, meeting_location_id: '' }));
+        setLocations([]);
+        setLocationsLoading(Boolean(community));
+        setLocationLoadError('');
+        setErrors((current) => {
+            const next = { ...current };
+            delete next.community;
+            delete next.meeting_location_id;
+            return next;
+        });
+        setSubmitError('');
+    }, []);
+
+    useEffect(() => {
+        let active = true;
+        let latestRequest = 0;
+
+        const loadCommunities = async () => {
+            const request = ++latestRequest;
+            setCommunitiesLoading(true);
+            setCommunityLoadError('');
+            try {
+                const result = await fetchCommunities();
+                if (!active || request !== latestRequest) return;
+                if (result.status !== 200 || !result.success || !Array.isArray(result.communities)) {
+                    setCommunities([]);
+                    selectCommunity('');
+                    setCommunityLoadError(result.error || 'Could not load communities. Please try again.');
+                    return;
+                }
+
+                const names = result.communities
+                    .filter((community) => community?.joined === true || community?.administrator === true)
+                    .map((community) => (typeof community?.name === 'string' ? community.name.trim() : ''))
+                    .filter(Boolean);
+                setCommunities([...new Set(names)]);
+                if (selectedCommunityRef.current && !names.includes(selectedCommunityRef.current)) {
+                    selectCommunity('');
+                }
+                if (names.length === 0) {
+                    setCommunityLoadError('Join a community from the navigation bar before creating a listing.');
+                }
+            } catch {
+                if (active && request === latestRequest) {
+                    setCommunities([]);
+                    selectCommunity('');
+                    setCommunityLoadError('Could not load communities. Please try again.');
+                }
+            } finally {
+                if (active && request === latestRequest) setCommunitiesLoading(false);
+            }
+        };
+
+        loadCommunities();
+        const unsubscribe = onCommunitiesChanged(loadCommunities);
+        return () => {
+            active = false;
+            unsubscribe();
+        };
+    }, [selectCommunity]);
+
+    useEffect(() => {
+        if (!form.community) {
+            return undefined;
+        }
+
+        let active = true;
+        const selectedCommunity = form.community;
+
+        const loadLocations = async () => {
+            try {
+                const result = await fetchMeetingLocations(selectedCommunity);
+                if (!active || selectedCommunityRef.current !== selectedCommunity) return;
+                if (result.status !== 200 || !result.success || !Array.isArray(result.locations)) {
+                    setLocationLoadError(result.error || 'Could not load meeting locations. Please try again.');
+                    return;
+                }
+
+                const availableLocations = result.locations.filter((location) => (
+                    Number.isInteger(Number(location?.location_id))
+                    && Number(location.location_id) > 0
+                    && typeof location?.label === 'string'
+                    && location.label.trim() !== ''
+                ));
+                setLocations(availableLocations);
+                if (availableLocations.length === 0) {
+                    setLocationLoadError('No approved meeting locations are available for this community.');
+                }
+            } catch {
+                if (active && selectedCommunityRef.current === selectedCommunity) {
+                    setLocationLoadError('Could not load meeting locations. Please try again.');
+                }
+            } finally {
+                if (active && selectedCommunityRef.current === selectedCommunity) setLocationsLoading(false);
+            }
+        };
+
+        loadLocations();
+        return () => {
+            active = false;
+        };
+    }, [form.community]);
+
     const updateField = (event) => {
         const { name, value } = event.target;
+        if (name === 'community') {
+            selectCommunity(value);
+            return;
+        }
         setForm((current) => ({ ...current, [name]: value }));
         setErrors((current) => {
-            if (!current[name]) return current;
             const next = { ...current };
             delete next[name];
             return next;
@@ -213,7 +319,11 @@ function CreateListing() {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        if (communitiesLoading || submitting) return;
         const validationErrors = validateListing(form);
+        if (form.community && !communities.includes(form.community)) {
+            validationErrors.community = 'Select a community you have joined.';
+        }
         const imageValidationError = validateListingImage(imageFile);
         if (imageValidationError) validationErrors.image = imageValidationError;
         if (Object.keys(validationErrors).length > 0) {
@@ -231,9 +341,9 @@ function CreateListing() {
             title: form.title.trim(),
             category: form.category,
             condition: form.condition,
-            price: form.price,
-            related_course: form.related_course.trim(),
-            meeting_location: form.meeting_location,
+            price: Number(form.price).toFixed(2),
+            community: form.community,
+            meeting_location_id: Number(form.meeting_location_id),
             description: form.description.trim(),
         };
 
@@ -248,8 +358,10 @@ function CreateListing() {
                     category: payload.category,
                     condition: payload.condition,
                     price: Number(payload.price).toFixed(2),
-                    related_course: payload.related_course || null,
-                    meeting_location: payload.meeting_location,
+                    community: payload.community,
+                    meeting_location: locations.find(
+                        (location) => Number(location.location_id) === payload.meeting_location_id,
+                    )?.label || '',
                     description: payload.description,
                     image_url: imageUrl,
                     status: 'active',
@@ -406,31 +518,59 @@ function CreateListing() {
                                 error={errors.price}
                                 fieldRef={setFieldRef('price')}
                             />
-                            <FormField
-                                label="RELATED COURSE"
-                                name="related_course"
-                                value={form.related_course}
-                                onChange={updateField}
-                                placeholder="e.g., ART 105"
-                                maxLength={100}
-                                optional
-                                error={errors.related_course}
-                                fieldRef={setFieldRef('related_course')}
-                            />
                         </div>
 
-                        <FormField
-                            as="select"
-                            label="PREFERRED MEETING LOCATION"
-                            name="meeting_location"
-                            value={form.meeting_location}
-                            onChange={updateField}
-                            error={errors.meeting_location}
-                            fieldRef={setFieldRef('meeting_location')}
-                        >
-                            <option value="">Select an approved campus location</option>
-                            {LOCATION_OPTIONS.map((location) => <option key={location}>{location}</option>)}
-                        </FormField>
+                        <div className="listing-field-row listing-community-location-row">
+                            <FormField
+                                as="select"
+                                label="COMMUNITY"
+                                name="community"
+                                value={form.community}
+                                onChange={updateField}
+                                disabled={communitiesLoading || communities.length === 0}
+                                error={errors.community}
+                                fieldRef={setFieldRef('community')}
+                            >
+                                <option value="">
+                                    {communitiesLoading ? 'Loading communities…' : 'Select a community'}
+                                </option>
+                                {communities.map((community) => (
+                                    <option key={community} value={community}>{community}</option>
+                                ))}
+                            </FormField>
+                            <FormField
+                                as="select"
+                                label="PREFERRED MEETING LOCATION"
+                                name="meeting_location_id"
+                                value={form.meeting_location_id}
+                                onChange={updateField}
+                                disabled={!form.community || locationsLoading || locations.length === 0}
+                                error={errors.meeting_location_id}
+                                fieldRef={setFieldRef('meeting_location_id')}
+                            >
+                                <option value="">
+                                    {!form.community
+                                        ? 'Select a community first'
+                                        : locationsLoading
+                                            ? 'Loading meeting locations…'
+                                            : locations.length === 0
+                                                ? 'No approved locations available'
+                                                : 'Select an approved campus location'}
+                                </option>
+                                {locations.map((location) => (
+                                    <option key={location.location_id} value={location.location_id}>
+                                        {location.label}
+                                    </option>
+                                ))}
+                            </FormField>
+                        </div>
+
+                        {communityLoadError && (
+                            <p className="listing-load-message" role="alert">{communityLoadError}</p>
+                        )}
+                        {locationLoadError && (
+                            <p className="listing-load-message" role="alert">{locationLoadError}</p>
+                        )}
 
                         <FormField
                             as="textarea"
@@ -446,7 +586,7 @@ function CreateListing() {
 
                         <div className="listing-actions">
                             <a className="listing-secondary-button" href="./product-search.html">Cancel</a>
-                            <button className="listing-primary-button" type="submit" disabled={submitting}>
+                            <button className="listing-primary-button" type="submit" disabled={submitting || communitiesLoading}>
                                 {submitting ? 'Creating…' : 'Create listing'}
                             </button>
                         </div>

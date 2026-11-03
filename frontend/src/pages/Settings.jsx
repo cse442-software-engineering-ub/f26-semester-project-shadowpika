@@ -1,32 +1,69 @@
 import { useEffect, useState } from 'react';
 import NavBar from '../NavBar.jsx';
 import ApprovedLocationsAdmin from '../components/ApprovedLocationsAdmin.jsx';
-import { fetchApprovedLocations } from '../api.js';
+import PendingJoinRequests from '../components/PendingJoinRequests.jsx';
+import { fetchAdminStatus, fetchApprovedLocations } from '../api.js';
+import { appBase } from '../routes.js';
 import '../ProductSearch.css';
 import '../styles/settings.css';
 
 // Account settings is Cristino's page in settings/; its Admin tab links back here.
 export const ACCOUNT_SETTINGS_HREF = './settings/account-settings.html';
+export const ADMIN_REGISTER_HREF = `${appBase()}index.html#/admin-register`;
 
 export default function Settings() {
-    // null while checking; the Admin tab only appears once the server confirms the admin role.
+    const [applicationStatus, setApplicationStatus] = useState(null);
     const [adminLocations, setAdminLocations] = useState(null);
 
     useEffect(() => {
         let cancelled = false;
-        fetchApprovedLocations()
-            .then((result) => {
+        fetchAdminStatus()
+            .then(async (status) => {
                 if (cancelled) return;
-                if (result.success && Array.isArray(result.locations)) setAdminLocations(result.locations);
-                else window.location.replace(ACCOUNT_SETTINGS_HREF);
+                const next = status.success ? status.application_status : 'none';
+                setApplicationStatus(next);
+                if (next !== 'approved') return;
+                const locations = await fetchApprovedLocations();
+                if (!cancelled && locations.success && Array.isArray(locations.locations)) {
+                    setAdminLocations(locations.locations);
+                }
             })
             .catch(() => {
-                if (!cancelled) window.location.replace(ACCOUNT_SETTINGS_HREF);
+                if (!cancelled) setApplicationStatus('none');
             });
         return () => {
             cancelled = true;
         };
     }, []);
+
+    let adminBody = <p className="kv-settings-section__hint">Checking your admin access…</p>;
+    if (applicationStatus === 'none') {
+        adminBody = (
+            <div className="kv-admin-gate">
+                <h2 className="kv-settings-section__title">Become a community admin</h2>
+                <p className="kv-settings-section__hint">
+                    Register as a community partner without logging out. A moderator reviews the request before you can manage a community.
+                </p>
+                <a className="kv-admin-gate__button" href={ADMIN_REGISTER_HREF}>
+                    Register as an admin
+                </a>
+            </div>
+        );
+    } else if (applicationStatus === 'pending') {
+        adminBody = (
+            <div className="kv-admin-gate">
+                <h2 className="kv-settings-section__title">Admin application</h2>
+                <p className="kv-admin-gate__pending" role="status">Your request is being reviewed.</p>
+            </div>
+        );
+    } else if (applicationStatus === 'approved') {
+        adminBody = (
+            <>
+                <PendingJoinRequests />
+                {adminLocations ? <ApprovedLocationsAdmin initialLocations={adminLocations} /> : null}
+            </>
+        );
+    }
 
     return (
         <div className="ps-page">
@@ -47,25 +84,21 @@ export default function Settings() {
                         >
                             Account
                         </button>
-                        {adminLocations ? (
-                            <button
-                                type="button"
-                                role="tab"
-                                id="settings-tab-Admin"
-                                aria-selected="true"
-                                aria-controls="settings-panel"
-                                className="kv-settings-tab is-active"
-                            >
-                                Admin
-                            </button>
-                        ) : null}
+                        <button
+                            type="button"
+                            role="tab"
+                            id="settings-tab-Admin"
+                            aria-selected="true"
+                            aria-controls="settings-panel"
+                            className="kv-settings-tab is-active"
+                        >
+                            Admin
+                        </button>
                     </div>
 
-                    {adminLocations ? (
-                        <div id="settings-panel" className="kv-settings-content" role="tabpanel" aria-labelledby="settings-tab-Admin">
-                            <ApprovedLocationsAdmin initialLocations={adminLocations} />
-                        </div>
-                    ) : null}
+                    <div id="settings-panel" className="kv-settings-content" role="tabpanel" aria-labelledby="settings-tab-Admin">
+                        {adminBody}
+                    </div>
                 </section>
             </main>
         </div>

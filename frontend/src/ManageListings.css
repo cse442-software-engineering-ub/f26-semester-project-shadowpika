@@ -112,3 +112,19 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+.ml-status-action {
+  max-width: 100%;
+  min-height: 48px;
+  padding: 10px 20px;
+  border: 1px solid #1F2F46;
+  border-radius: 8px;
+  background: white;
+  color: #1F2F46;
+  font: 700 16px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+.ml-status-action:disabled { opacity: 0.55; cursor: not-allowed; }
+.ml-status-action:focus-visible { outline: 3px solid #b58a26; outline-offset: 3px; }
+.ml-delete { border-color: #C72929; color: #C72929; }
+.ml-edit { background: #1F2F46; color: #F7F3EA; }
+.ml-sale-hint { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }

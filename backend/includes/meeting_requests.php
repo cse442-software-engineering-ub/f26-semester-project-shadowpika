@@ -2,6 +2,8 @@
 // Business logic for buyer meeting requests. Every function returns
 // [httpStatus, responseBody] so the endpoints in api/ stay thin.
 
+require_once __DIR__ . '/communities.php';
+
 const KARAVAN_NOT_LOGGED_IN_ERROR = 'You must be logged in.';
 const KARAVAN_LISTING_NOT_FOUND_ERROR = 'Listing not found.';
 
@@ -34,7 +36,7 @@ function karavan_parse_positive_id($value): ?int
 /** Only active listings can be viewed or requested; sold, inactive, and missing ones return null. */
 function karavan_find_active_listing(PDO $pdo, int $listingId): ?array
 {
-    $stmt = $pdo->prepare("SELECT listing_id, owner_id FROM listings WHERE listing_id = ? AND status = 'active'");
+    $stmt = $pdo->prepare("SELECT listing_id, owner_id, community FROM listings WHERE listing_id = ? AND status = 'active'");
     $stmt->execute([$listingId]);
     $row = $stmt->fetch();
     return $row ?: null;
@@ -44,7 +46,8 @@ function karavan_format_meeting_request(array $row): array
 {
     $imageUrl = $row['image_url'] ?? null;
 
-    return [
+    return array_merge([
+        'request_id'   => (int) $row['request_id'],
         'listing_id'   => (int) $row['listing_id'],
         'name'         => $row['name'],
         'price'        => number_format((float) $row['price'], 2, '.', ''),
@@ -53,12 +56,37 @@ function karavan_format_meeting_request(array $row): array
         'meeting_time' => substr($row['meeting_time'], 0, 5),
         'location'     => $row['location_label'],
         'status'       => $row['status'],
+    ], karavan_meeting_progress($row));
+}
+
+/** Database timestamps are UTC; return the same wire format as the check-in endpoint. */
+function karavan_meeting_checked_in_at(array $row, string $column = 'checked_in_at'): ?string
+{
+    if (empty($row[$column])) return null;
+    return (new DateTimeImmutable($row[$column], new DateTimeZone('UTC')))
+        ->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.v\Z');
+}
+
+function karavan_meeting_progress(array $row, bool $seller = false): array
+{
+    $buyerTime = karavan_meeting_checked_in_at($row);
+    $sellerTime = karavan_meeting_checked_in_at($row, 'seller_checked_in_at');
+    $both = $buyerTime !== null && $sellerTime !== null;
+    return [
+        // Preserve the old field's buyer-only meaning in details and lists.
+        'checked_in_at' => $buyerTime,
+        'buyer_checked_in_at' => $buyerTime,
+        'seller_checked_in_at' => $sellerTime,
+        'both_checked_in' => $both,
+        'listing_status' => $row['listing_status'],
+        'can_mark_sold' => $seller && $both && (int) $row['buyer_id'] !== (int) $row['owner_id']
+            && $row['status'] === 'approved' && $row['listing_status'] === 'active',
     ];
 }
 
 const KARAVAN_MEETING_REQUEST_SELECT =
-    'SELECT r.listing_id, l.name, l.price, l.image_url, r.meeting_date, r.meeting_time,
-            r.location_label, r.status
+    'SELECT r.request_id, r.buyer_id, r.listing_id, l.owner_id, l.name, l.price, l.image_url, r.meeting_date, r.meeting_time,
+            r.location_label, r.status, r.checked_in_at, r.seller_checked_in_at, l.status AS listing_status
        FROM meeting_requests r
        JOIN listings l ON l.listing_id = r.listing_id';
 
@@ -74,16 +102,41 @@ function karavan_list_my_meeting_requests(PDO $pdo, ?int $userId): array
     return [200, ['success' => true, 'requests' => array_map('karavan_format_meeting_request', $stmt->fetchAll())]];
 }
 
-function karavan_list_meeting_locations(PDO $pdo, ?int $userId): array
+function karavan_list_meeting_locations(PDO $pdo, ?int $userId, $communityInput): array
 {
     if ($userId === null) {
         return karavan_not_logged_in();
     }
 
-    $stmt = $pdo->query('SELECT id, label FROM approved_locations ORDER BY created_at ASC, id ASC');
+    $communityLength = is_string($communityInput)
+        ? (function_exists('mb_strlen') ? mb_strlen($communityInput, 'UTF-8') : strlen($communityInput))
+        : 0;
+    if (!is_string($communityInput) || trim($communityInput) === '' || $communityLength > 255) {
+        return [400, ['success' => false, 'error' => 'A valid community is required.']];
+    }
+    $community = trim($communityInput);
+
+    // Compare in PHP so exact case-sensitive matching is enforced even when MySQL uses a
+    // case-insensitive collation. A pending "all of ub" must not match approved "All of UB".
+    $approved = $pdo->query("SELECT business_name FROM admin_requests WHERE status = 'approved'");
+    $communityExists = false;
+    foreach ($approved->fetchAll() as $row) {
+        if ((string) $row['business_name'] === $community) {
+            $communityExists = true;
+            break;
+        }
+    }
+    if (!$communityExists) {
+        return [404, ['success' => false, 'error' => 'Community not found.']];
+    }
+
+    $stmt = $pdo->query('SELECT id, label, community FROM approved_locations ORDER BY created_at ASC, id ASC');
 
     $locations = [];
     foreach ($stmt->fetchAll() as $row) {
+        if (($row['community'] ?? null) !== $community) {
+            continue;
+        }
         $locations[] = ['location_id' => (int) $row['id'], 'label' => $row['label']];
     }
 
@@ -158,6 +211,9 @@ function karavan_create_meeting_request(PDO $pdo, ?int $userId, $input): array
     if ($listing['owner_id'] !== null && (int) $listing['owner_id'] === $userId) {
         return [403, ['success' => false, 'error' => 'You cannot request your own item.']];
     }
+    if (!karavan_can_shop_listing($pdo, $userId, $listing)) {
+        return [403, ['success' => false, 'error' => KARAVAN_NOT_A_MEMBER_ERROR]];
+    }
 
     $locationInput = $input['location_id'] ?? null;
     if ($locationInput === null || $locationInput === '') {
@@ -228,4 +284,118 @@ function karavan_cancel_meeting_request(PDO $pdo, ?int $userId, $input): array
     }
 
     return [200, ['success' => true]];
+}
+
+// Seller side: requests on listings the logged-in user owns, with the buyer's email.
+const KARAVAN_INCOMING_REQUEST_SELECT =
+    'SELECT r.request_id, r.buyer_id, r.listing_id, l.name, l.price, l.image_url, l.community, u.email AS buyer,
+            r.meeting_date, r.meeting_time, r.location_id, r.location_label, r.status, r.checked_in_at,
+            r.seller_checked_in_at, l.status AS listing_status, l.owner_id
+       FROM meeting_requests r
+       JOIN listings l ON l.listing_id = r.listing_id
+       JOIN users u ON u.id = r.buyer_id';
+
+function karavan_format_incoming_request(array $row): array
+{
+    $imageUrl = $row['image_url'] ?? null;
+
+    return array_merge([
+        'request_id'   => (int) $row['request_id'],
+        'listing_id'   => (int) $row['listing_id'],
+        'name'         => $row['name'],
+        'price'        => number_format((float) $row['price'], 2, '.', ''),
+        'image_url'    => ($imageUrl === null || trim($imageUrl) === '') ? null : $imageUrl,
+        'community'    => $row['community'],
+        'buyer'        => $row['buyer'],
+        'meeting_date' => $row['meeting_date'],
+        'meeting_time' => substr($row['meeting_time'], 0, 5),
+        'location'     => $row['location_label'],
+        'status'       => $row['status'],
+    ], karavan_meeting_progress($row, true));
+}
+
+function karavan_list_incoming_meeting_requests(PDO $pdo, ?int $userId): array
+{
+    if ($userId === null) {
+        return karavan_not_logged_in();
+    }
+
+    $stmt = $pdo->prepare(KARAVAN_INCOMING_REQUEST_SELECT . ' WHERE l.owner_id = ? ORDER BY r.created_at ASC, r.request_id ASC');
+    $stmt->execute([$userId]);
+
+    return [200, ['success' => true, 'requests' => array_map('karavan_format_incoming_request', $stmt->fetchAll())]];
+}
+
+/** Lets the listing's owner approve, deny, or ask for a new location on a pending request. */
+function karavan_respond_meeting_request(PDO $pdo, ?int $userId, $input): array
+{
+    if ($userId === null) {
+        return karavan_not_logged_in();
+    }
+    $input = is_array($input) ? $input : [];
+
+    $requestId = karavan_parse_positive_id($input['request_id'] ?? null);
+    if ($requestId === null) {
+        return [400, ['success' => false, 'error' => 'A valid request_id is required.']];
+    }
+
+    $action = $input['action'] ?? null;
+    if (!is_string($action) || !in_array($action, ['approve', 'deny', 'change_location'], true)) {
+        return [400, ['success' => false, 'error' => 'Action must be approve, deny, or change_location.']];
+    }
+
+    $stmt = $pdo->prepare(KARAVAN_INCOMING_REQUEST_SELECT . ' WHERE r.request_id = ?');
+    $stmt->execute([$requestId]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        return [404, ['success' => false, 'error' => 'Meeting request not found.']];
+    }
+    if ($row['owner_id'] === null || (int) $row['owner_id'] !== $userId) {
+        return [403, ['success' => false, 'error' => 'You can only respond to requests for your own items.']];
+    }
+    if ($row['status'] !== 'pending') {
+        if ($row['status'] === 'approved' && $action === 'change_location') {
+            return [409, ['success' => false, 'error' => 'The meeting location is locked after approval.']];
+        }
+        return [409, ['success' => false, 'error' => 'Only pending requests can be answered.']];
+    }
+
+    $newStatus = $action === 'approve' ? 'approved' : ($action === 'deny' ? 'denied' : 'location_change_requested');
+    $location = null;
+    if ($action === 'change_location') {
+        $locationId = karavan_parse_positive_id($input['location_id'] ?? null);
+        if ($locationId !== null) {
+            $locStmt = $pdo->prepare('SELECT id, label, community FROM approved_locations WHERE id = ?');
+            $locStmt->execute([$locationId]);
+            $location = $locStmt->fetch() ?: null;
+        }
+        // Compare the community in PHP so a case-insensitive collation can't match "all of ub" to "All of UB".
+        if ($location === null || $row['community'] === null || (string) $location['community'] !== (string) $row['community']) {
+            return [400, ['success' => false, 'error' => 'Select an approved meeting location.']];
+        }
+        if ($row['location_id'] !== null && (int) $location['id'] === (int) $row['location_id']) {
+            return [400, ['success' => false, 'error' => 'Select a different meeting location.']];
+        }
+    }
+
+    try {
+        if ($location === null) {
+            $update = $pdo->prepare("UPDATE meeting_requests SET status = ? WHERE request_id = ? AND status = 'pending'");
+            $update->execute([$newStatus, $requestId]);
+        } else {
+            $update = $pdo->prepare("UPDATE meeting_requests SET status = ?, location_id = ?, location_label = ? WHERE request_id = ? AND status = 'pending'");
+            $update->execute([$newStatus, (int) $location['id'], $location['label'], $requestId]);
+        }
+        if ($update->rowCount() === 0) {
+            return [409, ['success' => false, 'error' => 'Only pending requests can be answered.']];
+        }
+
+        $stmt = $pdo->prepare(KARAVAN_INCOMING_REQUEST_SELECT . ' WHERE r.request_id = ?');
+        $stmt->execute([$requestId]);
+        $row = $stmt->fetch();
+    } catch (PDOException $e) {
+        return [500, ['success' => false, 'error' => 'Could not save the meeting request.']];
+    }
+
+    return [200, ['success' => true, 'request' => karavan_format_incoming_request($row)]];
 }

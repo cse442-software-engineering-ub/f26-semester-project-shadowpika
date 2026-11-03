@@ -78,16 +78,20 @@ try {
 
         karavan_set_auth_cookie($input_username, time() + KARAVAN_REMEMBER_SECONDS);
 
-        // The nav's "Join a Community" button shows the joined community's name.
-        $community = karavan_find_community($pdo, $db_user_row['community_id'] ?? null);
+        // The nav's "Join a Community" button shows the joined communities.
+        try {
+            $communities = karavan_joined_communities($pdo, (int) $db_user_row['id']);
+        } catch (Throwable $e) {
+            // Without the community_members table (008) login still works.
+            $communities = [];
+        }
 
         echo json_encode([
             "success" => true,
             "status" => "success",
             "authenticated" => true,
             "role" => $db_user_row['role'] ?? 'user',
-            "community_id" => $community['community_id'] ?? null,
-            "community_name" => $community['community_name'] ?? null
+            "communities" => $communities
         ]);
     } else {
         echo json_encode([

@@ -10,6 +10,20 @@ Review dependencies and existing tables before executing. Some migrations includ
 development seed rows and others are not idempotent. Do not run every file alphabetically
 or reset a shared database as part of deployment. The build never executes SQL.
 
+## Seller meeting-location map (#203)
+
+After the existing listing/location/community migrations, run
+`migrations/011_listing_meeting_location.sql` **before uploading the new PHP files**.
+It adds a nullable indexed location reference with `ON DELETE SET NULL`, matching
+the existing approved-location ID type. It backfills only byte-exact, unique
+label/community matches with valid coordinates. Existing non-null references and
+legacy text are preserved. Review the final SELECT for unresolved listings.
+
+Migration 009 renamed the campus community to `Karavan` in some tables. If existing
+locations still use `All of UB` while listings use `Karavan`, review and correct that
+data separately before re-running 011; 011 must not guess that two communities are
+the same. Do not fill every unresolved listing with an arbitrary campus location.
+
 ## Legacy Cattle bootstrap
 
 The original Cattle database may contain only the legacy `users` table. Export a SQL
@@ -23,11 +37,14 @@ backup first, then run these files in order:
    `migrations/004_unique_user_email.sql`.
 6. `migrations/005_auth_tokens.sql`
 7. `schema/listings.sql`
-8. `schema/meeting_requests.sql`
+8. `migrations/006_listing_communities.sql`
+9. `schema/meeting_requests.sql`
 
 For the isolated Cattle QA environment, `seeds/listings.sql` may then be run to add the
 search/filter fixtures without replacing existing rows. `migrations/item_details.sql`
-may be run afterward when the item-details card fixtures are required.
+may be run afterward when the item-details card fixtures are required. For card #175 QA
+only, `seeds/community_listing_test.sql` adds the deliberately pending lowercase
+`all of ub` fixture without changing an existing row.
 
 Do not run `migrations/meeting_requests.sql` as a production schema migration: it also
 resets task-card data for a specific test account. The schema-only equivalent is

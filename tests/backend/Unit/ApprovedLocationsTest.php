@@ -16,6 +16,7 @@ final class ApprovedLocationsTest extends TestCase
     private int $adminId;
     private int $moderatorId;
     private int $regularUserId;
+    private string $adminCommunity = 'Keller Properties LLC';
 
     protected function setUp(): void
     {
@@ -23,6 +24,12 @@ final class ApprovedLocationsTest extends TestCase
         $this->adminId = TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin');
         $this->moderatorId = TestDatabase::addUser($this->pdo, 'karavan.mod', 'moderator');
         $this->regularUserId = TestDatabase::addUser($this->pdo, 'testuser@test.com', 'user');
+        TestDatabase::addRequest($this->pdo, [
+            'business_name' => $this->adminCommunity,
+            'email'         => 'alex.landlord@test.com',
+            'status'        => 'approved',
+            'user_id'       => $this->adminId,
+        ]);
     }
 
     private function locationCount(): int
@@ -60,8 +67,8 @@ final class ApprovedLocationsTest extends TestCase
     // Backend Test 1
     public function testAdminGetsEveryLocationWithIdCoordinatesAndLabel(): void
     {
-        $capenId = TestDatabase::addLocation($this->pdo, 42.9612, -78.8328, 'Capen Hall Main Entrance', $this->adminId);
-        $unionId = TestDatabase::addLocation($this->pdo, 43.0011, -78.7861, 'Student Union Lobby', $this->adminId);
+        $capenId = TestDatabase::addLocation($this->pdo, 42.9612, -78.8328, 'Capen Hall Main Entrance', $this->adminId, $this->adminCommunity);
+        $unionId = TestDatabase::addLocation($this->pdo, 43.0011, -78.7861, 'Student Union Lobby', $this->adminId, $this->adminCommunity);
 
         [$status, $body] = karavan_list_approved_locations($this->pdo, $this->adminId);
 
@@ -83,7 +90,7 @@ final class ApprovedLocationsTest extends TestCase
     public function testCoordinatesAreReturnedAsNumbersNotStrings(): void
     {
         // MySQL's PDO driver returns DECIMAL columns as strings.
-        $this->pdo->exec("INSERT INTO approved_locations (lat, lng, label) VALUES ('42.961200', '-78.832800', 'Capen')");
+        $this->pdo->exec("INSERT INTO approved_locations (lat, lng, label, community) VALUES ('42.961200', '-78.832800', 'Capen', '{$this->adminCommunity}')");
 
         [, $body] = karavan_list_approved_locations($this->pdo, $this->adminId);
 
@@ -106,6 +113,7 @@ final class ApprovedLocationsTest extends TestCase
         $this->assertEqualsWithDelta(-78.8328, (float) $row['lng'], 1e-9);
         $this->assertSame('Capen Hall Main Entrance', $row['label']);
         $this->assertSame($this->adminId, (int) $row['created_by']);
+        $this->assertSame($this->adminCommunity, $row['community']);
         $this->assertNotEmpty($row['created_at']);
     }
 
@@ -145,8 +153,8 @@ final class ApprovedLocationsTest extends TestCase
     // Backend Test 3
     public function testAdminRemovesLocationAndRowIsDeleted(): void
     {
-        $locationId = TestDatabase::addLocation($this->pdo, 42.9612, -78.8328, 'Capen Hall Main Entrance', $this->adminId);
-        $otherId = TestDatabase::addLocation($this->pdo, 43.0011, -78.7861, 'Student Union Lobby', $this->adminId);
+        $locationId = TestDatabase::addLocation($this->pdo, 42.9612, -78.8328, 'Capen Hall Main Entrance', $this->adminId, $this->adminCommunity);
+        $otherId = TestDatabase::addLocation($this->pdo, 43.0011, -78.7861, 'Student Union Lobby', $this->adminId, $this->adminCommunity);
 
         [$status, $body] = karavan_remove_approved_location($this->pdo, $this->adminId, ['location_id' => $locationId]);
 
@@ -166,7 +174,7 @@ final class ApprovedLocationsTest extends TestCase
 
     public function testRemovingTheSameLocationTwiceReturns404TheSecondTime(): void
     {
-        $locationId = TestDatabase::addLocation($this->pdo, 42.9612, -78.8328, 'Capen');
+        $locationId = TestDatabase::addLocation($this->pdo, 42.9612, -78.8328, 'Capen', $this->adminId, $this->adminCommunity);
 
         karavan_remove_approved_location($this->pdo, $this->adminId, ['location_id' => $locationId]);
         [$status] = karavan_remove_approved_location($this->pdo, $this->adminId, ['location_id' => $locationId]);
@@ -304,12 +312,63 @@ final class ApprovedLocationsTest extends TestCase
 
     public function testDeletingTheAdminKeepsTheirLocations(): void
     {
-        $locationId = TestDatabase::addLocation($this->pdo, 42.9612, -78.8328, 'Capen', $this->adminId);
+        $locationId = TestDatabase::addLocation($this->pdo, 42.9612, -78.8328, 'Capen', $this->adminId, $this->adminCommunity);
 
         $this->pdo->exec("DELETE FROM users WHERE id = {$this->adminId}");
 
         $row = $this->locationRow($locationId);
         $this->assertNotFalse($row);
         $this->assertNull($row['created_by']);
+    }
+
+    public function testListOnlyReturnsLocationsForTheAdministeredCommunity(): void
+    {
+        $secondAdmin = TestDatabase::addUser($this->pdo, 'pat.second', 'admin', 'pat.second204@test.com');
+        TestDatabase::addRequest($this->pdo, [
+            'business_name' => 'Second Community LLC',
+            'email'         => 'pat.second204@test.com',
+            'status'        => 'approved',
+            'user_id'       => $secondAdmin,
+        ]);
+        $kellerPin = TestDatabase::addLocation($this->pdo, 43.0009, -78.7894, 'Keller HQ', $this->adminId, $this->adminCommunity);
+        TestDatabase::addLocation($this->pdo, 43.0050, -78.7900, 'Second Community Office', $secondAdmin, 'Second Community LLC');
+
+        [, $body] = karavan_list_approved_locations($this->pdo, $this->adminId);
+
+        $this->assertSame([$kellerPin], array_column($body['locations'], 'location_id'));
+        $this->assertSame(['Keller HQ'], array_column($body['locations'], 'label'));
+    }
+
+    public function testAdminCannotAddALocationForACommunityTheyDoNotAdminister(): void
+    {
+        $second = TestDatabase::addRequest($this->pdo, [
+            'business_name' => 'Second Community LLC',
+            'email'         => 'pat.second204@test.com',
+            'status'        => 'approved',
+        ]);
+
+        $this->assertSame(
+            [403, self::FORBIDDEN],
+            karavan_add_approved_location($this->pdo, $this->adminId, self::CAPEN + ['community_id' => $second, 'label' => 'Unauthorized Add'])
+        );
+        $this->assertSame(0, $this->locationCount());
+    }
+
+    public function testAdminCannotRemoveALocationFromACommunityTheyDoNotAdminister(): void
+    {
+        $secondAdmin = TestDatabase::addUser($this->pdo, 'pat.second', 'admin', 'pat.second204@test.com');
+        TestDatabase::addRequest($this->pdo, [
+            'business_name' => 'Second Community LLC',
+            'email'         => 'pat.second204@test.com',
+            'status'        => 'approved',
+            'user_id'       => $secondAdmin,
+        ]);
+        $otherId = TestDatabase::addLocation($this->pdo, 43.0050, -78.7900, 'Second Community Office', $secondAdmin, 'Second Community LLC');
+
+        $this->assertSame(
+            [403, self::FORBIDDEN],
+            karavan_remove_approved_location($this->pdo, $this->adminId, ['location_id' => $otherId])
+        );
+        $this->assertNotFalse($this->locationRow($otherId));
     }
 }

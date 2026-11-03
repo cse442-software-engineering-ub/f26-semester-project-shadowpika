@@ -17,18 +17,10 @@ const LISTING_ALLOWED_CONDITIONS = [
     'Acceptable',
 ];
 
-const LISTING_ALLOWED_MEETING_LOCATIONS = [
-    'Capen Hall · Main entrance',
-    'Lockwood Memorial Library · Main entrance',
-    'Student Union · Main entrance',
-    'Center for the Arts · Main entrance',
-    'Abbott Library · Main entrance',
-];
-
 /**
  * Validates and normalizes fields used to create a listing.
  *
- * @return array{data: array<string, string|null>, errors: array<string, string>}
+ * @return array{data: array<string, string|int|null>, errors: array<string, string>}
  */
 function validate_create_listing(array $input): array
 {
@@ -37,7 +29,8 @@ function validate_create_listing(array $input): array
     $condition = listing_text($input['condition'] ?? '');
     $priceInput = trim((string) ($input['price'] ?? ''));
     $relatedCourse = listing_text($input['related_course'] ?? '');
-    $meetingLocation = listing_text($input['meeting_location'] ?? '');
+    $community = listing_text($input['community'] ?? '');
+    $meetingLocationId = normalize_listing_positive_id($input['meeting_location_id'] ?? null);
     $description = listing_text($input['description'] ?? '');
     $imageUrl = listing_text($input['image_url'] ?? '');
 
@@ -72,10 +65,14 @@ function validate_create_listing(array $input): array
         $errors['related_course'] = 'Related course must be 100 characters or fewer.';
     }
 
-    if ($meetingLocation === '') {
-        $errors['meeting_location'] = 'Preferred meeting location is required.';
-    } elseif (!in_array($meetingLocation, LISTING_ALLOWED_MEETING_LOCATIONS, true)) {
-        $errors['meeting_location'] = 'Select an approved campus meeting location.';
+    if ($community === '') {
+        $errors['community'] = 'Community is required.';
+    } elseif (listing_length($community) > 255) {
+        $errors['community'] = 'Select an approved community.';
+    }
+
+    if ($meetingLocationId === null) {
+        $errors['meeting_location_id'] = 'Preferred meeting location is required.';
     }
 
     if ($description === '') {
@@ -97,12 +94,22 @@ function validate_create_listing(array $input): array
             'condition' => $condition,
             'price' => $normalizedPrice,
             'related_course' => $relatedCourse === '' ? null : $relatedCourse,
-            'meeting_location' => $meetingLocation,
+            'community' => $community,
+            'meeting_location_id' => $meetingLocationId,
             'description' => $description,
             'image_url' => $imageUrl,
         ],
         'errors' => $errors,
     ];
+}
+
+function normalize_listing_positive_id($value): ?int
+{
+    if (is_bool($value) || is_array($value) || $value === null || $value === '') {
+        return null;
+    }
+    $id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    return $id === false ? null : $id;
 }
 
 function is_valid_listing_image_url(string $imageUrl): bool

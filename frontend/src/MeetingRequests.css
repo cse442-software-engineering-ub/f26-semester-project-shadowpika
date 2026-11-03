@@ -156,6 +156,21 @@
   padding: 4px;
 }
 
+.mr-request-link {
+  display: flex;
+  width: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+h3 > .mr-request-link {
+  display: inline;
+}
+
+h3 > .mr-request-link:hover {
+  text-decoration: underline;
+}
+
 .mr-request-body {
   display: flex;
   flex-direction: column;
@@ -237,6 +252,29 @@
   opacity: 0.6;
   cursor: default;
 }
+
+.mr-request-buyer {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.mr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mr-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  align-self: stretch;
+}
+
+.mr-progress { align-self: stretch; overflow-wrap: anywhere; }
+.mr-location-locked, .mr-checkin { margin: 6px 0; font-size: 13px; line-height: 1.5; }
 
 @media (max-width: 768px) {
   .mr-meet {

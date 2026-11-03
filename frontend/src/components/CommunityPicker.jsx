@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import './CommunityPicker.css';
 
 // Rendered under the nav bar (see .nav z-index) so the nav stays usable while it's open.
-function CommunityPicker({ communities, loading, error, joinedId, joiningId, leaving, firstLogin, onJoin, onLeave, onClose }) {
+function CommunityPicker({ communities, loading, error, joiningId, leavingId, firstLogin, onJoin, onLeave, onClose }) {
     const dialogRef = useRef(null);
 
     useEffect(() => {
@@ -23,33 +23,44 @@ function CommunityPicker({ communities, loading, error, joinedId, joiningId, lea
     } else {
         body = (
             <ul className="kv-communities-list">
-                {communities.map(({ community_id: id, name }) => {
-                    const joined = id === joinedId;
-                    const busy = joiningId !== null || leaving;
+                {communities.map(({ community_id: id, name, joined, automatic, pending, administrator }) => {
+                    const busy = joiningId !== null || leavingId !== null;
+                    const joinLabel = joined ? 'Joined' : pending ? 'Pending approval' : joiningId === id ? 'Requesting…' : 'Request to Join';
                     return (
                         <li key={id} className="kv-communities-item">
-                            <span className="kv-communities-name">{name}</span>
+                            <span className="kv-communities-name">
+                                {name}
+                                {automatic ? <span className="kv-communities-tag">Everyone is a member</span> : null}
+                            </span>
                             <span className="kv-communities-actions">
-                                {joined ? (
-                                    <button
-                                        type="button"
-                                        className="kv-communities-leave"
-                                        aria-label={`Leave ${name}`}
-                                        disabled={busy}
-                                        onClick={onLeave}
-                                    >
-                                        {leaving ? 'Leaving…' : 'Leave'}
-                                    </button>
-                                ) : null}
-                                <button
-                                    type="button"
-                                    className="kv-communities-join"
-                                    aria-label={joined ? `Joined ${name}` : `Join ${name}`}
-                                    disabled={joined || busy}
-                                    onClick={() => onJoin(id)}
-                                >
-                                    {joined ? 'Joined' : joiningId === id ? 'Joining…' : 'Join'}
-                                </button>
+                                {administrator ? (
+                                    <span className="kv-communities-admin" aria-label={`Administrator of ${name}`}>
+                                        Administrator
+                                    </span>
+                                ) : (
+                                    <>
+                                        {joined && !automatic ? (
+                                            <button
+                                                type="button"
+                                                className="kv-communities-leave"
+                                                aria-label={`Leave ${name}`}
+                                                disabled={busy}
+                                                onClick={() => onLeave(id)}
+                                            >
+                                                {leavingId === id ? 'Leaving…' : 'Leave'}
+                                            </button>
+                                        ) : null}
+                                        <button
+                                            type="button"
+                                            className="kv-communities-join"
+                                            aria-label={joined ? `Joined ${name}` : pending ? `Pending approval for ${name}` : `Request to Join ${name}`}
+                                            disabled={joined || pending || busy}
+                                            onClick={() => onJoin(id)}
+                                        >
+                                            {joinLabel}
+                                        </button>
+                                    </>
+                                )}
                             </span>
                         </li>
                     );
@@ -75,7 +86,7 @@ function CommunityPicker({ communities, loading, error, joinedId, joiningId, lea
                 <p id="kv-communities-intro" className="kv-communities-intro">
                     {firstLogin
                         ? 'Welcome to Karavan! Join a community to connect with students and partners near you.'
-                        : 'You can be in one community at a time. Joining another one switches you to it, and you can leave at any time.'}
+                        : 'Request to join as many communities as you like. A community admin has to approve you before you can shop their items.'}
                 </p>
                 {error ? <p className="kv-communities-error" role="alert">{error}</p> : null}
                 {body}

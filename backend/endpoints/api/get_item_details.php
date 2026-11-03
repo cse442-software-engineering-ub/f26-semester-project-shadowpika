@@ -1,7 +1,10 @@
 <?php
 // GET /api/get_item_details.php?listing_id=<id>
 // Returns the details shown on item.html for one ACTIVE listing: name, price, condition,
-// image, category, and description. Sold, inactive, and missing listings are all "Listing not found."
+// image, category, community, description, and the selected approved meeting spot.
+// Sold, inactive, and missing listings are all
+// "Listing not found." Requires a login; only the owner and members of the listing's
+// community can view it.
 header("Content-Type: application/json");
 
 // Suppress all warnings/notices so nothing (SQL errors, stack traces) leaks into the JSON payload
@@ -25,6 +28,9 @@ function respond(int $status, array $payload) {
 }
 
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/http.php';
+require_once __DIR__ . '/../includes/communities.php';
+require_once __DIR__ . '/../listing/lib/listing_locations.php';
 
 // KARAVAN_DB_DSN lets the test suite point this endpoint at SQLite, like includes/config.php.
 function item_details_pdo(): PDO {
@@ -36,6 +42,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     respond(405, ["success" => false, "error" => "Method not allowed."]);
 }
 
+$userId = karavan_session_user_id();
+if ($userId === null) {
+    respond(401, ["success" => false, "error" => "You must be logged in."]);
+}
+
 // --- INPUT VALIDATION ---
 // Only a whole number of 1 or more; "abc", "0", and "91001 OR 1=1" are all rejected here.
 $listingId = filter_var($_GET['listing_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -44,8 +55,10 @@ if ($listingId === false) {
 }
 
 try {
-    $stmt = item_details_pdo()->prepare(
-        "SELECT listing_id, name, price, `condition`, image_url, category, description
+    $pdo = item_details_pdo();
+    $stmt = $pdo->prepare(
+        "SELECT listing_id, owner_id, name, price, `condition`, image_url, category, community, description,
+                meeting_location, meeting_location_id
            FROM listings
           WHERE listing_id = ? AND status = 'active'"
     );
@@ -55,9 +68,14 @@ try {
     if (!$row) {
         respond(404, ["success" => false, "error" => "Listing not found."]);
     }
+    if (!karavan_can_shop_listing($pdo, $userId, $row)) {
+        respond(403, ["success" => false, "error" => KARAVAN_NOT_A_MEMBER_ERROR]);
+    }
 
     $description = $row['description'] ?? null;
     $imageUrl = $row['image_url'] ?? null;
+    $locationId = $row['meeting_location_id'] === null ? null : (int) $row['meeting_location_id'];
+    $locationDetails = listing_meeting_location_details($row, listing_location_by_id($pdo, $locationId));
 
     respond(200, [
         "success" => true,
@@ -68,7 +86,11 @@ try {
             "condition"   => $row['condition'],
             "image_url"   => ($imageUrl === null || trim($imageUrl) === '') ? null : $imageUrl,
             "category"    => LEGACY_CATEGORY_LABELS[$row['category']] ?? $row['category'],
+            "community"   => $row['community'],
             "description" => ($description === null || trim($description) === '') ? null : $description,
+            "meeting_location" => $row['meeting_location'],
+            "meeting_location_id" => $locationId,
+            "meeting_location_details" => $locationDetails,
         ],
     ]);
 } catch (Throwable $e) {

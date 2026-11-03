@@ -29,7 +29,7 @@
                 <!-- <div class="tab">General</div> -->
                 <div class="tab active">Account</div>
                 <!-- <div class="tab">Customization</div> -->
-                <a href="../settings.html" class="tab_group" id="admin-tab" hidden><div class="tab">Admin</div></a>
+                <a href="../settings.html" class="tab_group" id="admin-tab"><div class="tab">Admin</div></a>
             </div>
 
 
@@ -133,12 +133,30 @@
 
         </section>
         <script>
-            if (!decodeURIComponent(getCookies("karavan_auth_cookie")).includes("@") && !decodeURIComponent(getCookies("karavan_auth_cookie")).includes(".")){
-                document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
-            }else{
-                document.getElementById("email").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
-            }
-            
+        // The auth cookie only holds the username, so the email has to come from the session.
+        var savedProfile = { username: "", email: "" };
+
+        function showProfile(profile) {
+            document.getElementById("name").value = profile.username || "";
+            document.getElementById("email").value = profile.email || "";
+        }
+
+        function loadProfile() {
+            return fetch("../session.php", { credentials: "same-origin", cache: "no-store" })
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.logged_in) {
+                        savedProfile = { username: data.username || "", email: data.email || "" };
+                        showProfile(savedProfile);
+                    }
+                })
+                .catch(error => {
+                    console.error("Session fetch error:", error);
+                });
+        }
+
+        loadProfile();
+
         function getCookies(cookieName){
             const cookies = document.cookie.split("; ")
 
@@ -222,16 +240,10 @@
                 console.log("PHP response:", data);
 
                 if (data.success) {
-                    document.getElementById("name").value = data.username;
-                    document.getElementById("email").value = data.email;
+                    savedProfile = { username: data.username, email: data.email };
+                    showProfile(savedProfile);
                 } else {
-                    if (!decodeURIComponent(getCookies("karavan_auth_cookie")).includes("@") && !decodeURIComponent(getCookies("karavan_auth_cookie")).includes(".")){
-                        document.getElementById("name").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
-                        document.getElementById("email").value = "";
-                    }else{
-                        document.getElementById("email").value = decodeURIComponent(getCookies("karavan_auth_cookie"));
-                        document.getElementById("name").value = "";
-                    }
+                    showProfile(savedProfile);
                     console.log("Error:", data.error);
                     alert(data.error);
                 }
@@ -241,28 +253,7 @@
             });
         }
 
-        async function checkAdminStatus() {
-        const adminTab = document.getElementById("admin-tab");
-
-        try {
-            const response = await fetch("admin-check.php", {
-                credentials: "same-origin"
-            });
-
-            if (!response.ok) {
-                adminTab.hidden = true;
-                return;
-            }
-
-            const data = await response.json();
-            adminTab.hidden = !(data.success && data.is_admin);
-        } catch (error) {
-            console.error("Admin check failed:", error);
-            adminTab.hidden = true;
-        }
-    }
-
-    checkAdminStatus();
+        // Everyone can open the Admin tab. Only approved admins see admin tools there.
 
         </script>
 

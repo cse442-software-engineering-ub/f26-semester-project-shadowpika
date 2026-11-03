@@ -118,7 +118,9 @@ $uniqueSuffix = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
 $title = "Color Workbook API Test $uniqueSuffix"
 $separator = [char] 0x00B7
 $relatedCourse = "ART 105 $separator Color Theory"
-$meetingLocation = "Capen Hall $separator Main entrance"
+$community = 'All of UB'
+$meetingLocationId = 91001
+$meetingLocation = 'Capen Hall Main Entrance'
 
 Write-Host 'Test 1: create and persist a valid listing'
 $validBody = @{
@@ -127,7 +129,8 @@ $validBody = @{
     condition = 'Like New'
     price = '40.00'
     related_course = $relatedCourse
-    meeting_location = $meetingLocation
+    community = $community
+    meeting_location_id = $meetingLocationId
     description = 'Fourth edition by Becky Koenig M.F.A. Like new with no markings.'
     image_url = $imageUrl
 } | ConvertTo-Json -Compress
@@ -140,6 +143,7 @@ Assert-Equal -Expected 'Textbooks' -Actual $created.listing.category -Message 'T
 Assert-Equal -Expected 'Like New' -Actual $created.listing.condition -Message 'The returned condition is incorrect.'
 Assert-Equal -Expected '40.00' -Actual $created.listing.price -Message 'The returned price is incorrect.'
 Assert-Equal -Expected $relatedCourse -Actual $created.listing.related_course -Message 'The returned course is incorrect.'
+Assert-Equal -Expected $community -Actual $created.listing.community -Message 'The returned community is incorrect.'
 Assert-Equal -Expected $meetingLocation -Actual $created.listing.meeting_location -Message 'The returned meeting location is incorrect.'
 Assert-Equal -Expected 'active' -Actual $created.listing.status -Message 'A new listing must be active.'
 Assert-Equal -Expected $imageUrl -Actual $created.listing.image_url -Message 'The returned image URL is incorrect.'
@@ -161,7 +165,7 @@ Write-Host 'PASS' -ForegroundColor Green
 Write-Host 'Test 2: reject missing required fields'
 $missing = Post-Json -Url $createUrl -Body '{}' -ExpectedStatus 422
 Assert-True -Condition (-not [bool] $missing.success) -Message 'An empty listing was accepted.'
-foreach ($field in @('title', 'category', 'condition', 'price', 'meeting_location', 'description', 'image_url')) {
+foreach ($field in @('title', 'category', 'condition', 'price', 'community', 'meeting_location_id', 'description', 'image_url')) {
     Assert-True -Condition ($null -ne $missing.errors.$field) -Message "Missing-field response did not identify $field."
 }
 Assert-True -Condition ($null -eq $missing.errors.related_course) -Message 'The optional related course was treated as required.'
@@ -174,25 +178,61 @@ $invalidBody = @{
     condition = 'Perfect'
     price = '40.999'
     related_course = ''
-    meeting_location = 'Off Campus'
+    community = ''
+    meeting_location_id = 0
     description = 'This request should be rejected.'
     image_url = $imageUrl
 } | ConvertTo-Json -Compress
 
 $invalid = Post-Json -Url $createUrl -Body $invalidBody -ExpectedStatus 422
-foreach ($field in @('category', 'condition', 'price', 'meeting_location')) {
+foreach ($field in @('category', 'condition', 'price', 'community', 'meeting_location_id')) {
     Assert-True -Condition ($null -ne $invalid.errors.$field) -Message "Invalid-value response did not identify $field."
 }
 Write-Host 'PASS' -ForegroundColor Green
 
-Write-Host 'Test 4: reject an external image URL'
+Write-Host 'Test 4: reject a pending community even when its name differs only by case'
+$pendingCommunityBody = @{
+    title = 'Pending Community Test'
+    category = 'Textbooks'
+    condition = 'Good'
+    price = '12.00'
+    related_course = ''
+    community = 'all of ub'
+    meeting_location_id = $meetingLocationId
+    description = 'This request must not use a pending community.'
+    image_url = $imageUrl
+} | ConvertTo-Json -Compress
+
+$pendingCommunity = Post-Json -Url $createUrl -Body $pendingCommunityBody -ExpectedStatus 422
+Assert-True -Condition ($null -ne $pendingCommunity.errors.community) -Message 'The pending community was not rejected.'
+Write-Host 'PASS' -ForegroundColor Green
+
+Write-Host 'Test 5: reject a location that is not assigned to the selected community'
+$wrongLocationBody = @{
+    title = 'Wrong Location Test'
+    category = 'Textbooks'
+    condition = 'Good'
+    price = '12.00'
+    related_course = ''
+    community = $community
+    meeting_location_id = 999999
+    description = 'This request must not use an unrelated location.'
+    image_url = $imageUrl
+} | ConvertTo-Json -Compress
+
+$wrongLocation = Post-Json -Url $createUrl -Body $wrongLocationBody -ExpectedStatus 422
+Assert-True -Condition ($null -ne $wrongLocation.errors.meeting_location_id) -Message 'The unrelated location was not rejected.'
+Write-Host 'PASS' -ForegroundColor Green
+
+Write-Host 'Test 6: reject an external image URL'
 $externalImageBody = @{
     title = 'External Image Test'
     category = 'Textbooks'
     condition = 'Good'
     price = '12.00'
     related_course = ''
-    meeting_location = $meetingLocation
+    community = $community
+    meeting_location_id = $meetingLocationId
     description = 'This request must not attach an image hosted outside Karavan.'
     image_url = 'https://example.com/not-a-karavan-image.jpg'
 } | ConvertTo-Json -Compress
@@ -202,12 +242,12 @@ Assert-True -Condition (-not [bool] $externalImage.success) -Message 'An externa
 Assert-True -Condition ($null -ne $externalImage.errors.image_url) -Message 'The invalid image URL was not identified.'
 Write-Host 'PASS' -ForegroundColor Green
 
-Write-Host 'Test 5: reject malformed JSON'
+Write-Host 'Test 7: reject malformed JSON'
 $malformed = Post-Json -Url $createUrl -Body '{"title":' -ExpectedStatus 400
 Assert-Equal -Expected 'The request body must contain valid JSON.' -Actual $malformed.error -Message 'Malformed-JSON error is incorrect.'
 Write-Host 'PASS' -ForegroundColor Green
 
-Write-Host 'Test 6: reject unsupported request methods'
+Write-Host 'Test 8: reject unsupported request methods'
 $wrongMethod = Invoke-JsonRequest -CurlArguments @($createUrl) -ExpectedStatus 405
 Assert-Equal -Expected 'Method not allowed.' -Actual $wrongMethod.error -Message 'Method error is incorrect.'
 Write-Host 'PASS' -ForegroundColor Green

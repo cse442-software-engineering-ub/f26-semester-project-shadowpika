@@ -1,5 +1,12 @@
 /* Settings page. Colors and tab layout follow the Account Settings design (branch 89). */
 
+/* Same inset as settings/account-settings.css .main so Account → Admin does not jump. */
+.ps-page > .ps-frame {
+  box-sizing: border-box;
+  min-height: 0;
+  padding: 32px 40px 48px;
+}
+
 .kv-settings-description {
   margin: 6px 0 24px;
   font-size: 15px;
@@ -7,7 +14,7 @@
 }
 
 .kv-settings-card {
-  max-width: 1078px;
+  width: 100%;
   border: 1px solid #e3e0d9;
   border-radius: 11px;
   overflow: hidden;
@@ -75,71 +82,6 @@
   border-radius: 10px;
   overflow: hidden;
   background: #ffffff;
-}
-
-.kv-locations-map {
-  width: 100%;
-  height: 420px;
-  background: #f3efe7;
-  cursor: crosshair;
-}
-
-/* Mutes the OpenStreetMap tiles to the design's cream background with gray buildings. */
-.kv-locations-map .leaflet-tile-pane {
-  filter: grayscale(0.9) sepia(0.18) brightness(1.04) contrast(0.92);
-}
-
-.kv-pin {
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.kv-pin svg {
-  display: block;
-  filter: drop-shadow(0 2px 2px rgba(31, 45, 68, 0.3));
-}
-
-.kv-pin__body {
-  fill: #24364f;
-  stroke: #ffffff;
-  stroke-width: 1.5;
-}
-
-.kv-pin__dot {
-  fill: #ffffff;
-}
-
-.kv-pin--selected .kv-pin__body {
-  stroke: #c9a15e;
-  stroke-width: 2.5;
-}
-
-.kv-pin--removing svg {
-  opacity: 0.45;
-}
-
-.kv-pin--removing .kv-pin__body {
-  fill: #9aa5b4;
-}
-
-.kv-pin--draft .kv-pin__body {
-  fill: #c9a15e;
-}
-
-.kv-pin--draft .kv-pin__dot {
-  fill: #24364f;
-}
-
-.kv-pin-label {
-  padding: 3px 8px;
-  border: 1px solid #e3e0d9;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(31, 45, 68, 0.15);
-  font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  color: #24364f;
 }
 
 .kv-map-card__details {
@@ -277,12 +219,111 @@
   color: #718197;
 }
 
+.kv-admin-gate {
+  max-width: 520px;
+}
+
+.kv-admin-gate__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 8px;
+  background: #24364f;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.kv-admin-gate__pending {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f6f1ea;
+  color: #24364f;
+  font-weight: 600;
+}
+
+.kv-join-requests {
+  margin-bottom: 32px;
+}
+
+.kv-join-requests__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kv-join-requests__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e3e0d9;
+  border-radius: 10px;
+}
+
+.kv-join-requests__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kv-join-requests__approve,
+.kv-join-requests__deny {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.kv-join-requests__approve {
+  background: #24364f;
+  color: #ffffff;
+}
+
+.kv-join-requests__deny {
+  border: 1px solid #24364f;
+  background: #ffffff;
+  color: #24364f;
+}
+
+.kv-join-requests__notice,
+.kv-join-requests__error {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.kv-join-requests__notice {
+  background: #eaf6ee;
+  color: #1f6b3a;
+}
+
+.kv-join-requests__error {
+  background: #fdecea;
+  color: #c0392b;
+}
+
+@media (max-width: 768px) {
+  .ps-page > .ps-frame {
+    padding: 20px 15px 40px;
+  }
+}
+
 @media (max-width: 600px) {
   .kv-settings-content {
     padding: 20px 16px;
   }
 
-  .kv-locations-map {
-    height: 320px;
+  .kv-join-requests__item {
+    align-items: flex-start;
   }
 }

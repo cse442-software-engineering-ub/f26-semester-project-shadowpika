@@ -51,8 +51,27 @@ final class TestDatabase
                 lat REAL NOT NULL,
                 lng REAL NOT NULL,
                 label TEXT NOT NULL,
+                community TEXT NULL,
                 created_by INTEGER NULL REFERENCES users (id) ON DELETE SET NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )"
+        );
+        // Mirrors database/migrations/008_community_members.sql.
+        $pdo->exec(
+            "CREATE TABLE community_members (
+                user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+                community_id INTEGER NOT NULL REFERENCES admin_requests (id) ON DELETE CASCADE,
+                shopping INTEGER NOT NULL DEFAULT 1,
+                joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, community_id)
+            )"
+        );
+        $pdo->exec(
+            "CREATE TABLE community_join_requests (
+                user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+                community_id INTEGER NOT NULL REFERENCES admin_requests (id) ON DELETE CASCADE,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, community_id)
             )"
         );
         // Mirrors sql/005_auth_tokens.sql.
@@ -76,19 +95,53 @@ final class TestDatabase
                 image_url TEXT NULL,
                 category TEXT NOT NULL DEFAULT 'Other',
                 related_course TEXT NULL,
+                community TEXT NULL,
                 meeting_location TEXT NULL,
+                meeting_location_id INTEGER NULL REFERENCES approved_locations (id) ON DELETE SET NULL,
                 description TEXT NULL,
                 status TEXT NOT NULL DEFAULT 'active'
             )"
         );
 
+        $pdo->exec("CREATE TABLE meeting_requests (
+            request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            buyer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            listing_id INTEGER NOT NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
+            meeting_date TEXT NOT NULL, meeting_time TEXT NOT NULL,
+            location_id INTEGER NULL REFERENCES approved_locations(id) ON DELETE SET NULL,
+            location_label TEXT NOT NULL, status TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            checked_in_at TEXT NULL, seller_checked_in_at TEXT NULL)");
+
         return $pdo;
     }
 
-    public static function addLocation(PDO $pdo, float $lat, float $lng, string $label, ?int $createdBy = null): int
+    public static function addMeeting(PDO $pdo, int $buyerId, int $listingId, array $overrides = []): int
     {
-        $stmt = $pdo->prepare('INSERT INTO approved_locations (lat, lng, label, created_by) VALUES (?, ?, ?, ?)');
-        $stmt->execute([$lat, $lng, $label, $createdBy]);
+        $row = array_merge([
+            'meeting_date' => '2026-11-06', 'meeting_time' => '12:00:00',
+            'location_id' => null, 'location_label' => 'Test Meeting Spot', 'status' => 'approved',
+            'checked_in_at' => null, 'seller_checked_in_at' => null,
+        ], $overrides);
+        $stmt = $pdo->prepare('INSERT INTO meeting_requests
+            (buyer_id, listing_id, meeting_date, meeting_time, location_id, location_label, status, checked_in_at, seller_checked_in_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$buyerId, $listingId, $row['meeting_date'], $row['meeting_time'], $row['location_id'],
+            $row['location_label'], $row['status'], $row['checked_in_at'], $row['seller_checked_in_at']]);
+        return (int) $pdo->lastInsertId();
+    }
+
+    public static function addLocation(
+        PDO $pdo,
+        float $lat,
+        float $lng,
+        string $label,
+        ?int $createdBy = null,
+        ?string $community = null
+    ): int
+    {
+        $stmt = $pdo->prepare('INSERT INTO approved_locations (lat, lng, label, created_by, community) VALUES (?, ?, ?, ?, ?)');
+        $stmt->execute([$lat, $lng, $label, $createdBy, $community]);
         return (int) $pdo->lastInsertId();
     }
 
@@ -138,19 +191,21 @@ final class TestDatabase
             'image_url'        => 'uploads/calculus-textbook.jpg',
             'category'         => 'Textbooks',
             'related_course'   => 'MTH 141',
+            'community'        => 'All of UB',
             'meeting_location' => 'Capen Hall · Main entrance',
+            'meeting_location_id' => null,
             'description'      => 'Used for one semester.',
             'status'           => 'active',
         ], $overrides);
         $stmt = $pdo->prepare(
             'INSERT INTO listings
-                (owner_id, name, price, `condition`, image_url, category, related_course, meeting_location, description, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                (owner_id, name, price, `condition`, image_url, category, related_course, community, meeting_location, meeting_location_id, description, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $ownerId, $row['name'], $row['price'], $row['condition'], $row['image_url'],
-            $row['category'], $row['related_course'], $row['meeting_location'],
-            $row['description'], $row['status'],
+            $row['category'], $row['related_course'], $row['community'], $row['meeting_location'],
+            $row['meeting_location_id'], $row['description'], $row['status'],
         ]);
         return (int) $pdo->lastInsertId();
     }

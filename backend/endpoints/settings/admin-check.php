@@ -1,27 +1,24 @@
 <?php
-header('Content-Type: application/json');
-ini_set('display_errors', '0');
+require_once __DIR__ . '/../includes/http.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/communities.php';
+
+ini_set('display_errors', 0);
+karavan_send_headers('GET');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
+
+$userId = karavan_session_user_id();
+if ($userId === null) {
+    karavan_send_json(...karavan_forbidden());
+}
 
 try {
-    require_once __DIR__ . '/../includes/db.php';
-    require_once __DIR__ . '/../includes/auth.php';
-
     $pdo = karavan_pdo();
-    $user = karavan_current_user($pdo);
-
-    echo json_encode([
-        'success' => true,
-        'is_admin' => $user !== null
-            && ($user['role'] ?? '') === 'admin'
-    ]);
-
 } catch (Throwable $e) {
-    error_log('admin-check.php failed: ' . "Not an admin.");
-
-    http_response_code(500);
-
-    echo json_encode([
-        'success' => false,
-        'is_admin' => false
-    ]);
+    karavan_send_json(500, ['success' => false, 'is_admin' => false, 'application_status' => 'none']);
 }
+
+karavan_send_json(...karavan_admin_tab_status($pdo, $userId));

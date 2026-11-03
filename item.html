@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./assets/icons/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=League+Spartan:wght@400;600;700&display=swap" rel="stylesheet" />
+    <title>Karavan - Item Details</title>
+    <script type="module" crossorigin src="./assets/item-B4dX4vID.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/api-DxUvtX0m.js">
+    <link rel="modulepreload" crossorigin href="./assets/RequireLogin-ZBYk5Wwm.js">
+    <link rel="modulepreload" crossorigin href="./assets/NavBar-Q0pxYCx3.js">
+    <link rel="modulepreload" crossorigin href="./assets/session-guard-C3XdPHac.js">
+    <link rel="modulepreload" crossorigin href="./assets/localListings-CBDJOdpj.js">
+    <link rel="modulepreload" crossorigin href="./assets/meetingRequests-C92vOjmG.js">
+    <link rel="stylesheet" crossorigin href="./assets/api-DL1KqckN.css">
+    <link rel="stylesheet" crossorigin href="./assets/NavBar-BNai4K7Z.css">
+    <link rel="stylesheet" crossorigin href="./assets/meetingRequests-Cmsjy152.css">
+    <link rel="stylesheet" crossorigin href="./assets/ProductSearch-BV67JT2N.css">
+  </head>
+  <body>
+    <div id="root"></div>
+
+
+<!-- Content Moderation Reporting Wrapper Integration -->
+<div id="karavan-report-container" style="position: absolute; bottom: 40px; right: 40px; font-family: 'League Spartan', sans-serif; z-index: 999;">
+    <div id="report-initial-view">
+        <button id="btn-trigger-report" style="background: none; border: none; color: #BA3C2A; cursor: pointer; font-weight: bold; fontSize: 14px; text-decoration: underline; padding: 0;">
+            Report this listing
+        </button>
+    </div>
+    
+    <div id="report-menu-view" style="display: none; background: #FFF5F5; padding: 16px; borderRadius: 8px; border: 1px solid #E2A8A2; margin-top: 15px;">
+        <h4 style="margin: 0 0 10px 0; color: #152A47;">Select a reason for the flag:</h4>
+        <select id="report-reason-select" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; margin-bottom: 12px;">
+            <option value="0">Inappropriate Content</option>
+            <option value="1">Scam or Fraud</option>
+            <option value="2">Miscategorized Item</option>
+            <option value="3">Prohibited Goods</option>
+        </select>
+        <p id="report-status-feedback" style="font-size: 13px; font-weight: bold; display: none;"></p>
+        <div style="display: flex; gap: 10px;">
+            <button id="btn-submit-report" style="background: #BA3C2A; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Submit</button>
+            <button id="btn-cancel-report" style="background: #ccc; color: #333; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const triggerBtn = document.getElementById("btn-trigger-report");
+    const cancelBtn = document.getElementById("btn-cancel-report");
+    const submitBtn = document.getElementById("btn-submit-report");
+    const menuView = document.getElementById("report-menu-view");
+    const initialView = document.getElementById("report-initial-view");
+    const feedbackText = document.getElementById("report-status-feedback");
+    const reasonSelect = document.getElementById("report-reason-select");
+
+    // Dynamic layout observer pulls the element straight into the white information panel card
+    const listingCardObserver = new MutationObserver(() => {
+        const cardDescriptionSection = document.querySelector(".id-info");
+        const reportContainer = document.getElementById("karavan-report-container");
+        if (cardDescriptionSection && reportContainer && !cardDescriptionSection.contains(reportContainer)) {
+            cardDescriptionSection.appendChild(reportContainer);
+            reportContainer.style.margin = "30px 0 0 0";
+            reportContainer.style.maxWidth = "100%";
+            reportContainer.style.padding = "0";
+        }
+    });
+    listingCardObserver.observe(document.body, { childList: true, subtree: true });
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const listingId = urlParams.get('listing_id');
+
+    if (triggerBtn) {
+        triggerBtn.addEventListener("click", () => {
+            menuView.style.display = "block";
+            initialView.style.display = "none";
+            feedbackText.style.display = "none";
+        });
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener("click", () => {
+            menuView.style.display = "none";
+            initialView.style.display = "block";
+        });
+    }
+
+    if (submitBtn && listingId) {
+        submitBtn.addEventListener("click", async () => {
+            feedbackText.style.display = "none";
+            
+            try {
+                const response = await fetch("./report_listing.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        listing_id: parseInt(listingId),
+                        reason_category: parseInt(reasonSelect.value)
+                    })
+                });
+                
+                const result = await response.json();
+                feedbackText.style.display = "block";
+                
+                if (result.success) {
+                    feedbackText.style.color = "green";
+                    feedbackText.innerText = "SUCCESS: Item report submitted.";
+                    setTimeout(() => {
+                        menuView.style.display = "none";
+                        initialView.style.display = "block";
+                    }, 2000);
+                } else {
+                    feedbackText.style.color = "red";
+                    feedbackText.innerText = result.error || "Failed to log report.";
+                }
+            } catch (err) {
+                feedbackText.style.display = "block";
+                feedbackText.style.color = "red";
+                feedbackText.innerText = "Could not reach backend configuration server.";
+            }
+        });
+    }
+});
+</script>
+</body>
+</html>

@@ -32,6 +32,7 @@
 
 .id-item {
   display: grid;
+  position: relative;
   grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
   gap: 40px;
   max-width: 1040px;
@@ -48,6 +49,43 @@
   padding: 28px 40px;
   background: #efe6d8;
   border-radius: 12px;
+}
+
+.id-heart {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ps-navy);
+  cursor: pointer;
+}
+
+.id-heart svg {
+  width: 26px;
+  height: 26px;
+}
+
+.id-heart:hover,
+.id-heart:focus-visible {
+  background: rgba(31, 45, 68, 0.08);
+}
+
+.id-heart.is-saved {
+  color: #b4532a;
+  cursor: pointer;
+}
+
+.id-save-error {
+  margin: 8px 0 0;
+  font-size: 14px;
 }
 
 .id-cover .ps-book-title {
@@ -143,6 +181,71 @@
   color: var(--ps-muted);
 }
 
+.id-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.ps-page .id-actions .id-buy {
+  margin-top: 0;
+}
+
+.ps-page .id-message-seller {
+  padding: 12px 28px;
+  border: 1px solid var(--ps-navy);
+  border-radius: 10px;
+  background: var(--ps-white);
+  color: var(--ps-navy);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Hidden on every item page until Messages works; the button stays in ItemDetails.jsx. */
+.ps-page .id-message-seller {
+  display: none;
+}
+
+.ps-page .id-message-seller:hover,
+.ps-page .id-message-seller:focus-visible {
+  background: var(--ps-cream);
+}
+
+.id-meeting-location {
+  grid-column: 1 / -1;
+  min-width: 0;
+  border-top: 1px solid #ebe6dc;
+  padding-top: 20px;
+}
+
+.id-meeting-location h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+}
+
+.id-meeting-location p {
+  margin: 10px 0;
+  font-size: 14px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.id-location-name {
+  font-weight: 700;
+}
+
+.id-meeting-location .kv-locations-map {
+  height: 320px;
+  border: 1px solid #d1d9e0;
+  border-radius: 10px;
+  overflow: hidden;
+  z-index: 0;
+}
+
 @media (max-width: 768px) {
   .ps-frame.id-frame {
     padding: 20px 15px 40px;
@@ -162,5 +265,9 @@
   .id-name {
     font-size: 26px;
     line-height: 32px;
+  }
+
+  .id-meeting-location .kv-locations-map {
+    height: 260px;
   }
 }

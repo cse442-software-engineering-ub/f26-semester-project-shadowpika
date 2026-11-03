@@ -90,6 +90,16 @@ final class EndpointsHttpTest extends TestCase
         return $sessionId;
     }
 
+    private function linkAdminCommunity(int $userId, string $email, string $business = 'Keller Properties LLC'): int
+    {
+        return TestDatabase::addRequest($this->pdo, [
+            'business_name' => $business,
+            'email'         => $email,
+            'status'        => 'approved',
+            'user_id'       => $userId,
+        ]);
+    }
+
     private function request(string $method, string $path, $body = null, ?string $sessionId = null, array $headers = []): array
     {
         $ch = curl_init(self::$baseUrl . '/' . $path);
@@ -705,7 +715,8 @@ final class EndpointsHttpTest extends TestCase
     // Approved locations backend, Tests 1-3: an admin who signed in on the normal login page
     public function testAdminCanListAddAndRemoveLocationsAfterLoggingIn(): void
     {
-        TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin');
+        $adminId = TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin');
+        $this->linkAdminCommunity($adminId, 'alex.landlord@test.com');
         [$login, $session] = $this->login('alex.landlord@test.com', 'Password123!');
         $this->assertSame('admin', $login['role']);
 
@@ -793,7 +804,9 @@ final class EndpointsHttpTest extends TestCase
     // Approved locations backend, Test 5
     public function testInvalidCoordinatesReturn400AndCreateNoRow(): void
     {
-        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin'));
+        $adminId = TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin');
+        $this->linkAdminCommunity($adminId, 'alex.landlord@test.com');
+        $session = $this->sessionFor($adminId);
 
         [$status, , $raw] = $this->postJson('add_approved_location.php', '{"lat":999,"lng":-78.8328,"label":"InvalidSpot"}', $session);
 
@@ -804,7 +817,9 @@ final class EndpointsHttpTest extends TestCase
 
     public function testRemovingAMissingLocationReturns404(): void
     {
-        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin'));
+        $adminId = TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin');
+        $this->linkAdminCommunity($adminId, 'alex.landlord@test.com');
+        $session = $this->sessionFor($adminId);
 
         [$status, $json] = $this->postJson('remove_approved_location.php', '{"location_id":424242}', $session);
 
@@ -814,7 +829,9 @@ final class EndpointsHttpTest extends TestCase
 
     public function testLocationEndpointsRejectTheWrongMethod(): void
     {
-        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin'));
+        $adminId = TestDatabase::addUser($this->pdo, 'alex.landlord@test.com', 'admin');
+        $this->linkAdminCommunity($adminId, 'alex.landlord@test.com');
+        $session = $this->sessionFor($adminId);
 
         [$getStatus] = $this->postJson('get_approved_locations.php', '{}', $session);
         [$addStatus] = $this->request('GET', 'add_approved_location.php', null, $session);
@@ -877,56 +894,144 @@ final class EndpointsHttpTest extends TestCase
         return TestDatabase::addRequest($this->pdo, ['business_name' => $businessName, 'email' => $email, 'status' => 'approved']);
     }
 
-    public function testStudentListsJoinsAndSwitchesCommunities(): void
+    private function membershipsOf(string $username): array
     {
+        return $this->pdo->query(
+            "SELECT m.community_id, m.shopping FROM community_members m JOIN users u ON u.id = m.user_id
+              WHERE u.username = '$username' ORDER BY m.community_id"
+        )->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
+
+    private function grantMembership(string $username, int $communityId): void
+    {
+        $this->pdo->prepare(
+            'INSERT INTO community_members (user_id, community_id, shopping)
+             SELECT id, ?, 1 FROM users WHERE username = ?'
+        )->execute([$communityId, $username]);
+    }
+
+    public function testStudentListsAndJoinsSeveralCommunities(): void
+    {
+        $allOfUb = $this->approvedCommunity('All of UB', 'all-of-ub@test.com');
         $keller = $this->approvedCommunity('Keller Properties LLC', 'morgan.keller.b3@test.com');
         $riverside = $this->approvedCommunity('Riverside Apartments', 'taylor.rivers.b3@test.com');
         $this->signUp('drew.student', 'drew.student@test.com', 'Student123!');
         [$login, $session] = $this->login('drew.student@test.com', 'Student123!');
-        $this->assertNull($login['community_id']);
-        $this->assertNull($login['community_name']);
+        $this->assertSame([], $login['communities']);
 
         [$listStatus, , $listRaw] = $this->request('GET', 'list_communities.php', null, $session);
         $this->assertSame(200, $listStatus);
         $this->assertSame(
-            '{"success":true,"communities":[{"community_id":' . $keller . ',"name":"Keller Properties LLC"},{"community_id":' . $riverside . ',"name":"Riverside Apartments"}],"joined_community_id":null}',
+            '{"success":true,"communities":['
+            . '{"community_id":' . $allOfUb . ',"name":"All of UB","joined":true,"shopping":true,"automatic":true,"pending":false,"administrator":false},'
+            . '{"community_id":' . $keller . ',"name":"Keller Properties LLC","joined":false,"shopping":false,"automatic":false,"pending":false,"administrator":false},'
+            . '{"community_id":' . $riverside . ',"name":"Riverside Apartments","joined":false,"shopping":false,"automatic":false,"pending":false,"administrator":false}]}',
             $listRaw
         );
 
         [$joinStatus, , $joinRaw] = $this->postJson('join_community.php', json_encode(['community_id' => $keller]), $session);
         $this->assertSame(200, $joinStatus);
-        $this->assertSame('{"success":true,"community_id":' . $keller . ',"community_name":"Keller Properties LLC"}', $joinRaw);
+        $this->assertSame('{"success":true,"community_id":' . $keller . ',"community_name":"Keller Properties LLC","status":"pending"}', $joinRaw);
+        [$secondStatus, $second] = $this->postJson('join_community.php', json_encode(['community_id' => $riverside]), $session);
+        $this->assertSame(200, $secondStatus);
+        $this->assertSame(['success' => true, 'community_id' => $riverside, 'community_name' => 'Riverside Apartments', 'status' => 'pending'], $second);
 
-        [$switchStatus, $switched] = $this->postJson('join_community.php', json_encode(['community_id' => $riverside]), $session);
-        $this->assertSame(200, $switchStatus);
-        $this->assertSame(['success' => true, 'community_id' => $riverside, 'community_name' => 'Riverside Apartments'], $switched);
-        $this->assertSame($riverside, (int) $this->pdo->query("SELECT community_id FROM users WHERE username = 'drew.student'")->fetchColumn());
-        $this->assertSame(1, (int) $this->pdo->query("SELECT COUNT(*) FROM users WHERE username = 'drew.student'")->fetchColumn());
-
+        $this->assertSame([], $this->membershipsOf('drew.student'));
+        $this->grantMembership('drew.student', $keller);
+        $this->grantMembership('drew.student', $riverside);
         [$again] = $this->login('drew.student@test.com', 'Student123!');
-        $this->assertSame($riverside, $again['community_id']);
-        $this->assertSame('Riverside Apartments', $again['community_name']);
+        $this->assertSame([
+            ['community_id' => $keller, 'name' => 'Keller Properties LLC'],
+            ['community_id' => $riverside, 'name' => 'Riverside Apartments'],
+        ], $again['communities']);
     }
 
     // Leave a Community backend
-    public function testStudentLeavesTheirCommunity(): void
+    public function testStudentLeavesOneCommunityAndKeepsTheOther(): void
     {
+        $allOfUb = $this->approvedCommunity('All of UB', 'all-of-ub@test.com');
         $keller = $this->approvedCommunity('Keller Properties LLC', 'morgan.keller.b4@test.com');
+        $riverside = $this->approvedCommunity('Riverside Apartments', 'taylor.rivers.b4@test.com');
         $this->signUp('drew.student', 'drew.student@test.com', 'Student123!');
         [, $session] = $this->login('drew.student@test.com', 'Student123!');
-        $this->postJson('join_community.php', json_encode(['community_id' => $keller]), $session);
-        [, $listed] = $this->request('GET', 'list_communities.php', null, $session);
-        $this->assertSame($keller, $listed['joined_community_id']);
+        $this->grantMembership('drew.student', $keller);
+        $this->grantMembership('drew.student', $riverside);
 
-        [$leaveStatus, , $leaveRaw] = $this->request('POST', 'leave_community.php', null, $session);
+        [$leaveStatus, , $leaveRaw] = $this->postJson('leave_community.php', json_encode(['community_id' => $keller]), $session);
 
         $this->assertSame(200, $leaveStatus);
-        $this->assertSame('{"success":true,"community_id":null,"community_name":null}', $leaveRaw);
-        $this->assertNull($this->pdo->query("SELECT community_id FROM users WHERE username = 'drew.student'")->fetchColumn());
-        [, $after] = $this->request('GET', 'list_communities.php', null, $session);
-        $this->assertNull($after['joined_community_id']);
-        [$again] = $this->login('drew.student@test.com', 'Student123!');
-        $this->assertNull($again['community_id']);
+        $this->assertSame('{"success":true,"community_id":' . $keller . ',"community_name":"Keller Properties LLC"}', $leaveRaw);
+        $this->assertSame([$riverside => 1], $this->membershipsOf('drew.student'));
+
+        [$campusStatus, , $campusRaw] = $this->postJson('leave_community.php', json_encode(['community_id' => $allOfUb]), $session);
+        $this->assertSame(400, $campusStatus);
+        $this->assertSame('{"success":false,"error":"Everyone is a member of All of UB, so it can\'t be left."}', $campusRaw);
+
+        // The original one-community client sent no body: it leaves every joined community.
+        [$allStatus, , $allRaw] = $this->request('POST', 'leave_community.php', null, $session);
+        $this->assertSame([200, '{"success":true,"community_id":null,"community_name":null}'], [$allStatus, $allRaw]);
+        $this->assertSame([], $this->membershipsOf('drew.student'));
+    }
+
+    // Story 1: as a shopper, select the communities you want to shop from
+    public function testShopperSelectsWhichCommunitiesToShopFrom(): void
+    {
+        $allOfUb = $this->approvedCommunity('All of UB', 'all-of-ub@test.com');
+        $keller = $this->approvedCommunity('Keller Properties LLC', 'morgan.keller.s1@test.com');
+        $riverside = $this->approvedCommunity('Riverside Apartments', 'taylor.rivers.s1@test.com');
+        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'drew.student'));
+        $this->grantMembership('drew.student', $keller);
+
+        [$status, , $raw] = $this->postJson('set_shopping_communities.php', json_encode(['community_ids' => [$keller]]), $session);
+
+        $this->assertSame(200, $status);
+        $this->assertSame('{"success":true,"shopping_community_ids":[' . $keller . ']}', $raw);
+        [, $listed] = $this->request('GET', 'list_communities.php', null, $session);
+        $this->assertSame([$allOfUb => false, $keller => true, $riverside => false], array_column($listed['communities'], 'shopping', 'community_id'));
+
+        [$notJoinedStatus, , $notJoinedRaw] = $this->postJson('set_shopping_communities.php', json_encode(['community_ids' => [$keller, $riverside]]), $session);
+        $this->assertSame(403, $notJoinedStatus);
+        $this->assertSame('{"success":false,"error":"You can only shop from communities you have joined."}', $notJoinedRaw);
+
+        [$emptyStatus, , $emptyRaw] = $this->postJson('set_shopping_communities.php', '{"community_ids":[]}', $session);
+        $this->assertSame(400, $emptyStatus);
+        $this->assertSame('{"success":false,"error":"Select at least one community to shop from."}', $emptyRaw);
+
+        [$badStatus, , $badRaw] = $this->postJson('set_shopping_communities.php', '{"community_ids":"all"}', $session);
+        $this->assertSame(400, $badStatus);
+        $this->assertSame('{"success":false,"error":"community_ids must be a list of community ids."}', $badRaw);
+
+        $this->assertSame([$allOfUb => 0, $keller => 1], $this->membershipsOf('drew.student'), 'Rejected requests change nothing.');
+    }
+
+    // Story 2: shoppers only see items from communities they're part of
+    public function testItemDetailsAreOnlyShownToMembersOfTheListingsCommunity(): void
+    {
+        $this->approvedCommunity('All of UB', 'all-of-ub@test.com');
+        $keller = $this->approvedCommunity('Keller Properties LLC', 'morgan.keller.s2@test.com');
+        $sellerId = TestDatabase::addUser($this->pdo, 'sam.seller');
+        $kellerItem = TestDatabase::addListing($this->pdo, $sellerId, ['name' => 'Keller Desk Lamp', 'community' => 'Keller Properties LLC']);
+        $campusItem = TestDatabase::addListing($this->pdo, $sellerId, ['name' => 'Calculus Textbook', 'community' => 'All of UB']);
+        $shopper = $this->sessionFor(TestDatabase::addUser($this->pdo, 'drew.student'));
+
+        [$blockedStatus, , $blockedRaw] = $this->request('GET', "api/get_item_details.php?listing_id=$kellerItem", null, $shopper);
+        $this->assertSame(403, $blockedStatus);
+        $this->assertSame('{"success":false,"error":"This item is only available to members of its community."}', $blockedRaw);
+
+        [$campusStatus, $campus] = $this->request('GET', "api/get_item_details.php?listing_id=$campusItem", null, $shopper);
+        $this->assertSame(200, $campusStatus, 'Everyone is in All of UB.');
+        $this->assertSame('All of UB', $campus['listing']['community']);
+
+        [$ownerStatus] = $this->request('GET', "api/get_item_details.php?listing_id=$kellerItem", null, $this->sessionFor($sellerId));
+        $this->assertSame(200, $ownerStatus, 'Sellers always see their own listing.');
+
+        $this->grantMembership('drew.student', $keller);
+        [$memberStatus, $member] = $this->request('GET', "api/get_item_details.php?listing_id=$kellerItem", null, $shopper);
+        $this->assertSame(200, $memberStatus);
+        $this->assertSame('Keller Desk Lamp', $member['listing']['name']);
+
+        [$loggedOutStatus, , $loggedOutRaw] = $this->request('GET', "api/get_item_details.php?listing_id=$campusItem");
+        $this->assertSame([401, '{"success":false,"error":"You must be logged in."}'], [$loggedOutStatus, $loggedOutRaw]);
     }
 
     public function testJoiningANonexistentCommunityReturns404(): void
@@ -953,6 +1058,105 @@ final class EndpointsHttpTest extends TestCase
         $this->assertSame($listRaw, $joinRaw);
         [$leaveStatus, , $leaveRaw] = $this->request('POST', 'leave_community.php');
         $this->assertSame([403, $listRaw], [$leaveStatus, $leaveRaw]);
+        [$shopStatus, , $shopRaw] = $this->postJson('set_shopping_communities.php', json_encode(['community_ids' => [$keller]]), null);
+        $this->assertSame([403, $listRaw], [$shopStatus, $shopRaw]);
+    }
+
+    // Community administrator flag backend, Tests 1-2: administered community is flagged without a membership row.
+    public function testListCommunitiesMarksTheAdministeredCommunityWithoutJoining(): void
+    {
+        $adminId = TestDatabase::addUser($this->pdo, 'morgan.keller1@test.com', 'admin', 'morgan.keller1@test.com');
+        $keller = $this->linkAdminCommunity($adminId, 'morgan.keller1@test.com', 'Keller Properties LLC');
+        $second = $this->approvedCommunity('Second Community LLC', 'pat.second204@test.com');
+        $this->grantMembership('morgan.keller1@test.com', $second);
+        $session = $this->sessionFor($adminId);
+
+        [$status, $body] = $this->request('GET', 'list_communities.php', null, $session);
+
+        $this->assertSame(200, $status);
+        $byId = array_column($body['communities'], null, 'community_id');
+        $this->assertSame(true, $byId[$keller]['administrator']);
+        $this->assertSame(false, $byId[$keller]['joined']);
+        $this->assertSame(false, $byId[$second]['administrator']);
+        $this->assertSame(true, $byId[$second]['joined']);
+        foreach ($body['communities'] as $community) {
+            if ((int) $community['community_id'] !== $keller) {
+                $this->assertSame(false, $community['administrator']);
+            }
+        }
+        $this->assertSame(0, (int) $this->pdo->query(
+            "SELECT COUNT(*) FROM community_members WHERE user_id = {$adminId} AND community_id = {$keller}"
+        )->fetchColumn());
+    }
+
+    // Community administrator flag backend, Test 3: shopping access still applies with joined:false.
+    public function testAdministratorCanViewTheirCommunityListingWithoutJoining(): void
+    {
+        $adminId = TestDatabase::addUser($this->pdo, 'morgan.keller1@test.com', 'admin', 'morgan.keller1@test.com');
+        $this->linkAdminCommunity($adminId, 'morgan.keller1@test.com');
+        $listingId = TestDatabase::addListing($this->pdo, TestDatabase::addUser($this->pdo, 'sam.seller'), [
+            'name'      => 'Mini Fridge',
+            'community' => 'Keller Properties LLC',
+        ]);
+
+        [$status, $body] = $this->request(
+            'GET',
+            "api/get_item_details.php?listing_id=$listingId",
+            null,
+            $this->sessionFor($adminId)
+        );
+
+        $this->assertSame(200, $status);
+        $this->assertSame('Mini Fridge', $body['listing']['name']);
+    }
+
+    // Community administrator flag backend, Tests 4-5: locations stay inside the administered community.
+    public function testApprovedLocationsStayInsideTheAdministeredCommunity(): void
+    {
+        $kellerAdmin = TestDatabase::addUser($this->pdo, 'morgan.keller1@test.com', 'admin', 'morgan.keller1@test.com');
+        $patId = TestDatabase::addUser($this->pdo, 'pat.second204@test.com', 'admin', 'pat.second204@test.com');
+        $this->linkAdminCommunity($kellerAdmin, 'morgan.keller1@test.com', 'Keller Properties LLC');
+        $second = $this->linkAdminCommunity($patId, 'pat.second204@test.com', 'Second Community LLC');
+        $kellerSession = $this->sessionFor($kellerAdmin);
+        $patSession = $this->sessionFor($patId);
+
+        [$addStatus, $added] = $this->postJson(
+            'add_approved_location.php',
+            '{"lat":43.0050,"lng":-78.7900,"label":"Second Community Office"}',
+            $patSession
+        );
+        $this->assertSame(201, $addStatus);
+        $secondLocationId = $added['location_id'];
+
+        [$kellerAddStatus] = $this->postJson(
+            'add_approved_location.php',
+            '{"lat":43.0009,"lng":-78.7894,"label":"Keller HQ"}',
+            $kellerSession
+        );
+        $this->assertSame(201, $kellerAddStatus);
+
+        [$listStatus, $list] = $this->request('GET', 'get_approved_locations.php', null, $kellerSession);
+        $this->assertSame(200, $listStatus);
+        $this->assertSame(['Keller HQ'], array_column($list['locations'], 'label'));
+
+        [$forbiddenAdd, , $forbiddenAddRaw] = $this->postJson(
+            'add_approved_location.php',
+            json_encode(['lat' => 43.0060, 'lng' => -78.7910, 'label' => 'Unauthorized Add', 'community_id' => $second]),
+            $kellerSession
+        );
+        $this->assertSame(403, $forbiddenAdd);
+        $this->assertSame('{"success":false,"error":"You do not have permission to perform this action."}', $forbiddenAddRaw);
+
+        [$forbiddenRemove, , $forbiddenRemoveRaw] = $this->postJson(
+            'remove_approved_location.php',
+            json_encode(['location_id' => $secondLocationId]),
+            $kellerSession
+        );
+        $this->assertSame(403, $forbiddenRemove);
+        $this->assertSame('{"success":false,"error":"You do not have permission to perform this action."}', $forbiddenRemoveRaw);
+        $this->assertNotFalse(
+            $this->pdo->query("SELECT id FROM approved_locations WHERE id = {$secondLocationId}")->fetch()
+        );
     }
 
     public function testCommunityEndpointsRejectTheWrongMethod(): void
@@ -962,7 +1166,68 @@ final class EndpointsHttpTest extends TestCase
         [$listStatus] = $this->postJson('list_communities.php', '{}', $session);
         [$joinStatus] = $this->request('GET', 'join_community.php', null, $session);
         [$leaveStatus] = $this->request('GET', 'leave_community.php', null, $session);
+        [$shopStatus] = $this->request('GET', 'set_shopping_communities.php', null, $session);
 
-        $this->assertSame([405, 405, 405], [$listStatus, $joinStatus, $leaveStatus]);
+        $this->assertSame([405, 405, 405, 405], [$listStatus, $joinStatus, $leaveStatus, $shopStatus]);
+    }
+
+    public function testMeetingLocationsAreFilteredByExactApprovedCommunityName(): void
+    {
+        $this->approvedCommunity('All of UB', 'all-of-ub@test.com');
+        TestDatabase::addRequest($this->pdo, [
+            'business_name' => 'all of ub',
+            'email' => 'counterfeit-all-of-ub@test.com',
+            'status' => 'pending',
+        ]);
+        $capen = TestDatabase::addLocation(
+            $this->pdo,
+            43.000822,
+            -78.789203,
+            'Capen Hall Main Entrance',
+            null,
+            'All of UB'
+        );
+        TestDatabase::addLocation(
+            $this->pdo,
+            42.999,
+            -78.788,
+            'Other Community Office',
+            null,
+            'Keller Properties LLC'
+        );
+        $session = $this->sessionFor(TestDatabase::addUser($this->pdo, 'community-listing-student'));
+
+        [$status, $body] = $this->request(
+            'GET',
+            'api/get_meeting_locations.php?community=' . rawurlencode('All of UB'),
+            null,
+            $session
+        );
+
+        $this->assertSame(200, $status);
+        $this->assertSame([
+            'success' => true,
+            'locations' => [[
+                'location_id' => $capen,
+                'label' => 'Capen Hall Main Entrance',
+            ]],
+        ], $body);
+
+        [$pendingStatus] = $this->request(
+            'GET',
+            'api/get_meeting_locations.php?community=' . rawurlencode('all of ub'),
+            null,
+            $session
+        );
+        [$missingStatus] = $this->request('GET', 'api/get_meeting_locations.php', null, $session);
+        [$methodStatus] = $this->request('POST', 'api/get_meeting_locations.php?community=All%20of%20UB', null, $session);
+        [$loggedOutStatus] = $this->request('GET', 'api/get_meeting_locations.php?community=All%20of%20UB');
+
+        $this->assertSame([404, 400, 405, 401], [
+            $pendingStatus,
+            $missingStatus,
+            $methodStatus,
+            $loggedOutStatus,
+        ]);
     }
 }

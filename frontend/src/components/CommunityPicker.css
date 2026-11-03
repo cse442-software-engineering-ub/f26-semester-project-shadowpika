@@ -12,6 +12,14 @@
   color: #1f2d44;
 }
 
+/* Home and Sell load different page CSS. Keep this dialog's box model the same on both. */
+.kv-communities-layer,
+.kv-communities-layer *,
+.kv-communities-layer *::before,
+.kv-communities-layer *::after {
+  box-sizing: border-box;
+}
+
 .kv-communities-backdrop {
   position: absolute;
   inset: 0;
@@ -67,6 +75,7 @@
 
 .kv-communities-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -80,6 +89,14 @@
   overflow-wrap: anywhere;
   font-size: 16px;
   font-weight: 600;
+}
+
+.kv-communities-tag {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4a5870;
 }
 
 .kv-communities-join {
@@ -109,7 +126,27 @@
 .kv-communities-actions {
   display: flex;
   flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+}
+
+.kv-communities-admin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 16px;
+  margin: 0;
+  border-radius: 8px;
+  background: #24364f;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .kv-communities-leave {
@@ -172,5 +209,18 @@
 @media (max-width: 768px) {
   .kv-communities-layer {
     padding-top: 104px;
+  }
+
+  .kv-communities-dialog {
+    width: min(100%, 390px);
+    overflow-x: hidden;
+  }
+
+  .kv-communities-item {
+    align-items: flex-start;
+  }
+
+  .kv-communities-actions {
+    width: 100%;
   }
 }

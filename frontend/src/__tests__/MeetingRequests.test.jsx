@@ -5,6 +5,7 @@
 // Mirrors frontend task card #168 (Buyer Meeting Request Frontend), using the same payloads.
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ItemDetails from '../ItemDetails.jsx';
 import OrganizeMeet from '../OrganizeMeet.jsx';
@@ -30,11 +31,33 @@ function serve(routes) {
     return fetchMock;
 }
 
+// Home also loads Requests for My Items and Recommended Items; most tests only care about My Purchase Requests.
+const noIncoming = {
+    'get_incoming_meeting_requests.php': () => json(200, { success: true, requests: [] }),
+    'get_recommended_items.php': () => json(200, { success: true, items: [] }),
+};
+
 const callsTo = (fetchMock, file) => fetchMock.mock.calls.filter(([url]) => String(url).includes(file));
+
+it('shows Check In only for approved meetings with their own request ID (#205)', async () => {
+    serve({ ...noIncoming, 'get_my_meeting_requests.php': () => json(200, {
+        success: true, requests: ['pending', 'approved', 'denied', 'location_change_requested'].map((status, index) => ({
+            request_id: 700 + index, listing_id: 800 + index, name: `Meeting ${index}`, price: '12.00',
+            meeting_date: '2026-11-06', meeting_time: '12:00', location: 'Test location', status,
+            checked_in_at: null, seller_checked_in_at: null, listing_status: 'active',
+        })),
+    }) });
+    render(<Home />);
+    const link = await screen.findByRole('link', { name: 'Check In' });
+    expect(link).toHaveAttribute('href', './check-in.html?request_id=701');
+    expect(screen.getAllByRole('link', { name: 'Check In' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Cancel Request' })).toBeVisible();
+});
 
 const open = (path) => window.history.replaceState({}, '', path);
 
-const workbook = { listing_id: 91002, name: 'Calculus Workbook', price: '20.00', condition: 'Like New', category: 'Textbooks', description: null };
+const workbook = { listing_id: 91002, name: 'Calculus Workbook', price: '20.00', condition: 'Like New', category: 'Textbooks',
+    description: null, meeting_location_id: 91001, meeting_location: 'Capen Hall Main Entrance' };
 const fridge = { listing_id: 91010, name: 'Dorm Fridge', price: '80.00', condition: 'Good', category: 'Dorm Living', description: null };
 const locations = {
     success: true,
@@ -48,19 +71,17 @@ const locations = {
 async function openMeetPage(extraRoutes = {}) {
     open('meet.html?listing_id=91002');
     const fetchMock = serve({
-        'get_item_details.php': () => json(200, { success: true, listing: workbook }),
-        'get_meeting_locations.php': () => json(200, locations),
+        'get_item_details.php': () => json(200, { success: true, listing: { ...workbook, community: 'All of UB' } }),
         ...extraRoutes,
     });
     const view = render(<OrganizeMeet />);
-    await screen.findByRole('option', { name: 'Capen Hall Main Entrance' });
+    await screen.findByRole('textbox', { name: 'Meeting Location' });
     return { fetchMock, ...view };
 }
 
-const fill = (container, { date, time, location }) => {
+const fill = (container, { date, time }) => {
     if (date !== undefined) fireEvent.change(container.querySelector('input[type="date"]'), { target: { value: date } });
     if (time !== undefined) fireEvent.change(container.querySelector('input[type="time"]'), { target: { value: time } });
-    if (location !== undefined) fireEvent.change(screen.getByLabelText('Meeting Location'), { target: { value: location } });
 };
 
 const confirm = () => fireEvent.click(screen.getByRole('button', { name: 'Confirm Meeting Request' }));
@@ -72,6 +93,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         const fetchMock = serve({
             'get_item_details.php': () => json(200, { success: true, listing: workbook }),
             'get_listing_ownership.php': () => json(200, { success: true, listing_id: 91002, is_owner: false }),
+            'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }),
         });
         const assign = vi.fn();
         vi.stubGlobal('location', { ...window.location, assign, search: '?listing_id=91002' });
@@ -82,7 +104,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(assign).toHaveBeenCalledWith('./meet.html?listing_id=91002');
     });
 
-    it('Test 1: the Organize a Meet page shows the item, the form, and every approved location', async () => {
+    it('Test 1: prepopulates the seller location as read-only and does not request alternative locations', async () => {
         const { fetchMock } = await openMeetPage();
 
         expect(screen.getByRole('heading', { name: 'Organize a Meet' })).toBeInTheDocument();
@@ -90,9 +112,53 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(screen.getByText('$20.00')).toBeInTheDocument();
         expect(screen.getByLabelText('Date')).toBeInTheDocument();
         expect(screen.getByLabelText('Preferred Time')).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: 'Student Union Main Entrance' })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: 'Lockwood Memorial Library Main Entrance' })).toBeInTheDocument();
-        expect(callsTo(fetchMock, 'get_meeting_locations.php')).toHaveLength(1);
+        expect(screen.getByRole('textbox', { name: 'Meeting Location' })).toHaveValue('Capen Hall Main Entrance');
+        expect(screen.getByRole('textbox', { name: 'Meeting Location' })).toHaveAttribute('readonly');
+        expect(screen.queryByRole('combobox', { name: 'Meeting Location' })).not.toBeInTheDocument();
+        expect(screen.getByText('Set by the seller. This meeting location cannot be changed.')).toBeVisible();
+        expect(callsTo(fetchMock, 'get_meeting_locations.php')).toHaveLength(0);
+    });
+
+    it('uses each items saved seller location instead of a default or another approved location', async () => {
+        const { container, fetchMock } = await openMeetPage({
+            'get_item_details.php': () => json(200, { success: true, listing: { ...workbook,
+                meeting_location_id: 91003, meeting_location: 'Lockwood Memorial Library Main Entrance' } }),
+            'create_meeting_request.php': () => json(201, { success: true, request: {} }),
+        });
+        expect(screen.getByLabelText('Meeting Location')).toHaveValue('Lockwood Memorial Library Main Entrance');
+        fill(container, { date: '2026-12-12', time: '16:00' });
+        confirm();
+        await screen.findByText('Your meeting request was sent.');
+        expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[0][1].body).location_id).toBe(91003);
+        expect(callsTo(fetchMock, 'get_meeting_locations.php')).toHaveLength(0);
+    });
+
+    it('cannot edit the prefilled location by typing and submits the original seller ID', async () => {
+        const { container, fetchMock } = await openMeetPage({
+            'create_meeting_request.php': () => json(201, { success: true, request: {} }),
+        });
+        await userEvent.type(screen.getByLabelText('Meeting Location'), 'Student Union Main Entrance');
+        expect(screen.getByLabelText('Meeting Location')).toHaveValue(workbook.meeting_location);
+        fill(container, { date: '2026-12-12', time: '16:00' });
+        confirm();
+        await screen.findByText('Your meeting request was sent.');
+        expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[0][1].body).location_id).toBe(workbook.meeting_location_id);
+    });
+
+    it.each([
+        { meeting_location_id: null },
+        { meeting_location_id: undefined },
+        { meeting_location: '' },
+    ])('blocks booking rather than choosing another place when seller location data is unavailable: %o', async (missing) => {
+        const { container, fetchMock } = await openMeetPage({
+            'get_item_details.php': () => json(200, { success: true, listing: { ...workbook, ...missing } }),
+        });
+        expect(screen.getByRole('alert')).toHaveTextContent("The seller's meeting location is unavailable.");
+        expect(screen.getByRole('button', { name: 'Confirm Meeting Request' })).toBeDisabled();
+        fill(container, { date: '2026-12-12', time: '16:00' });
+        fireEvent.submit(container.querySelector('form'));
+        expect(callsTo(fetchMock, 'create_meeting_request.php')).toHaveLength(0);
+        expect(screen.queryByRole('combobox', { name: 'Meeting Location' })).not.toBeInTheDocument();
     });
 
     it("Test 2: hides Buy Now on the user's own item", async () => {
@@ -109,11 +175,11 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(screen.queryByRole('button', { name: 'Buy Now' })).not.toBeInTheDocument();
     });
 
-    it('Test 3: sends exactly the entered meeting details and confirms the request was sent', async () => {
+    it('Test 3: sends the seller location ID with the buyers entered date/time and confirms success', async () => {
         const { fetchMock, container } = await openMeetPage({
             'create_meeting_request.php': () => json(201, { success: true, request: {} }),
         });
-        fill(container, { date: '2026-12-12', time: '16:00', location: '91001' });
+        fill(container, { date: '2026-12-12', time: '16:00' });
         confirm();
 
         expect(await screen.findByText('Your meeting request was sent.')).toBeInTheDocument();
@@ -126,7 +192,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         const { container } = await openMeetPage({
             'create_meeting_request.php': () => json(409, { success: false, error: 'You already have a meeting request for this item.' }),
         });
-        fill(container, { date: '2026-12-13', time: '10:00', location: '91002' });
+        fill(container, { date: '2026-12-13', time: '10:00' });
         confirm();
 
         const alert = await screen.findByRole('alert');
@@ -135,7 +201,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(screen.queryByText('Your meeting request was sent.')).not.toBeInTheDocument();
     });
 
-    it('Test 5: blocks missing or past meeting details before sending', async () => {
+    it('Test 5: still validates the buyers date and time while the seller location is prefilled', async () => {
         const { fetchMock, container } = await openMeetPage();
         const expectBlocked = (text) => {
             expect(screen.getByRole('alert')).toHaveTextContent(text);
@@ -143,11 +209,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
             expect(callsTo(fetchMock, 'create_meeting_request.php')).toHaveLength(0);
         };
 
-        fill(container, { date: '2026-12-14', time: '11:00' });
-        confirm();
-        expectBlocked('A meeting location is required.');
-
-        fill(container, { location: '91001', date: '' });
+        fill(container, { date: '', time: '11:00' });
         confirm();
         expectBlocked('A date is required.');
 
@@ -168,7 +230,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
     it('Test 7/8: lists every request with its status, image, and formatted details in server order', async () => {
         open('home.html');
         const fetchMock = serve({
-            'get_my_meeting_requests.php': () => json(200, {
+            ...noIncoming, 'get_my_meeting_requests.php': () => json(200, {
                 success: true,
                 requests: [
                     { listing_id: 92001, name: 'Physics Lab Manual', price: '7.50', image_url: './favicon.svg', meeting_date: '2027-01-03', meeting_time: '09:05', location: 'Capen Hall Main Entrance', status: 'pending' },
@@ -187,7 +249,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         const cards = [...container.querySelectorAll('.mr-request')].map((card) => card.querySelector('.mr-request-body').textContent);
         expect(cards).toEqual([
             'Physics Lab Manual$7.50Jan 3, 9:05 AMCapen Hall Main EntrancePendingCancel Request',
-            'Graphing Calculator$60.00Jan 4, 12:00 PMStudent Union Main EntranceApproved',
+            'Graphing Calculator$60.00Jan 4, 12:00 PMStudent Union Main EntranceApprovedMeeting location locked after approval.Check-in status unavailable.Seller check-in status unavailable.',
             'Desk Chair$25.00Jan 5, 6:45 PMLockwood Memorial Library Main EntranceDenied',
             'Mini Fridge$50.00Jan 6, 12:30 AMStudent Union Main EntranceLocation Change Requested',
         ]);
@@ -201,14 +263,14 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
 
     it("Test 9: shows the empty list message, then the server's error", async () => {
         open('home.html');
-        serve({ 'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }) });
+        serve({ ...noIncoming, 'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }) });
         const { container, unmount } = render(<Home />);
 
         expect(await screen.findByText('You have no purchase requests yet.')).toBeInTheDocument();
         expect(container.querySelector('.mr-request')).toBeNull();
         unmount();
 
-        serve({ 'get_my_meeting_requests.php': () => json(200, { success: false, error: 'Unable to load your purchase requests.' }) });
+        serve({ ...noIncoming, 'get_my_meeting_requests.php': () => json(200, { success: false, error: 'Unable to load your purchase requests.' }) });
         const second = render(<Home />);
 
         const alert = await screen.findByRole('alert');
@@ -224,7 +286,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
     it('Test 3: cancels a pending request, sending exactly its listing, and removes it from the list', async () => {
         open('home.html');
         const fetchMock = serve({
-            'get_my_meeting_requests.php': () => json(200, {
+            ...noIncoming, 'get_my_meeting_requests.php': () => json(200, {
                 success: true,
                 requests: [homeRequest(91001, 'Calculus Textbook', 'approved'), homeRequest(91002, 'Calculus Workbook', 'pending')],
             }),
@@ -246,7 +308,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
     it("Test 10: shows Cancel Request only on pending requests and the server's error when a cancel is refused", async () => {
         open('home.html');
         const fetchMock = serve({
-            'get_my_meeting_requests.php': () => json(200, {
+            ...noIncoming, 'get_my_meeting_requests.php': () => json(200, {
                 success: true,
                 requests: [
                     homeRequest(91001, 'Calculus Textbook', 'pending'),
@@ -272,6 +334,168 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(callsTo(fetchMock, 'cancel_meeting_request.php')[0][1].body).toBe('{"listing_id":91001}');
         expect(screen.queryByText('Your meeting request was canceled.')).not.toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Calculus Textbook' })).toBeInTheDocument();
+    });
+});
+
+describe('Frontend: Seller Meeting Request Response (#178)', () => {
+    const incoming = (request_id, name, status, extra = {}) => ({
+        request_id, listing_id: 91000 + request_id, name, price: '20.00', image_url: null, community: 'University at Buffalo', buyer: 'Chun Buyer',
+        meeting_date: '2026-12-11', meeting_time: '13:00', location: 'Capen Hall Main Entrance', status, ...extra,
+    });
+    const pendingOne = incoming(91061, 'Calculus Textbook', 'pending');
+    const pendingTwo = incoming(91062, 'Desk Lamp', 'pending');
+    const names = (labels) => labels.map((label) => screen.queryByRole('button', { name: label }));
+
+    // Home with the given incoming requests; extra routes answer respond_meeting_request.php and get_meeting_locations.php.
+    async function openHome(requests, extraRoutes = {}) {
+        open('home.html');
+        const fetchMock = serve({
+            'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }),
+            'get_recommended_items.php': () => json(200, { success: true, items: [] }),
+            'get_incoming_meeting_requests.php': () => json(200, { success: true, requests }),
+            ...extraRoutes,
+        });
+        const view = render(<Home />);
+        await screen.findByRole('heading', { name: 'Requests for My Items' });
+        return { fetchMock, ...view };
+    }
+
+    const bodyOf = (fetchMock) => callsTo(fetchMock, 'respond_meeting_request.php')[0][1].body;
+    const lastCard = (container) => container.querySelectorAll('.mr-request')[1];
+
+    it('lists the requests in server order with buttons only on pending ones', async () => {
+        const { container } = await openHome([
+            pendingOne,
+            incoming(91063, 'Mini Fridge', 'approved', { location: 'Student Union Main Entrance' }),
+            incoming(91064, 'Desk Chair', 'denied'),
+            incoming(91065, 'Graphing Calculator', 'location_change_requested'),
+        ]);
+        await screen.findByRole('heading', { name: 'Calculus Textbook' });
+
+        const cards = [...container.querySelectorAll('.mr-request')].map((card) => card.querySelector('.mr-request-body').textContent);
+        expect(cards).toEqual([
+            'Calculus Textbook$20.00Requested by Chun BuyerDec 11, 1:00 PMCapen Hall Main EntrancePendingApproveDenyChange Location',
+            'Mini Fridge$20.00Requested by Chun BuyerDec 11, 1:00 PMStudent Union Main EntranceApprovedMeeting location locked after approval.Check-in status unavailable.Seller check-in status unavailable.',
+            'Desk Chair$20.00Requested by Chun BuyerDec 11, 1:00 PMCapen Hall Main EntranceDenied',
+            'Graphing Calculator$20.00Requested by Chun BuyerDec 11, 1:00 PMCapen Hall Main EntranceLocation Change Requested',
+        ]);
+        expect(screen.getAllByRole('button', { name: 'Approve' })).toHaveLength(1);
+    });
+
+    it('shows the empty message without hiding My Purchase Requests', async () => {
+        await openHome([]);
+        expect(screen.getByText('No one has requested your items yet.')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'My Purchase Requests' })).toBeInTheDocument();
+    });
+
+    it("shows the server's load error in orange-red without hiding My Purchase Requests", async () => {
+        open('home.html');
+        serve({
+            'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }),
+            'get_recommended_items.php': () => json(200, { success: true, items: [] }),
+            'get_incoming_meeting_requests.php': () => json(200, { success: false }),
+        });
+        render(<Home />);
+
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('Unable to load requests for your items.');
+        expect(alert).toHaveClass('id-error');
+        expect(screen.getByText('You have no purchase requests yet.')).toBeInTheDocument();
+    });
+
+    it('approves a request, sending exactly its id, and removes its buttons', async () => {
+        const { fetchMock } = await openHome([pendingOne, pendingTwo], {
+            'respond_meeting_request.php': () => json(200, { success: true, request: { ...pendingOne, status: 'approved' } }),
+        });
+        fireEvent.click((await screen.findAllByRole('button', { name: 'Approve' }))[0]);
+
+        expect(await screen.findByText('You approved the meeting request.')).toBeInTheDocument();
+        expect(callsTo(fetchMock, 'respond_meeting_request.php')[0][1].method).toBe('POST');
+        expect(bodyOf(fetchMock)).toBe('{"request_id":91061,"action":"approve"}');
+        expect(screen.getByText('Approved')).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: 'Approve' })).toHaveLength(1);
+    });
+
+    it('denies a request, sending exactly its id, and removes its buttons', async () => {
+        const { fetchMock, container } = await openHome([pendingOne, pendingTwo], {
+            'respond_meeting_request.php': () => json(200, { success: true, request: { ...pendingTwo, status: 'denied' } }),
+        });
+        await screen.findByRole('heading', { name: 'Desk Lamp' });
+        fireEvent.click(screen.getAllByRole('button', { name: 'Deny' })[1]);
+
+        expect(await screen.findByText('You denied the meeting request.')).toBeInTheDocument();
+        expect(bodyOf(fetchMock)).toBe('{"request_id":91062,"action":"deny"}');
+        expect(lastCard(container)).toHaveTextContent('Denied');
+        expect(lastCard(container).querySelector('button')).toBeNull();
+    });
+
+    it("shows the server's error in orange-red and leaves the request pending with its buttons", async () => {
+        await openHome([pendingOne], {
+            'respond_meeting_request.php': () => json(409, { success: false, error: 'Only pending requests can be answered.' }),
+        });
+        fireEvent.click(await screen.findByRole('button', { name: 'Approve' }));
+
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('Only pending requests can be answered.');
+        expect(alert).toHaveClass('id-error');
+        expect(screen.getByText('Pending')).toBeInTheDocument();
+        expect(names(['Approve', 'Deny', 'Change Location']).every(Boolean)).toBe(true);
+    });
+
+    it('offers only the other approved locations, blocks sending without a choice, and restores the buttons on Cancel', async () => {
+        const { fetchMock } = await openHome([pendingOne], {
+            'get_meeting_locations.php': () => json(200, locations),
+        });
+        fireEvent.click(await screen.findByRole('button', { name: 'Change Location' }));
+
+        const select = await screen.findByLabelText('New meeting location');
+        expect(callsTo(fetchMock, 'get_meeting_locations.php')[0][0]).toContain('community=University+at+Buffalo');
+        expect(select).toHaveValue('');
+        expect([...select.options].map((option) => option.textContent)).toEqual([
+            'Select a location', 'Student Union Main Entrance', 'Lockwood Memorial Library Main Entrance',
+        ]);
+        expect(names(['Approve', 'Deny', 'Change Location']).some(Boolean)).toBe(false);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Send New Location' }));
+        const alert = screen.getByRole('alert');
+        expect(alert).toHaveTextContent('Select a different meeting location.');
+        expect(alert).toHaveClass('id-error');
+        expect(callsTo(fetchMock, 'respond_meeting_request.php')).toHaveLength(0);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+        expect(screen.queryByLabelText('New meeting location')).not.toBeInTheDocument();
+        expect(names(['Approve', 'Deny', 'Change Location']).every(Boolean)).toBe(true);
+    });
+
+    it('sends the chosen location, shows the new location, and sets Location Change Requested', async () => {
+        const atUnion = { ...pendingTwo, location: 'Student Union Main Entrance' };
+        const { fetchMock } = await openHome([atUnion], {
+            'get_meeting_locations.php': () => json(200, locations),
+            'respond_meeting_request.php': () => json(200, {
+                success: true,
+                request: { ...atUnion, location: 'Capen Hall Main Entrance', status: 'location_change_requested' },
+            }),
+        });
+        fireEvent.click(await screen.findByRole('button', { name: 'Change Location' }));
+        fireEvent.change(await screen.findByLabelText('New meeting location'), { target: { value: '91001' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send New Location' }));
+
+        expect(await screen.findByText('You requested a different meeting location.')).toBeInTheDocument();
+        expect(bodyOf(fetchMock)).toBe('{"request_id":91062,"action":"change_location","location_id":91001}');
+        expect(screen.getByText('Location Change Requested')).toBeInTheDocument();
+        expect(screen.queryByLabelText('New meeting location')).not.toBeInTheDocument();
+        expect(names(['Approve', 'Deny', 'Change Location', 'Send New Location']).some(Boolean)).toBe(false);
+    });
+
+    it("shows an error when the meeting locations can't be loaded", async () => {
+        await openHome([pendingOne], {
+            'get_meeting_locations.php': () => json(400, { success: false }),
+        });
+        fireEvent.click(await screen.findByRole('button', { name: 'Change Location' }));
+
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('The meeting locations could not be loaded.');
+        expect(alert).toHaveClass('id-error');
     });
 });
 

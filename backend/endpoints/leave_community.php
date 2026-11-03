@@ -24,4 +24,5 @@ try {
     karavan_send_json(500, ['success' => false, 'error' => 'Database connection failure.']);
 }
 
-karavan_send_json(...karavan_leave_community($pdo, $userId));
+$data = json_decode(file_get_contents("php://input"), true);
+karavan_send_json(...karavan_leave_community($pdo, $userId, $data));

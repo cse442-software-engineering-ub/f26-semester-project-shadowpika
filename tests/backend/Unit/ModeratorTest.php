@@ -89,7 +89,7 @@ final class ModeratorTest extends TestCase
         $this->assertSame(403, $status);
         $this->assertSame(self::FORBIDDEN, $body);
         $this->assertSame('pending', $this->requestRow($requestId)['status']);
-        $this->assertFalse($this->userByUsername('alex@test.com'));
+        $this->assertSame(0, (int) $this->pdo->query("SELECT COUNT(*) FROM users WHERE email = 'alex@test.com'")->fetchColumn());
     }
 
     public function testListReturnsOnlyPendingRequestsWithRequiredFields(): void
@@ -128,8 +128,9 @@ final class ModeratorTest extends TestCase
         $this->assertSame(200, $status);
         $this->assertSame(['success' => true, 'request_id' => $requestId, 'status' => 'approved'], $body);
 
-        $user = $this->userByUsername('alex@test.com');
+        $user = $this->userByUsername('alex');
         $this->assertNotFalse($user);
+        $this->assertSame('alex@test.com', $user['email']);
         $this->assertSame('admin', $user['role']);
         $this->assertTrue(password_verify('Landlord123!', $user['password_hash']));
 
@@ -150,7 +151,7 @@ final class ModeratorTest extends TestCase
         $this->assertSame(200, $status);
         $this->assertSame(['success' => true, 'request_id' => $requestId, 'status' => 'denied'], $body);
         $this->assertFalse($this->requestRow($requestId));
-        $this->assertFalse($this->userByUsername('dana@test.com'));
+        $this->assertSame(0, (int) $this->pdo->query("SELECT COUNT(*) FROM users WHERE email = 'dana@test.com'")->fetchColumn());
         $this->assertFileDoesNotExist($this->uploadDir . '/deny-me.pdf');
     }
 
@@ -174,7 +175,21 @@ final class ModeratorTest extends TestCase
         [$status] = $this->decide($this->moderatorId, ['request_id' => $requestId, 'action' => 'approve']);
 
         $this->assertSame(409, $status);
-        $this->assertSame(1, (int) $this->pdo->query("SELECT COUNT(*) FROM users WHERE username = 'alex@test.com'")->fetchColumn());
+        $this->assertSame(1, (int) $this->pdo->query("SELECT COUNT(*) FROM users WHERE email = 'alex@test.com'")->fetchColumn());
+    }
+
+    public function testApprovedAdminGetsANumberedUsernameWhenTheirsIsTaken(): void
+    {
+        TestDatabase::addUser($this->pdo, 'alex', 'user', 'alex@other.com');
+        $requestId = TestDatabase::addRequest($this->pdo, ['email' => 'alex@test.com']);
+
+        [$status] = $this->decide($this->moderatorId, ['request_id' => $requestId, 'action' => 'approve']);
+
+        $this->assertSame(200, $status);
+        $user = $this->userByUsername('alex2');
+        $this->assertNotFalse($user);
+        $this->assertSame('alex@test.com', $user['email']);
+        $this->assertSame('admin', $user['role']);
     }
 
     public function testCannotDenyAnApprovedRequest(): void

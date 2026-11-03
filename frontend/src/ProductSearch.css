@@ -682,6 +682,92 @@ body:has(.ps-page) {
   grid-template-columns: minmax(180px, 215px);
 }
 
+/* "Shopping from": which of the shopper's communities appear in the results. */
+.ps-shopping {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(201, 161, 94, 0.7);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ps-navy);
+}
+
+.ps-shopping-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ps-shopping-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ps-shopping-join {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--ps-navy);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.ps-shopping-join:hover {
+  background: rgba(31, 45, 68, 0.08);
+}
+
+.ps-shopping-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ps-shopping-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  max-width: 100%;
+  padding: 4px 12px;
+  border: 1px solid rgba(31, 45, 68, 0.25);
+  border-radius: 18px;
+  background: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.ps-shopping-option.is-selected {
+  border-color: var(--ps-navy);
+}
+
+.ps-shopping-option input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--ps-navy);
+}
+
+.ps-shopping-option:has(input:disabled) {
+  cursor: default;
+}
+
+.ps-shopping-error {
+  margin: 8px 0 0;
+  color: #c0392b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 @media (max-width: 768px) {
   .ps-frame {
     min-height: calc(100vh - 88px);

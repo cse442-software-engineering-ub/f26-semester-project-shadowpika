@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/listing_locations.php';
+
 const MANAGE_LISTING_CATEGORIES = [
     'Textbooks',
     'Tech & Electronics',
@@ -51,9 +53,13 @@ function manage_listings_format(array $row): array
         'image_url'        => $row['image_url'],
         'category'         => $row['category'],
         'related_course'   => $row['related_course'],
+        'community'        => $row['community'],
         'meeting_location' => $row['meeting_location'],
+        'meeting_location_id' => $row['meeting_location_id'] === null ? null : (int) $row['meeting_location_id'],
         'description'      => $row['description'],
         'status'           => $row['status'],
+        'sale_request_id' => $row['sale_request_id'] === null ? null : (int) $row['sale_request_id'],
+        'can_mark_sold' => $row['status'] === 'active' && $row['sale_request_id'] !== null,
     ];
 }
 
@@ -65,16 +71,26 @@ function get_my_listings(PDO $pdo, ?int $userId): array
 
     $stmt = $pdo->prepare(
         'SELECT listing_id, name, price, `condition`, image_url, category,
-                related_course, meeting_location, description, status
+                related_course, community, meeting_location, meeting_location_id, description, status
            FROM listings
           WHERE owner_id = ?
           ORDER BY listing_id'
     );
     $stmt->execute([$userId]);
 
+    $eligible = $pdo->prepare("SELECT r.listing_id, MIN(r.request_id) AS request_id
+        FROM meeting_requests r JOIN listings l ON l.listing_id = r.listing_id
+        WHERE l.owner_id = ? AND r.buyer_id <> l.owner_id AND r.status = 'approved'
+          AND r.checked_in_at IS NOT NULL AND r.seller_checked_in_at IS NOT NULL
+        GROUP BY r.listing_id");
+    $eligible->execute([$userId]);
+    $saleRequests = $eligible->fetchAll(PDO::FETCH_KEY_PAIR);
+    $results = $stmt->fetchAll();
+    foreach ($results as &$row) $row['sale_request_id'] = $saleRequests[$row['listing_id']] ?? null;
+    unset($row);
     return [200, [
         'success' => true,
-        'results' => array_map('manage_listings_format', $stmt->fetchAll()),
+        'results' => array_map('manage_listings_format', $results),
     ]];
 }
 
@@ -83,6 +99,43 @@ function manage_listings_owned(PDO $pdo, int $userId, int $listingId): bool
     $stmt = $pdo->prepare('SELECT 1 FROM listings WHERE listing_id = ? AND owner_id = ?');
     $stmt->execute([$listingId, $userId]);
     return (bool) $stmt->fetchColumn();
+}
+
+function manage_listings_mark_sold(PDO $pdo, int $userId, int $listingId, ?int $requestId): array
+{
+    $lock = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? ' FOR UPDATE' : '';
+    $pdo->beginTransaction();
+    try {
+        // Check-in takes this same listing lock before locking its meeting.
+        $listing = $pdo->prepare('SELECT status FROM listings WHERE listing_id = ? AND owner_id = ?' . $lock);
+        $listing->execute([$listingId, $userId]);
+        $currentStatus = $listing->fetchColumn();
+        if ($currentStatus === false) return [404, ['success' => false, 'error' => 'Listing not found.']];
+        if ($currentStatus === 'sold' && $requestId === null) {
+            return [200, ['success' => true, 'listing_id' => $listingId, 'status' => 'sold']];
+        }
+        if (!in_array($currentStatus, ['active', 'sold'], true)) {
+            return [409, ['success' => false, 'error' => 'This listing is no longer available.']];
+        }
+        $sql = "SELECT request_id FROM meeting_requests
+                 WHERE listing_id = ? AND buyer_id <> ? AND status = 'approved'
+                   AND checked_in_at IS NOT NULL AND seller_checked_in_at IS NOT NULL";
+        $params = [$listingId, $userId];
+        if ($requestId !== null) { $sql .= ' AND request_id = ?'; $params[] = $requestId; }
+        $meeting = $pdo->prepare($sql . ' ORDER BY request_id LIMIT 1' . $lock);
+        $meeting->execute($params);
+        $saleRequestId = $meeting->fetchColumn();
+        if ($saleRequestId === false) {
+            return [409, ['success' => false, 'code' => 'checkins_required',
+                'error' => 'Both buyer and seller must check in to the same approved meeting before marking this listing as sold.']];
+        }
+        $pdo->prepare("UPDATE listings SET status = 'sold' WHERE listing_id = ? AND owner_id = ?")
+            ->execute([$listingId, $userId]);
+        $pdo->commit();
+        return [200, ['success' => true, 'listing_id' => $listingId, 'status' => 'sold', 'request_id' => (int) $saleRequestId]];
+    } finally {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+    }
 }
 
 function manage_listings_price($value): ?string
@@ -149,6 +202,14 @@ function update_my_listing(PDO $pdo, ?int $userId, $input): array
         if (!in_array($status, ['active', 'sold'], true)) {
             return [422, ['success' => false, 'error' => 'Status must be active or sold.']];
         }
+        if ($status === 'sold') {
+            $requestId = null;
+            if (array_key_exists('request_id', $input)) {
+                $requestId = manage_listings_positive_id($input['request_id']);
+                if ($requestId === null) return [400, ['success' => false, 'error' => 'A valid request_id is required.']];
+            }
+            return manage_listings_mark_sold($pdo, $userId, $listingId, $requestId);
+        }
         $stmt = $pdo->prepare('UPDATE listings SET status = ? WHERE listing_id = ? AND owner_id = ?');
         $stmt->execute([$status, $listingId, $userId]);
         return [200, ['success' => true]];
@@ -159,16 +220,23 @@ function update_my_listing(PDO $pdo, ?int $userId, $input): array
         if (!$valid) {
             return [422, ['success' => false, 'error' => 'Enter valid listing details.']];
         }
+        $current = $pdo->prepare('SELECT community, meeting_location, meeting_location_id FROM listings WHERE listing_id = ? AND owner_id = ?');
+        $current->execute([$listingId, $userId]);
+        $listing = $current->fetch(PDO::FETCH_ASSOC);
+        if (!$listing) {
+            return [404, ['success' => false, 'error' => 'Listing not found.']];
+        }
+        $locationId = listing_location_for_edit($pdo, $listing, $data['meeting_location']);
         $stmt = $pdo->prepare(
             'UPDATE listings
                 SET name = ?, price = ?, category = ?, `condition` = ?, related_course = ?,
-                    meeting_location = ?, description = ?, image_url = ?
+                    meeting_location = ?, meeting_location_id = ?, description = ?, image_url = ?
               WHERE listing_id = ? AND owner_id = ?'
         );
         $stmt->execute([
             $data['name'], $data['price'], $data['category'], $data['condition'],
             $data['related_course'] === '' ? null : $data['related_course'],
-            $data['meeting_location'], $data['description'],
+            $data['meeting_location'], $locationId, $data['description'],
             $data['image_url'] === '' ? null : $data['image_url'],
             $listingId, $userId,
         ]);

@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import './NavBar.css';
 import { fetchCommunities, joinCommunity, leaveCommunity, logout } from './api.js';
-import { readJoinedCommunity, saveJoinedCommunity, takeCommunityPrompt } from './community.js';
+import {
+    announceCommunitiesChanged,
+    onOpenCommunityPicker,
+    readJoinedCommunities,
+    saveJoinedCommunities,
+    takeCommunityPrompt,
+} from './community.js';
 import CommunityPicker from './components/CommunityPicker.jsx';
 import { CaravanLogo, KaravanBrand } from './components/KaravanBrand.jsx';
 import { appBase, pathFor } from './routes.js';
@@ -15,15 +21,35 @@ const NAV_LINKS = [
     { label: 'Home', page: HOME_PAGE, icon: HomeIcon },
     { label: 'Settings', page: 'settings/account-settings.html', icon: SettingsIcon },
     { label: 'Sell', page: 'sell.html', icon: CartIcon },
+    { label: 'Message', page: 'message.html', icon: MessageIcon},
 ];
 
 const SEARCH_PAGE = 'product-search.html';
+const FAVORITES_PAGE = 'favorites.html';
+
+// Marks the link of the page being shown. Every page under settings/ counts as Settings.
+function isCurrentPage(page) {
+    const path = window.location.pathname;
+    if (page.startsWith('settings/')) return /\/settings\/|\/settings\.html$/.test(path);
+    return path.endsWith(`/${page}`);
+}
+
+const currentProps = (page) => (isCurrentPage(page) ? { 'aria-current': 'page' } : {});
+const currentClass = (page) => (isCurrentPage(page) ? ' is-current' : '');
 
 function SearchIcon() {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
             <circle cx="10.5" cy="10.5" r="7" />
             <line x1="15.8" y1="15.8" x2="21" y2="21" />
+        </svg>
+    );
+}
+
+function HeartIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.7 4.5 6.4 4.5c2.1 0 3.8 1.2 5.6 3.2 1.8-2 3.5-3.2 5.6-3.2 3.7 0 5.5 3.9 4 7.3C19.5 16.4 12 21 12 21z" />
         </svg>
     );
 }
@@ -74,6 +100,22 @@ function CartIcon() {
     );
 }
 
+function MessageIcon(){
+    return(
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+        >
+            <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z" />
+        </svg>
+    );
+}
+
 function LogoutIcon() {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -95,21 +137,24 @@ function CommunityIcon() {
     );
 }
 
+// 0 joined: "Join a Community"; 1: its name; more: how many.
+function communityLabel(joined) {
+    if (joined.length === 0) return JOIN_LABEL;
+    if (joined.length === 1) return joined[0].name;
+    return `${joined.length} Communities`;
+}
+
 // The "Join a Community" button only appears once list_communities.php confirms a login.
 function useCommunities() {
     const [signedIn, setSignedIn] = useState(false);
     const [communities, setCommunities] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [joined, setJoined] = useState(readJoinedCommunity);
+    // Communities the user chose to join; Karavan (campus-wide) is automatic and not counted.
+    const [joined, setJoined] = useState(readJoinedCommunities);
     const [joiningId, setJoiningId] = useState(null);
-    const [leaving, setLeaving] = useState(false);
+    const [leavingId, setLeavingId] = useState(null);
     const [picker, setPicker] = useState(null); // null, 'first-login' or 'nav'
-
-    const remember = useCallback((community) => {
-        setJoined(community);
-        saveJoinedCommunity(community);
-    }, []);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -120,10 +165,9 @@ function useCommunities() {
                 setCommunities(result.communities);
                 setError('');
                 // The server knows best, e.g. after leaving or joining on another device.
-                if ('joined_community_id' in result) {
-                    const current = result.communities.find((c) => c.community_id === result.joined_community_id);
-                    remember(current ? { community_id: current.community_id, name: current.name } : null);
-                }
+                const current = result.communities.filter((c) => !c.automatic && (c.joined || c.administrator));
+                setJoined(current);
+                saveJoinedCommunities(current);
                 return true;
             }
             if (result.status === 403) {
@@ -138,7 +182,7 @@ function useCommunities() {
             setLoading(false);
         }
         return false;
-    }, [remember]);
+    }, []);
 
     useEffect(() => {
         const showSuggestions = takeCommunityPrompt();
@@ -147,11 +191,14 @@ function useCommunities() {
         });
     }, [load]);
 
-    const open = () => {
+    const open = useCallback(() => {
         setError('');
         setPicker('nav');
         load();
-    };
+    }, [load]);
+
+    // The search page's "Join a community" button opens this picker.
+    useEffect(() => onOpenCommunityPicker(open), [open]);
 
     const close = useCallback(() => {
         setPicker(null);
@@ -164,10 +211,11 @@ function useCommunities() {
         try {
             const result = await joinCommunity(communityId);
             if (result.status === 200 && result.success) {
-                remember({ community_id: result.community_id, name: result.community_name });
-                setPicker(null);
+                if (result.joinStatus !== 'pending') setPicker(null);
+                await load();
+                announceCommunitiesChanged();
             } else {
-                setError(result.error || 'Could not join that community. Please try again.');
+                setError(result.error || 'Could not send that join request. Please try again.');
             }
         } catch {
             setError('Could not join that community. Please try again.');
@@ -176,34 +224,39 @@ function useCommunities() {
         }
     };
 
-    // The picker stays open so the user can pick a different community straight away.
-    const leave = async () => {
-        setLeaving(true);
+    // The picker stays open so the user can manage their other communities straight away.
+    const leave = async (communityId) => {
+        setLeavingId(communityId);
         setError('');
         try {
-            const result = await leaveCommunity();
-            if (result.status === 200 && result.success) remember(null);
-            else setError(result.error || 'Could not leave the community. Please try again.');
+            const result = await leaveCommunity(communityId);
+            if (result.status === 200 && result.success) {
+                await load();
+                announceCommunitiesChanged();
+            } else {
+                setError(result.error || 'Could not leave the community. Please try again.');
+            }
         } catch {
             setError('Could not leave the community. Please try again.');
         } finally {
-            setLeaving(false);
+            setLeavingId(null);
         }
     };
 
-    return { signedIn, communities, loading, error, joined, joiningId, leaving, picker, open, close, join, leave };
+    return { signedIn, communities, loading, error, joined, joiningId, leavingId, picker, open, close, join, leave };
 }
 
 function NavBar() {
     const [menuOpen, setMenuOpen] = useState(false);
     const community = useCommunities();
-    const communityLabel = community.joined?.name ?? JOIN_LABEL;
-    const communityTitle = community.joined ? 'Switch community' : undefined;
+    const navCommunityLabel = communityLabel(community.joined);
+    const communityTitle = community.joined.length > 0 ? 'Manage communities' : undefined;
     const base = appBase();
 
     const handleLogout = async () => {
         setMenuOpen(false);
         await logout();
+        saveJoinedCommunities([]);
         window.location.assign(pathFor('login'));
     };
 
@@ -216,7 +269,7 @@ function NavBar() {
         const closeOnEscape = (event) => {
             if (event.key === 'Escape') close();
         };
-        const desktop = window.matchMedia('(min-width: 769px)');
+        const desktop = window.matchMedia('(width > 768px)');
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         document.addEventListener('keydown', closeOnEscape);
@@ -238,21 +291,24 @@ function NavBar() {
                     {/* Desktop only */}
                     <ul className="nav-links">
                         {NAV_LINKS.map((link) => (
-                            <li key={link.label}>
-                                <a className="nav-link" href={base + link.page}>{link.label}</a>
+                            <li key={link.label} className={link.label === 'Message' ? 'nav-message-item' : undefined}>
+                                <a className={`nav-link${currentClass(link.page)}`} href={base + link.page} {...currentProps(link.page)}>{link.label}</a>
                             </li>
                         ))}
                     </ul>
 
                     <div className="nav-icons">
-                        <a className="nav-icon-btn nav-search" href={base + SEARCH_PAGE} aria-label="Search">
+                        <a className={`nav-icon-btn nav-search${currentClass(SEARCH_PAGE)}`} href={base + SEARCH_PAGE} aria-label="Search" title="Search" {...currentProps(SEARCH_PAGE)}>
                             <SearchIcon />
+                        </a>
+                        <a className={`nav-icon-btn nav-favorites${currentClass(FAVORITES_PAGE)}`} href={base + FAVORITES_PAGE} aria-label="Favorites" title="Favorites" {...currentProps(FAVORITES_PAGE)}>
+                            <HeartIcon />
                         </a>
                         {/* Desktop only */}
                         {community.signedIn ? (
                             <button type="button" className="nav-community" title={communityTitle} onClick={community.open}>
                                 <CommunityIcon />
-                                <span className="nav-community-label">{communityLabel}</span>
+                                <span className="nav-community-label">{navCommunityLabel}</span>
                             </button>
                         ) : null}
                         {/* Desktop only */}
@@ -303,8 +359,8 @@ function NavBar() {
 
                 <ul className="nav-drawer-links">
                     {NAV_LINKS.map(({ label, page, icon: Icon }) => (
-                        <li key={label}>
-                            <a className="nav-drawer-link" href={base + page}>
+                        <li key={label} className={label === 'Message' ? 'nav-message-item' : undefined}>
+                            <a className={`nav-drawer-link${currentClass(page)}`} href={base + page} {...currentProps(page)}>
                                 <Icon />
                                 {label}
                             </a>
@@ -322,7 +378,7 @@ function NavBar() {
                                 }}
                             >
                                 <CommunityIcon />
-                                <span className="nav-community-label">{communityLabel}</span>
+                                <span className="nav-community-label">{navCommunityLabel}</span>
                             </button>
                         </li>
                     ) : null}
@@ -340,9 +396,8 @@ function NavBar() {
                     communities={community.communities}
                     loading={community.loading}
                     error={community.error}
-                    joinedId={community.joined?.community_id ?? null}
                     joiningId={community.joiningId}
-                    leaving={community.leaving}
+                    leavingId={community.leavingId}
                     firstLogin={community.picker === 'first-login'}
                     onJoin={community.join}
                     onLeave={community.leave}

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import './LocationsMap.css';
 
 // UB North Campus, used until there are pins to frame.
 const CAMPUS_CENTER = [43.0008, -78.789];
@@ -23,84 +24,161 @@ const pinIcon = (state) =>
     });
 
 const LABEL_OPTIONS = { permanent: true, direction: 'top', className: 'kv-pin-label' };
+const NO_REMOVALS = new Set();
+
+// Leaflet treats string tooltip content as HTML. Location names are plain text.
+const labelContent = (label) => {
+    const content = document.createElement('span');
+    content.textContent = label;
+    return content;
+};
 
 /** Leaflet map of approved meeting locations, styled after the Check-in Map frames. */
-export default function LocationsMap({ locations, removingIds, selectedId, draft, onMapClick, onSelect }) {
+export default function LocationsMap({
+    locations,
+    removingIds = NO_REMOVALS,
+    selectedId,
+    draft,
+    onMapClick,
+    onSelect,
+    readOnly = false,
+    onMapError,
+    circleRadius = 45,
+    fitCircle = false,
+    userLocation = null,
+}) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
     const pinsRef = useRef(null);
-    const framedRef = useRef(false);
-    const handlersRef = useRef({ onMapClick, onSelect });
+    const userRef = useRef(null);
+    const framedRef = useRef(null);
+    const handlersRef = useRef({ onMapClick, onSelect, onMapError });
 
     useEffect(() => {
-        handlersRef.current = { onMapClick, onSelect };
+        handlersRef.current = { onMapClick, onSelect, onMapError };
     });
 
     useEffect(() => {
-        const map = L.map(containerRef.current, { center: CAMPUS_CENTER, zoom: CAMPUS_ZOOM });
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        }).addTo(map);
-        map.on('click', (event) => handlersRef.current.onMapClick(event.latlng));
-        pinsRef.current = L.layerGroup().addTo(map);
-        mapRef.current = map;
+        let map;
+        let observer;
+        let active = true;
+        try {
+            map = L.map(containerRef.current, { center: CAMPUS_CENTER, zoom: CAMPUS_ZOOM });
+            let tileError = false;
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            })
+                .on('loading', () => {
+                    tileError = false;
+                    if (active) handlersRef.current.onMapError?.(false);
+                })
+                .on('tileerror', () => {
+                    tileError = true;
+                    if (active) handlersRef.current.onMapError?.(true);
+                })
+                .on('load', () => {
+                    if (active) handlersRef.current.onMapError?.(tileError);
+                })
+                .addTo(map);
+            if (!readOnly) {
+                map.on('click', (event) => handlersRef.current.onMapClick?.(event.latlng));
+            }
+            pinsRef.current = L.layerGroup().addTo(map);
+            userRef.current = L.layerGroup().addTo(map);
+            mapRef.current = map;
+            if (typeof ResizeObserver === 'function') {
+                observer = new ResizeObserver(() => map.invalidateSize());
+                observer.observe(containerRef.current);
+            }
+        } catch {
+            handlersRef.current.onMapError?.(true);
+        }
         return () => {
-            map.remove();
+            active = false;
+            observer?.disconnect();
+            map?.remove();
             mapRef.current = null;
-            framedRef.current = false;
+            pinsRef.current = null;
+            userRef.current = null;
+            framedRef.current = null;
         };
-    }, []);
+    }, [readOnly]);
 
     useEffect(() => {
         const pins = pinsRef.current;
         if (!pins) return;
         pins.clearLayers();
+        let circleBounds;
 
         for (const location of locations) {
             const removing = removingIds.has(location.location_id);
             const selected = location.location_id === selectedId;
             const state = removing ? 'removing' : selected ? 'selected' : 'saved';
             if (selected) {
-                L.circle([location.lat, location.lng], {
-                    radius: 45,
+                const circle = L.circle([location.lat, location.lng], {
+                    radius: circleRadius,
                     color: removing ? '#9aa5b4' : '#24364f',
                     weight: 1,
                     fillColor: removing ? '#9aa5b4' : '#3f6fa0',
                     fillOpacity: 0.12,
                     interactive: false,
                 }).addTo(pins);
+                if (fitCircle) circleBounds = circle.getBounds();
             }
-            L.marker([location.lat, location.lng], { icon: pinIcon(state), title: location.label, riseOnHover: true })
-                .bindTooltip(removing ? `${location.label} (will be removed)` : location.label, LABEL_OPTIONS)
-                .on('click', (event) => {
-                    L.DomEvent.stop(event);
-                    handlersRef.current.onSelect(location.location_id);
-                })
+            const marker = L.marker([location.lat, location.lng], {
+                icon: pinIcon(state), title: location.label, riseOnHover: true, draggable: false,
+            })
+                .bindTooltip(labelContent(removing ? `${location.label} (will be removed)` : location.label), LABEL_OPTIONS)
                 .addTo(pins);
+            if (!readOnly) {
+                marker.on('click', (event) => {
+                    L.DomEvent.stop(event);
+                    handlersRef.current.onSelect?.(location.location_id);
+                });
+            }
         }
 
-        if (draft) {
+        if (draft && !readOnly) {
             L.marker([draft.lat, draft.lng], { icon: pinIcon('draft'), interactive: false })
-                .bindTooltip(draft.label?.trim() || 'New location', LABEL_OPTIONS)
+                .bindTooltip(labelContent(draft.label?.trim() || 'New location'), LABEL_OPTIONS)
                 .addTo(pins);
         }
 
         // Frame the saved pins once, when they first arrive, so later clicks don't move the map.
-        if (!framedRef.current && locations.length > 0) {
-            framedRef.current = true;
-            const bounds = L.latLngBounds(locations.map((location) => [location.lat, location.lng]));
+        const frame = readOnly ? JSON.stringify([locations.map(({ lat, lng }) => [lat, lng]), circleRadius, fitCircle, selectedId, Boolean(userLocation)]) : 'admin';
+        if (locations.length > 0 && framedRef.current !== frame) {
+            framedRef.current = frame;
+            const bounds = circleBounds || L.latLngBounds(locations.map((location) => [location.lat, location.lng]));
+            if (userLocation) bounds.extend([userLocation.lat, userLocation.lng]);
             mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
         }
-    }, [locations, removingIds, selectedId, draft]);
+    }, [locations, removingIds, selectedId, draft, readOnly, circleRadius, fitCircle, userLocation]);
+
+    useEffect(() => {
+        const layer = userRef.current;
+        if (!layer) return;
+        layer.clearLayers();
+        if (!userLocation) return;
+        const point = [userLocation.lat, userLocation.lng];
+        L.circle(point, {
+            radius: userLocation.accuracy, color: '#1677d2', weight: 1,
+            fillColor: '#1677d2', fillOpacity: 0.15, interactive: false,
+        }).addTo(layer);
+        L.circleMarker(point, {
+            radius: 7, color: '#fff', weight: 2, fillColor: '#1677d2', fillOpacity: 1,
+        }).bindTooltip(labelContent('Your location'), LABEL_OPTIONS).addTo(layer);
+    }, [userLocation, readOnly]);
 
     return (
         <div
             ref={containerRef}
-            className="kv-locations-map"
+            className={`kv-locations-map${readOnly ? ' kv-locations-map--readonly' : ''}`}
             data-testid="locations-map"
-            role="application"
-            aria-label="Approved meeting locations map. Click to mark a new location; click a pin to select it."
+            role={readOnly ? 'region' : 'application'}
+            aria-label={readOnly
+                ? 'Meeting location map'
+                : 'Approved meeting locations map. Click to mark a new location; click a pin to select it.'}
         />
     );
 }
