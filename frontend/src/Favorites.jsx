@@ -5,7 +5,7 @@ import './Favorites.css';
 import ItemCover from './ItemCover.jsx';
 import HeartIcon from './HeartIcon.jsx';
 import { fetchFavorites, removeFavorite } from './favorites.js';
-import { itemPageUrl } from './localListings.js';
+import { itemUrlFrom } from './meetingRequests.js';
 
 function Favorites() {
     const [favorites, setFavorites] = useState([]);
@@ -92,7 +92,7 @@ function Favorites() {
                                 </div>
                                 <div className="ps-book-body">
                                     <h3 className="ps-book-name" title={item.name}>
-                                        <a className="ps-book-link" href={itemPageUrl(item.listing_id)}>{item.name}</a>
+                                        <a className="ps-book-link" href={itemUrlFrom(item.listing_id, 'favorites')}>{item.name}</a>
                                     </h3>
                                     <div className="ps-book-meta">
                                         <span className="ps-book-price">${item.price}</span>

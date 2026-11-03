@@ -181,6 +181,53 @@ describe('Frontend #211: Organize a Meet back link', () => {
     });
 });
 
+describe('Frontend #99: item page opened from Favorites', () => {
+    beforeEach(() => open('listing_id=91002&from=favorites'));
+
+    it('shows Back to favorites, Buy Now and Meeting Location but not Back to search', async () => {
+        serve(itemRoutes());
+        render(<ItemDetails />);
+
+        expect(await screen.findByRole('heading', { name: 'Calculus Workbook' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Back to favorites/ })).toHaveAttribute('href', './favorites.html');
+        expect(screen.queryByRole('link', { name: /Back to search/ })).not.toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'Buy Now' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Meeting Location' })).toBeInTheDocument();
+    });
+
+    it('sends Buy Now to the Organize a Meet page with from=favorites', async () => {
+        serve(itemRoutes());
+        const assign = vi.fn();
+        vi.stubGlobal('location', { ...window.location, assign, search: '?listing_id=91002&from=favorites' });
+        render(<ItemDetails />);
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Buy Now' }));
+        expect(assign).toHaveBeenCalledWith('./meet.html?listing_id=91002&from=favorites');
+    });
+
+    it('keeps from=favorites on the Back to item link of the meet page', async () => {
+        serve({
+            'get_item_details.php': () => json(200, { success: true, listing }),
+            'get_meeting_locations.php': () => json(200, { success: true, locations: [] }),
+        });
+        render(<OrganizeMeet />);
+
+        expect(await screen.findByRole('link', { name: /Back to item/ })).toHaveAttribute('href', './item.html?listing_id=91002&from=favorites');
+    });
+
+    it('ignores an unknown from value: Back to search and a plain Organize a Meet address', async () => {
+        open('listing_id=91002&from=evil');
+        serve(itemRoutes());
+        const assign = vi.fn();
+        vi.stubGlobal('location', { ...window.location, assign, search: '?listing_id=91002&from=evil' });
+        render(<ItemDetails />);
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Buy Now' }));
+        expect(screen.getByRole('link', { name: /Back to search/ })).toBeInTheDocument();
+        expect(assign).toHaveBeenCalledWith('./meet.html?listing_id=91002');
+    });
+});
+
 describe('Frontend #211: My Purchase Requests links', () => {
     it('builds the request item address', () => {
         expect(requestItemUrl(91002)).toBe('./item.html?listing_id=91002&from=request');
