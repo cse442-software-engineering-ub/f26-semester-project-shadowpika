@@ -4,8 +4,7 @@ import ItemCover from './ItemCover.jsx';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
-import { itemPageUrl } from './localListings.js';
-import { createMeetingRequest, itemPageFrom, loadListing, meetingRequestError, requestItemUrl } from './meetingRequests.js';
+import { createMeetingRequest, itemPageFrom, itemUrlFrom, loadListing, meetingRequestError } from './meetingRequests.js';
 
 const CONNECTION_ERROR = 'Could not connect to the server.';
 const LOCATION_UNAVAILABLE = "The seller's meeting location is unavailable. Return to the item and try again.";
@@ -75,7 +74,7 @@ function OrganizeMeet() {
         <div className="ps-page">
             <NavBar />
             <main className="ps-frame id-frame">
-                <a className="id-back" href={itemPageFrom(window.location.search) === 'request' ? requestItemUrl(listingId) : itemPageUrl(listingId)}>
+                <a className="id-back" href={itemUrlFrom(listingId, itemPageFrom(window.location.search))}>
                     <span aria-hidden="true">←</span> Back to item
                 </a>
                 <h1 className="ps-title mr-title">Organize a Meet</h1>

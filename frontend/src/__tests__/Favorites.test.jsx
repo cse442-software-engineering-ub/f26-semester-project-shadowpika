@@ -125,7 +125,7 @@ describe('Frontend: Favorites Tab (#99) - Favorites page', () => {
         expect(screen.getByText('Good')).toBeInTheDocument();
         expect(screen.getByText('$25.00')).toBeInTheDocument();
         expect(screen.getByText('Fair')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Calculus Workbook' })).toHaveAttribute('href', './item.html?listing_id=91002');
+        expect(screen.getByRole('link', { name: 'Calculus Workbook' })).toHaveAttribute('href', './item.html?listing_id=91002&from=favorites');
         expect(screen.getByRole('img', { name: 'Calculus Workbook listing' })).toHaveAttribute('src', './assets/icons/favicon.svg');
 
         fireEvent.error(screen.getByRole('img', { name: 'Desk Chair listing' }));

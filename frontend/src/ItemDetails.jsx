@@ -35,6 +35,15 @@ function BackToHome() {
     );
 }
 
+// Opened from the Favorites page: back goes to Favorites.
+function BackToFavorites() {
+    return (
+        <a className="id-back" href="./favorites.html">
+            <span aria-hidden="true">←</span> Back to favorites
+        </a>
+    );
+}
+
 function ItemDetails() {
     const from = itemPageFrom(window.location.search);
     const [listing, setListing] = useState(null);
@@ -124,7 +133,7 @@ function ItemDetails() {
         <div className="ps-page">
             <NavBar />
             <main className="ps-frame id-frame">
-                {from === 'request' ? <BackToHome /> : <BackToSearch />}
+                {from === 'favorites' ? <BackToFavorites /> : from === 'request' ? <BackToHome /> : <BackToSearch />}
 
                 {status === 'loading' && <p className="id-message">Loading item details...</p>}
                 {status === 'error' && <p className="id-message id-error" role="alert">{error}</p>}
