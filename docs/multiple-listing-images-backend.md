@@ -5,6 +5,11 @@ deploying cards 222/223. It requires the existing InnoDB listings table with sig
 INT listing_id. It is rerunnable and does not backfill or overwrite old covers.
 Read compatibility supplies an image_urls array for legacy single/no-image rows.
 
+The hosting PHP configuration must allow `upload_max_filesize` of at least 5M
+and `post_max_size` of at least 6M. Files upload one at a time; the larger POST
+limit leaves room for multipart headers. Runtime limits are not changed by the
+release build, so verify them before online acceptance.
+
 Card 222's `docs/multiple-listing-images-cards.md` contains all three revised
 cards and the interface contract. A nonowner edit follows the existing HTTP 404
 not-found contract; unauthenticated create is 401 and nonmember reads are 403.
