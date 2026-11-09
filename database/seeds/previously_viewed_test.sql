@@ -5,6 +5,7 @@
 -- Safe to re-run: resets the test rows, the two users' memberships in the test communities, and those two users' recently viewed rows.
 -- The communities use auto-generated ids (the unique email keeps re-runs from duplicating them), so they never overwrite other rows.
 -- If ids 92001-92021 are already used by other rows, the checks below show them instead of overwriting them.
+-- Undo everything with database/seeds/previously_viewed_teardown.sql.
 
 SET @buyer_id = (SELECT id FROM users WHERE LOWER(email) = LOWER('david.buyer@test.com') LIMIT 1);
 SET @seller_id = (SELECT id FROM users WHERE LOWER(email) = LOWER('david.seller@test.com') LIMIT 1);
@@ -66,13 +67,12 @@ VALUES
     (@seller_id, @hall_id, 0)
 ON DUPLICATE KEY UPDATE shopping = VALUES(shopping);
 
--- Campus community (Karavan, legacy All of UB): both users are members
-INSERT INTO community_members (user_id, community_id, shopping)
-SELECT user_ids.id, admin_requests.id, 0
-  FROM admin_requests
-  JOIN (SELECT @buyer_id AS id UNION ALL SELECT @seller_id) AS user_ids
- WHERE admin_requests.status = 'approved' AND LOWER(TRIM(admin_requests.business_name)) IN ('karavan', 'all of ub')
-ON DUPLICATE KEY UPDATE shopping = community_members.shopping;
+-- Campus community (Karavan, legacy All of UB): every user is in it without a row, and a row only records that the
+-- user turned Karavan off under Shopping from. Remove any such row so both users shop from Karavan.
+DELETE community_members FROM community_members
+  JOIN admin_requests ON admin_requests.id = community_members.community_id
+ WHERE community_members.user_id IN (@buyer_id, @seller_id)
+   AND LOWER(TRIM(admin_requests.business_name)) IN ('karavan', 'all of ub');
 
 -- Recently viewed: replace only these two users' rows
 DELETE FROM recently_viewed WHERE user_id IN (@buyer_id, @seller_id);
@@ -105,12 +105,9 @@ SELECT @buyer_id AS buyer_id, @seller_id AS seller_id;
 SELECT id, business_name, status FROM admin_requests WHERE id IN (@hall_id, @outside_id);
 -- Check: 21 rows, all with the marker description (17 active, sold, inactive, own, outside)
 SELECT listing_id, name, price, community, status, owner_id, description FROM listings WHERE listing_id BETWEEN 92001 AND 92021;
--- Check: both users in Hall and Karavan, neither in Outside
+-- Check: both users in Hall only (no Karavan row, so Karavan stays ticked), neither in Outside
 SELECT user_id, community_id, shopping FROM community_members WHERE user_id IN (@buyer_id, @seller_id);
 -- Check: 3 rows for the buyer, 17 for the seller
 SELECT user_id, listing_id, viewed_at FROM recently_viewed WHERE user_id IN (@buyer_id, @seller_id) ORDER BY user_id, viewed_at;
 
--- Teardown (recently_viewed, favorites and community_members rows are removed by their foreign keys):
--- DELETE FROM recently_viewed WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) IN ('david.buyer@test.com', 'david.seller@test.com')) AND listing_id BETWEEN 92001 AND 92021;
--- DELETE FROM listings WHERE listing_id BETWEEN 92001 AND 92021 AND description = 'Previously viewed test item';
--- DELETE FROM admin_requests WHERE email IN ('previously-viewed-test-hall@test.invalid', 'previously-viewed-test-outside@test.invalid');
+-- Teardown: database/seeds/previously_viewed_teardown.sql
