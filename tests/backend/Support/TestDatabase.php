@@ -105,6 +105,10 @@ final class TestDatabase
             )"
         );
 
+        $pdo->exec('CREATE TABLE listing_images (
+            listing_id INTEGER NOT NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
+            position INTEGER NOT NULL, image_url TEXT NOT NULL,
+            PRIMARY KEY(listing_id,position), UNIQUE(listing_id,image_url))');
         $pdo->exec("CREATE TABLE meeting_requests (
             request_id INTEGER PRIMARY KEY AUTOINCREMENT,
             buyer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
