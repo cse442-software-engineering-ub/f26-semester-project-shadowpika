@@ -21,6 +21,7 @@ const json = (status, body) => Promise.resolve(new Response(JSON.stringify(body)
 function serve(recommended) {
     const routes = {
         'get_recommended_items.php': recommended,
+        'get_previously_viewed_items.php': () => json(200, { success: true, items: [] }),
         'get_incoming_meeting_requests.php': () => json(200, { success: true, requests: [] }),
         'get_my_meeting_requests.php': () => json(200, {
             success: true,

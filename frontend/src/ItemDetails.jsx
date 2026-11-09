@@ -8,6 +8,7 @@ import { fetchListingOwnership, fetchMyMeetingRequests, itemPageFrom, loadListin
 import HeartIcon from './HeartIcon.jsx';
 import { fetchFavoriteStatus, removeFavorite, saveFavorite } from './favorites.js';
 import ListingMeetingLocation from './components/ListingMeetingLocation.jsx';
+import { recordViewedItem } from './previouslyViewed.js';
 
 const SEARCH_HREF = './product-search.html';
 
@@ -91,6 +92,7 @@ function ItemDetails() {
                     setListing(data.listing);
                     setStatus('done');
                     document.title = `Karavan - ${data.listing.name}`;
+                    recordViewedItem(Number(data.listing.listing_id)).catch(() => {});
                 } else {
                     setError(data.error || 'This item could not be loaded.');
                     setStatus('error');
