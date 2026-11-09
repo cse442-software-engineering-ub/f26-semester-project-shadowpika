@@ -103,7 +103,7 @@ describe('Pages that need a login', () => {
 
 // Every page except login, sign up, the Community Partner form and 404 needs a login.
 const entries = import.meta.glob('../*-main.jsx', { query: '?raw', import: 'default', eager: true });
-const PUBLIC_ENTRIES = ['not-found-main.jsx', 'navbar-main.jsx'];
+const PUBLIC_ENTRIES = ['not-found-main.jsx', 'navbar-main.jsx', 'reset-password-main.jsx'];
 
 describe('Page entry points', () => {
     const protectedEntries = Object.entries(entries).filter(([path]) => !PUBLIC_ENTRIES.some((name) => path.endsWith(name)));

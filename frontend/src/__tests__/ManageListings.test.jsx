@@ -39,6 +39,21 @@ const mount = async () => { let view; await act(async () => { view = render(<Man
 const tick = async () => act(async () => vi.advanceTimersByTime(MEETING_REFRESH_MS));
 const calls = (endpoint) => fetchMock.mock.calls.filter(([url]) => url.endsWith(endpoint));
 
+it('preserves a multi-image gallery when editing ordinary fields', async () => {
+    items = [{ ...ITEM, image_url:'front.jpg', image_urls:['front.jpg','back.png'] }];
+    await mount();
+    fireEvent.click(screen.getByRole('button',{name:'Edit listing'}));
+    // Hash routing updates the edit view independently of backend availability.
+    await act(async () => window.dispatchEvent(new HashChangeEvent('hashchange')));
+    expect(document.querySelector('input[type="file"]')).toBeDisabled();
+    expect(screen.getByText('2 photos · preserved when saving')).toBeInTheDocument();
+    fireEvent.submit(document.querySelector('form'));
+    await act(async () => {});
+    const request = calls('update_listing.php')[0];
+    expect(JSON.parse(request[1].body).image_url).toBe('front.jpg');
+    expect(JSON.parse(request[1].body).image_urls).toBeUndefined();
+});
+
 it('disables Sold before both arrivals and does not submit when clicked', async () => {
     await mount();
     expect(screen.getByRole('button', { name: 'Mark as sold' })).toBeDisabled();

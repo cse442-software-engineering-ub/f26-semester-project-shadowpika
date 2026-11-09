@@ -31,6 +31,7 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/http.php';
 require_once __DIR__ . '/../includes/communities.php';
 require_once __DIR__ . '/../listing/lib/listing_locations.php';
+require_once __DIR__ . '/../listing/lib/listing_images.php';
 
 // KARAVAN_DB_DSN lets the test suite point this endpoint at SQLite, like includes/config.php.
 function item_details_pdo(): PDO {
@@ -85,6 +86,7 @@ try {
             "price"       => number_format((float) $row['price'], 2, '.', ''),
             "condition"   => $row['condition'],
             "image_url"   => ($imageUrl === null || trim($imageUrl) === '') ? null : $imageUrl,
+            "image_urls"  => listing_images_pdo($pdo, (int)$listingId, $imageUrl),
             "category"    => LEGACY_CATEGORY_LABELS[$row['category']] ?? $row['category'],
             "community"   => $row['community'],
             "description" => ($description === null || trim($description) === '') ? null : $description,

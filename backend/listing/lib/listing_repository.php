@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/listing_locations.php';
+require_once __DIR__ . '/listing_images.php';
 
 /**
  * Persists a validated listing and returns the row created by MySQL.
@@ -67,6 +68,7 @@ function create_listing(mysqli $connection, array $listing, ?int $ownerId): arra
     $listingId = (int) $connection->insert_id;
     $statement->close();
 
+    store_listing_images($connection, $listingId, $listing['image_urls'] ?? [$imageUrl]);
     $createdListing = find_listing_by_id($connection, $listingId);
 
     if ($createdListing === null) {
@@ -124,6 +126,7 @@ function find_listing_by_id(mysqli $connection, int $listingId): ?array
         'meeting_location_details' => listing_meeting_location_details($createdListing, $location),
         'description' => $createdListing['description'],
         'image_url' => $createdListing['image_url'],
+        'image_urls' => listing_images_mysqli($connection, $listingId, $createdListing['image_url']),
         'status' => $createdListing['status'],
         'created_at' => $createdListing['created_at'],
         'updated_at' => $createdListing['updated_at'],

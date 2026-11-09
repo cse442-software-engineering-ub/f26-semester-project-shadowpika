@@ -19,6 +19,8 @@ final class TestDatabase
                 username TEXT NOT NULL UNIQUE,
                 email TEXT NULL,
                 password_hash TEXT NOT NULL,
+                security_q1_index INTEGER NULL,
+                security_a1_hash TEXT NULL,
                 role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'moderator')),
                 community_id INTEGER NULL REFERENCES admin_requests (id) ON DELETE SET NULL
             )"
@@ -103,6 +105,10 @@ final class TestDatabase
             )"
         );
 
+        $pdo->exec('CREATE TABLE listing_images (
+            listing_id INTEGER NOT NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
+            position INTEGER NOT NULL, image_url TEXT NOT NULL,
+            PRIMARY KEY(listing_id,position), UNIQUE(listing_id,image_url))');
         $pdo->exec("CREATE TABLE meeting_requests (
             request_id INTEGER PRIMARY KEY AUTOINCREMENT,
             buyer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

@@ -1,0 +1,7 @@
+.listing-gallery { min-width: 0; max-width: 100%; }
+.listing-gallery .id-cover { box-sizing: border-box; max-width: 100%; }
+.listing-thumbnails { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+.listing-thumbnails button { width: 54px; height: 60px; padding: 3px; border: 2px solid #aeb8c5; border-radius: 6px; background: white; cursor: pointer; }
+.listing-thumbnails button[aria-pressed="true"] { border-color: #152a47; box-shadow: 0 0 0 1px #152a47; }
+.listing-thumbnails img { width: 100%; height: 100%; object-fit: contain; }
+.listing-photo-count { text-align: center; margin: 12px 0 0; font-size: 14px; }

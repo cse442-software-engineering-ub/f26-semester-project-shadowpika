@@ -379,7 +379,7 @@ final class EndpointsHttpTest extends TestCase
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HEADER         => true,
             CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => json_encode(['email' => $email, 'password' => $password]),
+            CURLOPT_POSTFIELDS     => json_encode(['email' => $email, 'password' => $password, 'security_question' => 0, 'security_answer' => 'MiLo']),
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
         ]);
         $raw = curl_exec($ch);
@@ -422,7 +422,7 @@ final class EndpointsHttpTest extends TestCase
     /** Logs in and returns the cookies a browser would keep: the session and the remember-me token. */
     private function loginCookies(string $email, string $password): array
     {
-        [, $json, $set] = $this->withCookies('POST', 'login.php', [], json_encode(['email' => $email, 'password' => $password]));
+        [, $json, $set] = $this->withCookies('POST', 'login.php', [], json_encode(['email' => $email, 'password' => $password, 'security_question' => 0, 'security_answer' => 'MiLo']));
         $this->assertTrue($json['success']);
         return [$set['PHPSESSID']['value'], $set['karavan_remember']['value'], $set['karavan_remember']['header']];
     }
@@ -608,7 +608,7 @@ final class EndpointsHttpTest extends TestCase
     public function testSignedUpUserLogsInByEmailAndGetsASession(): void
     {
         [$status, $registered] = $this->postJson(
-            'register.php', json_encode(['username' => 'testuser1', 'email' => 'testuser1@test.com', 'password' => 'TestUser123!']), null
+            'register.php', json_encode(['username' => 'testuser1', 'email' => 'testuser1@test.com', 'password' => 'TestUser123!', 'security_question' => 0, 'security_answer' => 'MiLo']), null
         );
         $this->assertSame(200, $status);
         $this->assertTrue($registered['success']);
@@ -625,10 +625,10 @@ final class EndpointsHttpTest extends TestCase
 
     public function testSignUpRejectsADuplicateEmail(): void
     {
-        $body = json_encode(['username' => 'testuser1', 'email' => 'testuser1@test.com', 'password' => 'TestUser123!']);
+        $body = json_encode(['username' => 'testuser1', 'email' => 'testuser1@test.com', 'password' => 'TestUser123!', 'security_question' => 0, 'security_answer' => 'MiLo']);
         $this->postJson('register.php', $body, null);
 
-        [, $json] = $this->postJson('register.php', json_encode(['username' => 'other', 'email' => 'testuser1@test.com', 'password' => 'TestUser123!']), null);
+        [, $json] = $this->postJson('register.php', json_encode(['username' => 'other', 'email' => 'testuser1@test.com', 'password' => 'TestUser123!', 'security_question' => 0, 'security_answer' => 'MiLo']), null);
 
         $this->assertFalse($json['success']);
         $this->assertSame('Username or Email already exists.', $json['error']);
@@ -639,7 +639,7 @@ final class EndpointsHttpTest extends TestCase
     {
         TestDatabase::addUser($this->pdo, 'mod', 'moderator', 'mod@test.com');
 
-        [, $json] = $this->postJson('register.php', json_encode(['username' => 'other', 'email' => 'MOD@Test.com', 'password' => 'TestUser123!']), null);
+        [, $json] = $this->postJson('register.php', json_encode(['username' => 'other', 'email' => 'MOD@Test.com', 'password' => 'TestUser123!', 'security_question' => 0, 'security_answer' => 'MiLo']), null);
 
         $this->assertFalse($json['success']);
         $this->assertSame('Username or Email already exists.', $json['error']);
@@ -650,7 +650,7 @@ final class EndpointsHttpTest extends TestCase
     {
         TestDatabase::addUser($this->pdo, 'legacy@test.com');
 
-        [, $json] = $this->postJson('register.php', json_encode(['username' => 'other', 'email' => 'legacy@test.com', 'password' => 'TestUser123!']), null);
+        [, $json] = $this->postJson('register.php', json_encode(['username' => 'other', 'email' => 'legacy@test.com', 'password' => 'TestUser123!', 'security_question' => 0, 'security_answer' => 'MiLo']), null);
 
         $this->assertFalse($json['success']);
         $this->assertSame('Username or Email already exists.', $json['error']);
@@ -842,7 +842,7 @@ final class EndpointsHttpTest extends TestCase
 
     private function signUp(string $username, string $email, string $password): void
     {
-        [, $json] = $this->postJson('register.php', json_encode(['username' => $username, 'email' => $email, 'password' => $password]), null);
+        [, $json] = $this->postJson('register.php', json_encode(['username' => $username, 'email' => $email, 'password' => $password, 'security_question' => 0, 'security_answer' => 'MiLo']), null);
         $this->assertTrue($json['success'], 'sign up');
     }
 
