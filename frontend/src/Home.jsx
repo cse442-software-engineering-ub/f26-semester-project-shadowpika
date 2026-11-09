@@ -10,7 +10,7 @@ import { canCheckIn } from './listingSales.js';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
-import { STATUS_LABELS, cancelMeetingRequest, fetchMyMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl } from './meetingRequests.js';
+import { STATUS_LABELS, acceptLocationChange, cancelMeetingRequest, fetchMyMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl } from './meetingRequests.js';
 
 // Home page: recommended items, previously viewed items, then the logged-in buyer's meeting requests, in the order the server sends them.
 function Home() {
@@ -18,6 +18,7 @@ function Home() {
         useMeetingList(fetchMyMeetingRequests, 'Unable to load your purchase requests.');
     const [message, setMessage] = useState(null); // result of the last cancel: { kind, text }
     const [cancellingId, setCancellingId] = useState(null);
+    const [acceptingId, setAcceptingId] = useState(null);
 
     // Only a pending request can be canceled; the server refuses anything else and its error is shown.
     async function handleCancel(listingId) {
@@ -41,6 +42,31 @@ function Home() {
             finishMutation();
             if (reload) refresh();
             setCancellingId(null);
+        }
+    }
+
+    // Only a request with a proposed new location can be accepted; the server's answer replaces that request.
+    async function handleAccept(request) {
+        if (!startMutation()) return;
+        let reload = false;
+        setMessage(null);
+        setAcceptingId(request.request_id);
+        try {
+            const data = await acceptLocationChange(request.request_id);
+            if (data.success) {
+                setRequests((current) => current.map((item) => (item.request_id === request.request_id ? data.request : item)));
+                setMessage({ kind: 'success', text: 'You accepted the new meeting location.' });
+            } else {
+                reload = true;
+                setMessage({ kind: 'error', text: data.error || 'Unable to accept the new meeting location.' });
+            }
+        } catch {
+            reload = true;
+            setMessage({ kind: 'error', text: 'Could not connect to the server.' });
+        } finally {
+            finishMutation();
+            if (reload) refresh();
+            setAcceptingId(null);
         }
     }
 
@@ -99,6 +125,16 @@ function Home() {
                                                 onClick={() => handleCancel(request.listing_id)}
                                             >
                                                 Cancel Request
+                                            </button>
+                                        )}
+                                        {request.status === 'location_change_requested' && (
+                                            <button
+                                                type="button"
+                                                className="mr-cancel"
+                                                disabled={acceptingId === request.request_id}
+                                                onClick={() => handleAccept(request)}
+                                            >
+                                                Accept New Location
                                             </button>
                                         )}
                                         {canCheckIn(request) && (

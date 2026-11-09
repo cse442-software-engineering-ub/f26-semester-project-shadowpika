@@ -252,7 +252,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
             'Physics Lab Manual$7.50Jan 3, 9:05 AMCapen Hall Main EntrancePendingCancel Request',
             'Graphing Calculator$60.00Jan 4, 12:00 PMStudent Union Main EntranceApprovedMeeting location locked after approval.Check-in status unavailable.Seller check-in status unavailable.',
             'Desk Chair$25.00Jan 5, 6:45 PMLockwood Memorial Library Main EntranceDenied',
-            'Mini Fridge$50.00Jan 6, 12:30 AMStudent Union Main EntranceLocation Change Requested',
+            'Mini Fridge$50.00Jan 6, 12:30 AMStudent Union Main EntranceLocation Change RequestedAccept New Location',
         ]);
 
         expect(screen.getByRole('img', { name: 'Physics Lab Manual listing' })).toHaveAttribute('src', './favicon.svg');

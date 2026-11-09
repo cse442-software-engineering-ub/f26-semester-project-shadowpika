@@ -88,6 +88,17 @@ export async function respondMeetingRequest(requestId, action, locationId) {
     return response.json();
 }
 
+// Buyer accepts the seller's new location (card #220).
+export async function acceptLocationChange(requestId) {
+    const response = await fetch('./api/accept_location_change.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ request_id: Number(requestId) }),
+    });
+    return response.json();
+}
+
 // "Today" is the campus date, matching the backend's future-date check.
 export const campusToday = (now = new Date()) =>
     new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(now);
