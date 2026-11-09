@@ -19,6 +19,8 @@ final class TestDatabase
                 username TEXT NOT NULL UNIQUE,
                 email TEXT NULL,
                 password_hash TEXT NOT NULL,
+                security_q1_index INTEGER NULL,
+                security_a1_hash TEXT NULL,
                 role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'moderator')),
                 community_id INTEGER NULL REFERENCES admin_requests (id) ON DELETE SET NULL
             )"
