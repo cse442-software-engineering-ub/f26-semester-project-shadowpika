@@ -62,9 +62,12 @@ try {
 
     $validation = validate_create_listing(read_create_listing_input());
     if (empty($validation['errors'])) {
-        $imageFilename = listing_image_filename_from_url($validation['data']['image_url']);
-        if ($imageFilename === null || !listing_image_exists($imageFilename)) {
-            $validation['errors']['image_url'] = 'The uploaded item photo could not be found. Upload it again.';
+        foreach ($validation['data']['image_urls'] as $imageUrl) {
+            $imageFilename = listing_image_filename_from_url($imageUrl);
+            if ($imageFilename === null || !listing_image_exists($imageFilename)) {
+                $validation['errors']['image_urls'] = 'An uploaded item photo could not be found. Upload it again.';
+                break;
+            }
         }
     }
     if (!empty($validation['errors'])) {

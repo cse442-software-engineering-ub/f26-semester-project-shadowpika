@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/listing_locations.php';
+require_once __DIR__ . '/listing_images.php';
 
 const MANAGE_LISTING_CATEGORIES = [
     'Textbooks',
@@ -51,6 +52,7 @@ function manage_listings_format(array $row): array
         'price'            => number_format((float) $row['price'], 2, '.', ''),
         'condition'        => $row['condition'],
         'image_url'        => $row['image_url'],
+        'image_urls'       => $row['image_urls'] ?? listing_gallery_urls([], $row['image_url']),
         'category'         => $row['category'],
         'related_course'   => $row['related_course'],
         'community'        => $row['community'],
@@ -86,7 +88,10 @@ function get_my_listings(PDO $pdo, ?int $userId): array
     $eligible->execute([$userId]);
     $saleRequests = $eligible->fetchAll(PDO::FETCH_KEY_PAIR);
     $results = $stmt->fetchAll();
-    foreach ($results as &$row) $row['sale_request_id'] = $saleRequests[$row['listing_id']] ?? null;
+    foreach ($results as &$row) {
+        $row['sale_request_id'] = $saleRequests[$row['listing_id']] ?? null;
+        $row['image_urls'] = listing_images_pdo($pdo, (int)$row['listing_id'], $row['image_url']);
+    }
     unset($row);
     return [200, [
         'success' => true,
@@ -220,26 +225,45 @@ function update_my_listing(PDO $pdo, ?int $userId, $input): array
         if (!$valid) {
             return [422, ['success' => false, 'error' => 'Enter valid listing details.']];
         }
-        $current = $pdo->prepare('SELECT community, meeting_location, meeting_location_id FROM listings WHERE listing_id = ? AND owner_id = ?');
-        $current->execute([$listingId, $userId]);
-        $listing = $current->fetch(PDO::FETCH_ASSOC);
-        if (!$listing) {
-            return [404, ['success' => false, 'error' => 'Listing not found.']];
+        $pdo->beginTransaction();
+        try {
+            $lock = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? ' FOR UPDATE' : '';
+            $current = $pdo->prepare('SELECT community, meeting_location, meeting_location_id, image_url FROM listings WHERE listing_id = ? AND owner_id = ?' . $lock);
+            $current->execute([$listingId, $userId]);
+            $listing = $current->fetch(PDO::FETCH_ASSOC);
+            if (!$listing) {
+                $pdo->rollBack();
+                return [404, ['success' => false, 'error' => 'Listing not found.']];
+            }
+            $gallery = listing_images_pdo($pdo, $listingId, $listing['image_url']);
+            if (array_key_exists('image_urls', $input) || (count($gallery) > 1 && $data['image_url'] !== $listing['image_url'])) {
+                $pdo->rollBack();
+                return [422, ['success' => false, 'error' => 'Gallery images cannot be changed in this editor.']];
+            }
+            $locationId = listing_location_for_edit($pdo, $listing, $data['meeting_location']);
+            $stmt = $pdo->prepare(
+                'UPDATE listings
+                    SET name = ?, price = ?, category = ?, `condition` = ?, related_course = ?,
+                        meeting_location = ?, meeting_location_id = ?, description = ?, image_url = ?
+                  WHERE listing_id = ? AND owner_id = ?'
+            );
+            $stmt->execute([
+                $data['name'], $data['price'], $data['category'], $data['condition'],
+                $data['related_course'] === '' ? null : $data['related_course'],
+                $data['meeting_location'], $locationId, $data['description'],
+                $data['image_url'] === '' ? null : $data['image_url'],
+                $listingId, $userId,
+            ]);
+            if (count($gallery) <= 1 && $data['image_url'] !== ($listing['image_url'] ?? '')) {
+                // Keep an existing single gallery row aligned with the legacy cover editor.
+                $pdo->prepare('UPDATE listing_images SET image_url = ? WHERE listing_id = ? AND `position` = 0')->execute([$data['image_url'], $listingId]);
+                if ($data['image_url'] === '') $pdo->prepare('DELETE FROM listing_images WHERE listing_id = ?')->execute([$listingId]);
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
         }
-        $locationId = listing_location_for_edit($pdo, $listing, $data['meeting_location']);
-        $stmt = $pdo->prepare(
-            'UPDATE listings
-                SET name = ?, price = ?, category = ?, `condition` = ?, related_course = ?,
-                    meeting_location = ?, meeting_location_id = ?, description = ?, image_url = ?
-              WHERE listing_id = ? AND owner_id = ?'
-        );
-        $stmt->execute([
-            $data['name'], $data['price'], $data['category'], $data['condition'],
-            $data['related_course'] === '' ? null : $data['related_course'],
-            $data['meeting_location'], $locationId, $data['description'],
-            $data['image_url'] === '' ? null : $data['image_url'],
-            $listingId, $userId,
-        ]);
         return [200, ['success' => true]];
     }
 

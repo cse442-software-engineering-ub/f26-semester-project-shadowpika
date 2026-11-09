@@ -28,6 +28,7 @@ try{
  INSERT INTO users VALUES (1,'local.member','member@example.test','local-only','user'),(2,'local.outsider','outsider@example.test','local-only','user'),(3,'local.partner','partner@example.test','local-only','admin');
  INSERT INTO admin_requests VALUES (5001,'Karavan','approved',NULL),(5002,'Keller Properties LLC','approved',3),(5003,'Pending Community','pending',NULL),(5004,'keller properties llc','approved',NULL);
  INSERT INTO approved_locations VALUES (1,'Baldy 19','Karavan',43.000410,-78.787090),(2,'Bill','Keller Properties LLC',43.000881,-78.787572),(3,'Pending point','Pending Community',43.0,-78.0),(4,'Alias office','keller properties llc',43.0,-78.0);");
+ $pdo->exec(file_get_contents($root.'/database/migrations/016_listing_images.sql'));
  file_put_contents($imagePath,Fixtures::pngBytes());
  $socket=stream_socket_server('tcp://127.0.0.1:0',$errno,$errstr);$address=stream_socket_get_name($socket,false);fclose($socket);$port=(int)substr(strrchr($address,':'),1);
  $env=array_merge(getenv(),['KARAVAN_DB_DSN'=>$dsn.';dbname='.$db,'KARAVAN_DB_HOST'=>'127.0.0.1:'.$match[1],'KARAVAN_DB_NAME'=>$db,'KARAVAN_DB_USER'=>$dbUser,'KARAVAN_DB_PASS'=>$dbPass]);
