@@ -276,6 +276,7 @@ export default function ManageListings() {
                             {/* Hidden file selector node bound to the element reference hook */}
                             <input 
                                 type="file" 
+                                disabled={selectedListing.image_urls?.length > 1}
                                 ref={fileInputRef} 
                                 accept="image/jpeg,image/png,image/webp" 
                                 style={{ display: 'none' }} 
@@ -290,13 +291,13 @@ export default function ManageListings() {
 
                             {/* Clicking anywhere inside this container triggers the browser file picker layout window */}
                             <div 
-                                onClick={() => fileInputRef.current?.click()}
+                                onClick={() => { if (!(selectedListing.image_urls?.length > 1)) fileInputRef.current?.click(); }}
                                 style={{ width: '330px', height: '460px', background: '#F0ECE4', borderRadius: 14, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', border: '2px dashed #D1D9E0', position: 'relative' }}
                             >
                                 {previewUrl || selectedListing.image_url ? (
                                     <>
                                         <img src={previewUrl || selectedListing.image_url} alt={selectedListing.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                        <span style={{ color: '#FFF', background: '#1f2f46eb', borderRadius: 8, padding: '9px 12px', fontSize: 13, fontWeight: '700', position: 'absolute', bottom: 12, right: 12 }}>Change item image</span>
+                                        <span style={{ color: '#FFF', background: '#1f2f46eb', borderRadius: 8, padding: '9px 12px', fontSize: 13, fontWeight: '700', position: 'absolute', bottom: 12, right: 12 }}>{selectedListing.image_urls?.length > 1 ? `${selectedListing.image_urls.length} photos · preserved when saving` : 'Change item image'}</span>
                                     </>
                                 ) : (
                                     <span style={{ color: '#6E87A0', fontFamily: 'DM Sans' }}>＋ Upload item image</span>
