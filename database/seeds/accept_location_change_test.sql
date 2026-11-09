@@ -5,6 +5,7 @@
 -- Safe to re-run: resets only the rows with ids 92101-92107 that carry this fixture's marker description.
 -- It never changes community memberships or Karavan settings, so both accounts stay as they are.
 -- If ids 92101-92107 are already used by other rows, the checks below show them missing instead of overwriting them (INSERT IGNORE).
+-- Undo everything with database/seeds/accept_location_change_teardown.sql.
 
 SET @buyer_id = (SELECT id FROM users WHERE LOWER(email) = LOWER('david.buyer@test.com') LIMIT 1);
 SET @seller_id = (SELECT id FROM users WHERE LOWER(email) = LOWER('david.seller@test.com') LIMIT 1);
