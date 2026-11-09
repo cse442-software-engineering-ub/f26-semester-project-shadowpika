@@ -6,6 +6,7 @@ import { KaravanHero } from './components/KaravanBrand.jsx';
 import { pathFor } from './routes.js';
 import { markNewAccount, recordLogin } from './community.js';
 import { fetchSession, isLocalMockBackend, isLoggedIn } from './api.js';
+import { SECURITY_QUESTIONS } from './securityQuestions.js';
 
 const HOME_PAGE = './home.html';
 
@@ -19,6 +20,8 @@ function App() {
     const [confirmPassword, setConfirmPassword] = useState(''); // NEW
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [securityQuestion, setSecurityQuestion] = useState('');
+    const [securityAnswer, setSecurityAnswer] = useState('');
 
     // ROUTING CONFIGURATION: Detects if this is the separate register page view
     const isRegisterPage = window.location.pathname.includes('register') || window.location.hash === '#register';
@@ -56,6 +59,11 @@ function App() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (isRegisterPage && (securityQuestion === '' || !securityAnswer.trim())) {
+            setMessage('Please select a security question and enter your answer.');
+            return;
+        }
 
         // Validate that passwords match during registration
         if (isRegisterPage && password !== confirmPassword) {
@@ -111,7 +119,7 @@ function App() {
         try {
             // Construct payload dynamically depending on the page mode
             const payload = isRegisterPage
-                ? { username, email, password }
+                ? { username, email, password, security_question: Number(securityQuestion), security_answer: securityAnswer }
                 : { email, password };
 
             const response = await fetch(targetScript, {
@@ -287,6 +295,17 @@ function App() {
                             </div>
                             : <></>}
 
+                        {isRegisterPage && <div style={{ width: '100%', marginTop: 16 }}>
+                            <label htmlFor="security-question">Security question</label>
+                            <select id="security-question" required value={securityQuestion} onChange={e => setSecurityQuestion(e.target.value)} style={{ width: '100%', padding: 10, margin: '8px 0 16px', boxSizing: 'border-box' }}>
+                                <option value="">Select a security question</option>
+                                {SECURITY_QUESTIONS.map((question, id) => <option key={id} value={id}>{question}</option>)}
+                            </select>
+                            <label htmlFor="security-answer">Security answer</label>
+                            <input id="security-answer" required autoComplete="off" maxLength={100} value={securityAnswer} onChange={e => setSecurityAnswer(e.target.value)} style={{ width: '100%', padding: 10, marginTop: 8, boxSizing: 'border-box' }} />
+                            <p style={{ fontSize: 13 }}>Keep this answer for password resets. Answers are not case-sensitive.</p>
+                        </div>}
+                        {!isRegisterPage && <a href="./reset-password.html">Forgot Password</a>}
                         {/* LOGIN/SIGNUP BUTTON */}
                         <div style={{ alignSelf: 'stretch', justifyContent: 'flex-end', alignItems: 'flex-start', display: 'inline-flex' }}>
                             <div style={{ alignSelf: 'stretch', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex' }}>

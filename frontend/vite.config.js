@@ -23,6 +23,7 @@ export default defineConfig({
             input: {
                 main: 'index.html',
                 register: 'register.html',
+                resetPassword: 'reset-password.html',
                 productSearch: 'product-search.html',
                 item: 'item.html',
                 favorites: 'favorites.html',
