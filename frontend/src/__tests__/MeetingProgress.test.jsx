@@ -10,6 +10,7 @@ import { MEETING_REFRESH_MS } from '../useMeetingList.js';
 
 vi.mock('../NavBar.jsx', () => ({ default: () => <nav>Karavan</nav> }));
 vi.mock('../RecommendedItems.jsx', () => ({ default: () => <section>Recommendations</section> }));
+vi.mock('../PreviouslyViewed.jsx', () => ({ default: () => <section>Previously viewed</section> }));
 
 const REQUEST = { request_id: 71, listing_id: 81, name: 'Temporary meeting', price: '12.00', image_url: null,
     meeting_date: '2026-11-06', meeting_time: '12:00', location: 'Agreed spot', community: 'QA', buyer: 'buyer@test.invalid',

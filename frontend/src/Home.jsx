@@ -3,6 +3,7 @@ import NavBar from './NavBar.jsx';
 import ItemCover from './ItemCover.jsx';
 import IncomingRequests from './IncomingRequests.jsx';
 import RecommendedItems from './RecommendedItems.jsx';
+import PreviouslyViewed from './PreviouslyViewed.jsx';
 import MeetingProgress from './MeetingProgress.jsx';
 import useMeetingList from './useMeetingList.js';
 import { canCheckIn } from './listingSales.js';
@@ -11,7 +12,7 @@ import './ItemDetails.css';
 import './MeetingRequests.css';
 import { STATUS_LABELS, cancelMeetingRequest, fetchMyMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl } from './meetingRequests.js';
 
-// Home page: recommended items, then the logged-in buyer's meeting requests, in the order the server sends them.
+// Home page: recommended items, previously viewed items, then the logged-in buyer's meeting requests, in the order the server sends them.
 function Home() {
     const { requests, setRequests, status, error, startMutation, finishMutation, refresh } =
         useMeetingList(fetchMyMeetingRequests, 'Unable to load your purchase requests.');
@@ -50,6 +51,8 @@ function Home() {
                 <h1 className="ps-title">Home</h1>
 
                 <RecommendedItems />
+
+                <PreviouslyViewed />
 
                 <section className="mr-requests" aria-labelledby="mr-requests-title">
                     <h2 id="mr-requests-title" className="mr-section-title">My Purchase Requests</h2>
