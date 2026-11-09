@@ -69,7 +69,7 @@ test's listing as a prerequisite.
 ### Alt Test 2 — Ordinary edits retain every image
 
 1. Log in as seller and publish a separate three-photo listing using the required fields from Happy Test 1.
-2. Open My Listings → Edit for this item. Change only its description and save.
+2. Select Sell → Manage listings, then **Edit listing** for this item. Change only its description and select **Save changes**.
 3. Open its detail page, select every thumbnail and refresh. Verify the new description and all three original photos remain. Log out.
 
 ### Alt Test 3 — Existing single-photo listing
@@ -138,7 +138,7 @@ clear jars. Do not modify shared grading fixtures. Apply the migration first.
 
 1. Create a new three-image listing as seller, then POST its ordinary description change through update_listing.php. Expect 200.
 2. Re-read through both detail endpoints: the description changed and all image rows/cover remain.
-3. A different user cannot edit it; an unauthenticated request cannot create it. A logged-in nonmember cannot read it. Verify 403/401/403 respectively and unchanged data. Log out all jars.
+3. A different user cannot edit it; an unauthenticated request cannot create it. A logged-in nonmember cannot read it. Verify 404/401/403 respectively and unchanged data. Log out all jars.
 
 ### Test 4 — Migration, transaction rollback and legacy compatibility
 
