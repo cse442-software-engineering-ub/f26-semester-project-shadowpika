@@ -10,7 +10,9 @@ Use stable zero-based question IDs: 0 = What was the name of your first pet?,
 1 = In what city were you born?, 2 = What was the name of your elementary school?
 No question catalog currently exists in shared dev. These IDs must not be reordered.
 Answer normalization is UTF-8 lowercase after trimming surrounding whitespace;
-answers must contain 1–100 characters. Store only password_hash(normalized answer).
+answers must contain 1–100 characters. Store a versioned hash: `sha256:` followed
+by bcrypt of SHA-256 of the normalized answer, avoiding bcrypt input truncation.
+Existing direct password_hash answer values remain supported for compatibility.
 Use the existing 1–50-byte, trimmed password convention from registration/login.
 
 ## Requests (JSON POST, same-origin cookies)

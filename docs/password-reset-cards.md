@@ -47,7 +47,7 @@ Log out at the end of each test and verify Email, Password and Log In appear.
 ### Happy Test 2 — Reset from Settings
 
 1. Register a separate fresh account using the setup, then log in with its email and `Before123!`.
-2. Open Settings and **Account Settings**, then select **Reset Password**. On mobile use the navigation menu first.
+2. Select **Settings** in the navigation bar. Verify the account settings page opens, then select **Reset Password**. On mobile use the navigation menu first.
 3. Verify the same Reset Password page, Email and Continue appear; a new password cannot be entered yet.
 4. Enter this account's email, continue, answer `milo` and verify the answer.
 5. Enter `Settings123!` in both password fields and select Reset Password.
@@ -114,7 +114,7 @@ Mock bodies (body-only overrides test UI messages, not real HTTP status handling
 1. Start logged out on Aptitude. Open Sign up; verify a required Security question selector and Security answer input.
 2. Leave either empty and select Sign Up; verify no registration request. Fill a unique username/email, `Before123!` twice, question 0 and `MiLo`.
 3. Inspect the register.php request: username/email/password plus `security_question:0` and `security_answer:"MiLo"`. Use mocked success to verify the login destination.
-4. On login inspect Forgot Password's destination. With an independent mocked signed-in session, open Account Settings and inspect Reset Password's destination. Both resolve to the same root reset-password.html.
+4. On login inspect Forgot Password's destination. With an independent mocked signed-in session, select Settings to open account settings and inspect Reset Password's destination. Both resolve to the same root reset-password.html.
 5. Run RegistrationSecurity.test.jsx for the independent assertions; discard mock state/overrides.
 
 ### Test 2 — Three-step form and request contract
