@@ -399,3 +399,50 @@ function karavan_respond_meeting_request(PDO $pdo, ?int $userId, $input): array
 
     return [200, ['success' => true, 'request' => karavan_format_incoming_request($row)]];
 }
+
+/** Lets the buyer accept the new location the seller suggested, which approves the request. */
+function karavan_accept_location_change(PDO $pdo, ?int $userId, $input): array
+{
+    if ($userId === null) {
+        return karavan_not_logged_in();
+    }
+    $input = is_array($input) ? $input : [];
+
+    $requestId = karavan_parse_positive_id($input['request_id'] ?? null);
+    if ($requestId === null) {
+        return [400, ['success' => false, 'error' => 'A valid request_id is required.']];
+    }
+
+    $stmt = $pdo->prepare(KARAVAN_MEETING_REQUEST_SELECT . ' WHERE r.request_id = ?');
+    $stmt->execute([$requestId]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        return [404, ['success' => false, 'error' => 'Meeting request not found.']];
+    }
+    if ((int) $row['buyer_id'] !== $userId) {
+        return [403, ['success' => false, 'error' => 'You can only accept a location change on your own requests.']];
+    }
+    if ($row['status'] !== 'location_change_requested') {
+        return [409, ['success' => false, 'error' => 'Only a request with a location change can be accepted.']];
+    }
+    if ($row['listing_status'] !== 'active') {
+        return [409, ['success' => false, 'error' => 'This item is no longer available.']];
+    }
+
+    try {
+        // The request already holds the seller's new location, so only the status changes.
+        $update = $pdo->prepare("UPDATE meeting_requests SET status = 'approved' WHERE request_id = ? AND status = 'location_change_requested'");
+        $update->execute([$requestId]);
+        if ($update->rowCount() === 0) {
+            return [409, ['success' => false, 'error' => 'Only a request with a location change can be accepted.']];
+        }
+
+        $stmt = $pdo->prepare(KARAVAN_MEETING_REQUEST_SELECT . ' WHERE r.request_id = ?');
+        $stmt->execute([$requestId]);
+        $row = $stmt->fetch();
+    } catch (PDOException $e) {
+        return [500, ['success' => false, 'error' => 'Could not save the meeting request.']];
+    }
+
+    return [200, ['success' => true, 'request' => karavan_format_meeting_request($row)]];
+}
