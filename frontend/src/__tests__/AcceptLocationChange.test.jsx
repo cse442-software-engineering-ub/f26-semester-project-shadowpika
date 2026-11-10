@@ -118,3 +118,105 @@ describe('Frontend: Accept Location Change Request (#220)', () => {
         expect(acceptButton()).toBeVisible();
     });
 });
+
+const denyButton = () => screen.getByRole('button', { name: 'Deny New Location' });
+
+describe('Frontend: Deny New Location (#220)', () => {
+    it('shows Deny New Location only for location_change_requested', async () => {
+        serve({ ...others, 'get_my_meeting_requests.php': () => json(200, {
+            success: true, requests: [pending, make(99903, 'approved'), make(99904, 'denied'), changed],
+        }) });
+        render(<Home />);
+        await screen.findByRole('heading', { name: 'Item 99902' });
+        expect(screen.getAllByRole('button', { name: 'Deny New Location' })).toHaveLength(1);
+        expect(denyButton().closest('li')).toHaveTextContent('Item 99901');
+    });
+
+    it('sends one POST with the request ID and shows the request as pending at the original location', async () => {
+        const fetchMock = serve({
+            ...others,
+            'get_my_meeting_requests.php': () => json(200, { success: true, requests: [changed, pending] }),
+            'deny_location_change.php': () => json(200, { success: true, request: { ...changed, status: 'pending', location: 'Capen Hall Main Entrance' } }),
+        });
+        render(<Home />);
+        await screen.findByRole('heading', { name: 'Item 99901' });
+        fireEvent.click(denyButton());
+        expect(await screen.findByText('You denied the new meeting location.')).toBeVisible();
+        const posts = callsTo(fetchMock, 'deny_location_change.php');
+        expect(posts).toHaveLength(1);
+        expect(posts[0][0]).toBe('./api/deny_location_change.php');
+        expect(posts[0][1]).toMatchObject({ method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } });
+        expect(posts[0][1].body).toBe('{"request_id":99901}');
+        const card = screen.getByRole('heading', { name: 'Item 99901' }).closest('li');
+        expect(card).toHaveTextContent('Pending');
+        expect(card).toHaveTextContent('Capen Hall Main Entrance');
+        expect(screen.queryByRole('button', { name: 'Accept New Location' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Deny New Location' })).toBeNull();
+        expect(screen.getAllByRole('button', { name: 'Cancel Request' })).toHaveLength(2);
+    });
+
+    it.each([
+        ['the server answers with an error', () => json(200, { success: false, error: 'This item is no longer available.' }), 'This item is no longer available.'],
+        ['the request fails', () => Promise.reject(new TypeError('Failed to fetch')), 'Could not connect to the server.'],
+    ])('shows an orange-red error when %s and keeps the request', async (_name, answer, text) => {
+        serve({
+            ...others,
+            'get_my_meeting_requests.php': () => json(200, { success: true, requests: [changed] }),
+            'deny_location_change.php': answer,
+        });
+        render(<Home />);
+        await screen.findByRole('heading', { name: 'Item 99901' });
+        fireEvent.click(denyButton());
+        expect(await screen.findByText(text)).toHaveClass('id-error');
+        await waitFor(() => expect(screen.getByRole('heading', { name: 'Item 99901' }).closest('li')).toHaveTextContent('Location Change Requested'));
+        expect(acceptButton()).toBeVisible();
+        expect(denyButton()).toBeVisible();
+    });
+});
+
+describe('Frontend: seller location change result label (#220)', () => {
+    const sellerRow = (id, result) => ({ ...make(id, 'approved'), buyer: 'david.buyer@test.com', location_change_result: result });
+    const labelRows = [sellerRow(99911, 'accepted'), sellerRow(99912, 'denied'), sellerRow(99913, null)];
+    const dismissButtons = () => screen.getAllByRole('button', { name: 'Dismiss' });
+
+    it('shows a red label with a dismiss button only on requests with a result', async () => {
+        serve({ ...others,
+            'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }),
+            'get_incoming_meeting_requests.php': () => json(200, { success: true, requests: labelRows }) });
+        render(<Home />);
+        expect(await screen.findByText('Location change accepted')).toBeVisible();
+        expect(screen.getByText('Location change denied')).toBeVisible();
+        expect(screen.getByText('Location change accepted').closest('p')).toHaveClass('mr-location-result');
+        expect(dismissButtons()).toHaveLength(2);
+        expect(screen.getByRole('heading', { name: 'Item 99913' }).closest('li')).not.toHaveTextContent('Location change');
+    });
+
+    it('sends one POST with the request ID and removes only that label', async () => {
+        const fetchMock = serve({ ...others,
+            'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }),
+            'get_incoming_meeting_requests.php': () => json(200, { success: true, requests: labelRows }),
+            'dismiss_location_change_result.php': () => json(200, { success: true, request: sellerRow(99911, null) }) });
+        render(<Home />);
+        await screen.findByText('Location change accepted');
+        fireEvent.click(dismissButtons()[0]);
+        await waitFor(() => expect(screen.queryByText('Location change accepted')).toBeNull());
+        const posts = callsTo(fetchMock, 'dismiss_location_change_result.php');
+        expect(posts).toHaveLength(1);
+        expect(posts[0][0]).toBe('./api/dismiss_location_change_result.php');
+        expect(posts[0][1].body).toBe('{"request_id":99911}');
+        expect(screen.getByText('Location change denied')).toBeVisible();
+        expect(dismissButtons()).toHaveLength(1);
+    });
+
+    it('keeps the label and shows the error when the dismiss fails', async () => {
+        serve({ ...others,
+            'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }),
+            'get_incoming_meeting_requests.php': () => json(200, { success: true, requests: labelRows }),
+            'dismiss_location_change_result.php': () => json(200, { success: false, error: 'Request not found.' }) });
+        render(<Home />);
+        await screen.findByText('Location change accepted');
+        fireEvent.click(dismissButtons()[0]);
+        expect(await screen.findByText('Request not found.')).toHaveClass('id-error');
+        expect(screen.getByText('Location change accepted')).toBeVisible();
+    });
+});
