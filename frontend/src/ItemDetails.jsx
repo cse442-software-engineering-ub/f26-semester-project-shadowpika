@@ -9,7 +9,9 @@ import HeartIcon from './HeartIcon.jsx';
 import { fetchFavoriteStatus, removeFavorite, saveFavorite } from './favorites.js';
 import ListingMeetingLocation from './components/ListingMeetingLocation.jsx';
 import { recordViewedItem } from './previouslyViewed.js';
+import Stars from './components/Stars.jsx';
 import { messagePageUrl } from './messages.js';
+import { ratingSummaryText, sellerPageUrl } from './ratings.js';
 
 const SEARCH_HREF = './product-search.html';
 
@@ -162,6 +164,16 @@ function ItemDetails() {
                             <h1 className="id-name">{listing.name}</h1>
                             <p className="id-price">${listing.price}</p>
                             {saveError && <p className="id-error id-save-error" role="alert">{saveError}</p>}
+
+                            {listing.seller && (
+                                <p className="id-seller">
+                                    <span>Sold by <a className="id-seller-link" href={sellerPageUrl(listing.seller.id)}>{listing.seller.username}</a></span>
+                                    <span className="id-seller-rating">
+                                        <Stars value={listing.seller.average_rating} />
+                                        {ratingSummaryText(listing.seller.average_rating, listing.seller.rating_count)}
+                                    </span>
+                                </p>
+                            )}
 
                             {canBuy && (requestAllowsBuying || listing.seller) && (
                                 <div className="id-actions">
