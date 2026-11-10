@@ -295,17 +295,17 @@ function App() {
                             </div>
                             : <></>}
 
-                        {isRegisterPage && <div style={{ width: '100%', marginTop: 16 }}>
+                        {isRegisterPage && <div className="auth-security-fields">
                             <label htmlFor="security-question">Security question</label>
-                            <select id="security-question" required value={securityQuestion} onChange={e => setSecurityQuestion(e.target.value)} style={{ width: '100%', padding: 10, margin: '8px 0 16px', boxSizing: 'border-box' }}>
+                            <select id="security-question" required value={securityQuestion} onChange={e => setSecurityQuestion(e.target.value)}>
                                 <option value="">Select a security question</option>
                                 {SECURITY_QUESTIONS.map((question, id) => <option key={id} value={id}>{question}</option>)}
                             </select>
                             <label htmlFor="security-answer">Security answer</label>
-                            <input id="security-answer" required autoComplete="off" maxLength={100} value={securityAnswer} onChange={e => setSecurityAnswer(e.target.value)} style={{ width: '100%', padding: 10, marginTop: 8, boxSizing: 'border-box' }} />
-                            <p style={{ fontSize: 13 }}>Keep this answer for password resets. Answers are not case-sensitive.</p>
+                            <input id="security-answer" required autoComplete="off" maxLength={100} value={securityAnswer} onChange={e => setSecurityAnswer(e.target.value)} aria-describedby="security-answer-help" />
+                            <p id="security-answer-help">Keep this answer for password resets. Answers are not case-sensitive.</p>
                         </div>}
-                        {!isRegisterPage && <a href="./reset-password.html">Forgot Password</a>}
+                        {!isRegisterPage && <a className="auth-recovery-link" href="./reset-password.html">Forgot Password</a>}
                         {/* LOGIN/SIGNUP BUTTON */}
                         <div style={{ alignSelf: 'stretch', justifyContent: 'flex-end', alignItems: 'flex-start', display: 'inline-flex' }}>
                             <div style={{ alignSelf: 'stretch', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex' }}>
