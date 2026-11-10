@@ -36,6 +36,7 @@ export default defineConfig({
                 changePassword: 'settings/change-password.html',
                 notFound: '404.html',
                 manageListings: 'manage-listings.html',
+                message: 'message.html',
             }
         }
     },

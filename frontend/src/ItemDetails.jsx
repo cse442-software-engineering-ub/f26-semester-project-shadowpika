@@ -9,6 +9,7 @@ import HeartIcon from './HeartIcon.jsx';
 import { fetchFavoriteStatus, removeFavorite, saveFavorite } from './favorites.js';
 import ListingMeetingLocation from './components/ListingMeetingLocation.jsx';
 import { recordViewedItem } from './previouslyViewed.js';
+import { messagePageUrl } from './messages.js';
 
 const SEARCH_HREF = './product-search.html';
 
@@ -162,33 +163,26 @@ function ItemDetails() {
                             <p className="id-price">${listing.price}</p>
                             {saveError && <p className="id-error id-save-error" role="alert">{saveError}</p>}
 
-                            {canBuy && requestAllowsBuying && (
+                            {canBuy && (requestAllowsBuying || listing.seller) && (
                                 <div className="id-actions">
-                                    <button
-                                        type="button"
-                                        className="id-buy"
-                                        onClick={() => window.location.assign(meetPageUrl(listing.listing_id, from))}
-                                    >
-                                        Buy Now
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="id-message-seller"
-                                        onClick={() => {
-                                            if (!listing.owner_id) {
-                                                window.alert('Seller information is unavailable.');
-                                                return;
-                                            }
-                                            const parameters = new URLSearchParams({
-                                                with: String(listing.owner_id),
-                                                listing_id: String(listing.listing_id),
-                                                listing_name: listing.name,
-                                            });
-                                            window.location.assign(`./message.html?${parameters}`);
-                                        }}
-                                    >
-                                        Message Seller
-                                    </button>
+                                    {requestAllowsBuying && (
+                                        <button
+                                            type="button"
+                                            className="id-buy"
+                                            onClick={() => window.location.assign(meetPageUrl(listing.listing_id, from))}
+                                        >
+                                            Buy Now
+                                        </button>
+                                    )}
+                                    {listing.seller && (
+                                        <button
+                                            type="button"
+                                            className="id-message-seller"
+                                            onClick={() => window.location.assign(messagePageUrl(listing.seller.id, listing.listing_id))}
+                                        >
+                                            Message Seller
+                                        </button>
+                                    )}
                                 </div>
                             )}
 

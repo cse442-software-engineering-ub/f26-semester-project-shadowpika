@@ -256,7 +256,7 @@ describe('Frontend #211: My Purchase Requests links', () => {
 });
 
 describe('Frontend #211: navbar', () => {
-    it('hides the Message items and marks the current page', () => {
+    it('shows the Message items and marks the current page', () => {
         window.history.replaceState({}, '', '/CSE442/2026-Fall/cse-442j/davidjob/sell.html');
         serve({});
         const { container } = render(<NavBar />);
