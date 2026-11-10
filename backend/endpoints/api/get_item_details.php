@@ -78,6 +78,16 @@ try {
     $locationId = $row['meeting_location_id'] === null ? null : (int) $row['meeting_location_id'];
     $locationDetails = listing_meeting_location_details($row, listing_location_by_id($pdo, $locationId));
 
+    $seller = null;
+    if ($row['owner_id'] !== null) {
+        $stmt = $pdo->prepare('SELECT id, username FROM users WHERE id = ?');
+        $stmt->execute([(int) $row['owner_id']]);
+        $owner = $stmt->fetch();
+        if ($owner) {
+            $seller = ['id' => (int) $owner['id'], 'username' => $owner['username']];
+        }
+    }
+
     respond(200, [
         "success" => true,
         "listing" => [
@@ -93,6 +103,7 @@ try {
             "meeting_location" => $row['meeting_location'],
             "meeting_location_id" => $locationId,
             "meeting_location_details" => $locationDetails,
+            "seller"      => $seller,
         ],
     ]);
 } catch (Throwable $e) {

@@ -116,6 +116,7 @@ final class ItemDetailsHttpTest extends TestCase
             'meeting_location' => null,
             'meeting_location_id' => null,
             'meeting_location_details' => null,
+            'seller' => null,
         ]], '?listing_id=91001');
     }
 
@@ -134,6 +135,7 @@ final class ItemDetailsHttpTest extends TestCase
             'meeting_location' => null,
             'meeting_location_id' => null,
             'meeting_location_details' => null,
+            'seller' => null,
         ]], '?listing_id=91002');
     }
 

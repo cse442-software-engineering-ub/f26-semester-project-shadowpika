@@ -120,6 +120,15 @@ final class TestDatabase
             checked_in_at TEXT NULL, seller_checked_in_at TEXT NULL,
             original_location_id INTEGER NULL, original_location_label TEXT NULL, location_change_result TEXT NULL)");
 
+        // Mirrors database/migrations/015_messages.sql.
+        $pdo->exec("CREATE TABLE messages (
+            message_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            receiver_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            listing_id INTEGER NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
+            message TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 1,
+            `timestamp` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+
         return $pdo;
     }
 
