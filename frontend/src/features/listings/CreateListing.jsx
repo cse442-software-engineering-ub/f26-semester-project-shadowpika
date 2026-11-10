@@ -147,7 +147,8 @@ function CreateListing() {
     const [locations, setLocations] = useState([]);
     const [locationsLoading, setLocationsLoading] = useState(false);
     const [locationLoadError, setLocationLoadError] = useState('');
-    const [imageFile, setImageFile] = useState(null);
+    const [imageFiles, setImageFiles] = useState([]);
+    const uploadedImages = useRef(new Map());
     const [errors, setErrors] = useState({});
     const [submitError, setSubmitError] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -157,14 +158,13 @@ function CreateListing() {
     const imageButtonRef = useRef(null);
 
     const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors]);
-    const imagePreviewUrl = useMemo(
-        () => (imageFile ? URL.createObjectURL(imageFile) : ''),
-        [imageFile],
-    );
+    const imagePreviewUrls = useMemo(() => imageFiles.map(file => URL.createObjectURL(file)), [imageFiles]);
+    const imageFile = imageFiles[0] || null;
+    const imagePreviewUrl = imagePreviewUrls[0] || '';
 
     useEffect(() => () => {
-        if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-    }, [imagePreviewUrl]);
+        imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
+    }, [imagePreviewUrls]);
 
     const selectCommunity = useCallback((community) => {
         selectedCommunityRef.current = community;
@@ -297,17 +297,20 @@ function CreateListing() {
     };
 
     const handleImageChange = (event) => {
-        const selectedImage = event.target.files?.[0] || null;
-        const imageValidationError = validateListingImage(selectedImage);
+        const selectedImages = Array.from(event.target.files || []);
+        if (!selectedImages.length) return;
+        const imageValidationError = imageFiles.length + selectedImages.length > 5
+            ? 'Choose no more than 5 item photos.'
+            : selectedImages.map(validateListingImage).find(Boolean);
 
         if (imageValidationError) {
-            setImageFile(null);
             setErrors((current) => ({ ...current, image: imageValidationError }));
             event.target.value = '';
             return;
         }
 
-        setImageFile(selectedImage);
+        setImageFiles(current => [...current, ...selectedImages]);
+        event.target.value = '';
         setErrors((current) => {
             if (!current.image) return current;
             const next = { ...current };
@@ -350,7 +353,8 @@ function CreateListing() {
         try {
             let listing;
             if (isLocalPreview()) {
-                const imageUrl = await readImageAsDataUrl(imageFile);
+                const imageUrls = await Promise.all(imageFiles.map(readImageAsDataUrl));
+                const imageUrl = imageUrls[0];
                 listing = {
                     listing_id: 99999,
                     name: payload.title,
@@ -364,22 +368,29 @@ function CreateListing() {
                     )?.label || '',
                     description: payload.description,
                     image_url: imageUrl,
+                    image_urls: imageUrls,
                     status: 'active',
                 };
                 localStorage.setItem(LOCAL_LISTING_KEY, JSON.stringify(listing));
             } else {
-                const imageUrl = await uploadListingImage(imageFile);
+                const imageUrls = [];
+                for (const file of imageFiles) {
+                    if (!uploadedImages.current.has(file)) uploadedImages.current.set(file, await uploadListingImage(file));
+                    imageUrls.push(uploadedImages.current.get(file));
+                }
                 const response = await fetch('./listing/api/create_listing.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...payload, image_url: imageUrl }),
+                    body: JSON.stringify({ ...payload, image_url: imageUrls[0], image_urls: imageUrls }),
                 });
                 const data = await response.json();
 
                 if (!response.ok || !data.success) {
                     if (data.errors && typeof data.errors === 'object') {
-                        setErrors(data.errors);
-                        focusFirstError(data.errors);
+                        const fieldErrors = { ...data.errors };
+                        if (fieldErrors.image_urls || fieldErrors.image_url) fieldErrors.image = fieldErrors.image_urls || fieldErrors.image_url;
+                        setErrors(fieldErrors);
+                        focusFirstError(fieldErrors);
                     }
                     throw new Error(data.error || 'The listing could not be created. Please try again.');
                 }
@@ -427,12 +438,15 @@ function CreateListing() {
                         aria-labelledby="item-photo-label"
                     >
                         <span id="item-photo-label" className="listing-label">
-                            ITEM PHOTO<span aria-hidden="true"> *</span>
+                            ITEM PHOTOS<span aria-hidden="true"> *</span>
                         </span>
                         <input
                             ref={imageInputRef}
                             className="listing-file-input"
                             type="file"
+                            multiple
+                            disabled={submitting}
+                            aria-label="Item photos"
                             accept="image/jpeg,image/png,image/webp"
                             onChange={handleImageChange}
                             aria-describedby={errors.image ? 'image-error image-help' : 'image-help'}
@@ -440,6 +454,7 @@ function CreateListing() {
                         <button
                             ref={imageButtonRef}
                             type="button"
+                            disabled={submitting || imageFiles.length >= 5}
                             className={`listing-photo-upload${imagePreviewUrl ? ' listing-photo-upload-selected' : ''}`}
                             onClick={() => imageInputRef.current?.click()}
                             aria-invalid={Boolean(errors.image)}
@@ -447,20 +462,30 @@ function CreateListing() {
                             {imagePreviewUrl ? (
                                 <>
                                     <img className="listing-photo-preview" src={imagePreviewUrl} alt="Selected item preview" />
-                                    <span className="listing-photo-change">Change item image</span>
+                                    <span className="listing-photo-change">Add item images</span>
                                     <span className="listing-photo-filename">{imageFile.name}</span>
                                 </>
                             ) : (
                                 <>
                                     <span className="listing-photo-plus" aria-hidden="true">＋</span>
-                                    <span className="listing-photo-title">Upload item image</span>
+                                    <span className="listing-photo-title">Upload item images</span>
                                     <span className="listing-photo-format">JPEG, PNG, or WebP · up to 5 MB</span>
                                 </>
                             )}
                         </button>
                         <p id="image-help" className="listing-photo-help">
-                            Choose a clear photo that shows the item being listed.
+                            Choose 1–5 photos, up to 5 MB each. The first photo is the cover.
                         </p>
+                        <ol className="listing-selected-photos">
+                            {imageFiles.map((file, index) => <li key={imagePreviewUrls[index]}>
+                                <img src={imagePreviewUrls[index]} alt={`Selected photo ${index + 1}: ${file.name}`} />
+                                <span>{file.name}{index === 0 ? ' (Cover)' : ''}</span>
+                                <button type="button" disabled={submitting} aria-label={`Remove ${file.name}`} onClick={() => {
+                                    setImageFiles(current => current.filter((_, i) => i !== index));
+                                    setErrors(current => { const next = { ...current }; delete next.image; return next; });
+                                }}>Remove</button>
+                            </li>)}
+                        </ol>
                         {errors.image && <p id="image-error" className="listing-photo-error">{errors.image}</p>}
                     </section>
 

@@ -70,7 +70,7 @@ function mockBackend() {
                 ? response()
                 : jsonResponse(...(response || [404, { success: false, error: 'Community not found.' }]));
         }
-        if (url.endsWith('listing/api/upload_image.php')) return jsonResponse(...backend.upload);
+        if (url.endsWith('listing/api/upload_image.php')) return typeof backend.upload === 'function' ? backend.upload(options) : jsonResponse(...backend.upload);
         if (url.endsWith('listing/api/create_listing.php')) return jsonResponse(...backend.create);
         return jsonResponse(404, { success: false, error: 'Unexpected test request.' });
     });
@@ -95,6 +95,61 @@ function stubBrowser() {
 
 const communitySelect = () => screen.getByLabelText(/COMMUNITY/);
 const locationSelect = () => screen.getByLabelText(/PREFERRED MEETING LOCATION/);
+
+describe('Multiple listing images #222', () => {
+    beforeEach(() => { localStorage.clear(); stubBrowser(); });
+
+    it('appends files, removes the cover, and submits ordered uploads only after all succeed', async () => {
+        const backend = mockBackend(); const user = userEvent.setup(); render(<CreateListing />);
+        await chooseCommunityAndLocation(user); await fillValidListing(user);
+        await user.upload(screen.getByLabelText('Item photos'), [new File(['back'], 'back.png', { type:'image/png' }),new File(['side'], 'side.webp', { type:'image/webp' })]);
+        expect(screen.getAllByRole('button', { name:/^Remove / })).toHaveLength(3);
+        await user.click(screen.getByRole('button',{name:'Remove Community Listing Test.jpg'}));
+        expect(screen.getByText('back.png (Cover)')).toBeInTheDocument();
+        const uploads=[];
+        backend.upload = options => { const file=options.body.get('image'); uploads.push(file.name); return jsonResponse(201,{success:true,image_url:`listing/api/image.php?file=${(uploads.length===1?'b':'c').repeat(32)}.png`}); };
+        await user.click(screen.getByRole('button',{name:'Create listing'}));
+        await waitFor(()=>expect(location.assign).toHaveBeenCalled());
+        expect(uploads).toEqual(['back.png','side.webp']);
+        const [,options]=backend.fetch.mock.calls.find(([url])=>String(url).endsWith('create_listing.php'));
+        const body=JSON.parse(options.body);
+        expect(body.image_urls).toEqual([`listing/api/image.php?file=${'b'.repeat(32)}.png`,`listing/api/image.php?file=${'c'.repeat(32)}.png`]);
+        expect(body.image_url).toBe(body.image_urls[0]);
+    });
+
+    it('preserves the form on partial upload failure and retries without reuploading successful files', async () => {
+        const backend=mockBackend();const user=userEvent.setup();render(<CreateListing />);
+        await chooseCommunityAndLocation(user);await fillValidListing(user);
+        await user.upload(screen.getByLabelText('Item photos'),new File(['second'],'second.png',{type:'image/png'}));
+        let count=0;backend.upload=()=>{count++;return count===2?jsonResponse(500,{success:false,error:'Upload failed.'}):jsonResponse(201,{success:true,image_url:`listing/api/image.php?file=${(count===1?'a':'b').repeat(32)}.png`});};
+        await user.click(screen.getByRole('button',{name:'Create listing'}));
+        expect(await screen.findByRole('alert')).toHaveTextContent('Upload failed.');
+        expect(backend.fetch.mock.calls.filter(([url])=>String(url).endsWith('create_listing.php'))).toHaveLength(0);
+        expect(screen.getByLabelText(/ITEM TITLE/)).toHaveValue('Community Listing Test Book');
+        expect(screen.getAllByRole('button',{name:/^Remove /})).toHaveLength(2);
+        await user.click(screen.getByRole('button',{name:'Create listing'}));
+        await waitFor(()=>expect(location.assign).toHaveBeenCalled());expect(count).toBe(3);
+        expect(backend.fetch.mock.calls.filter(([url])=>String(url).endsWith('create_listing.php'))).toHaveLength(1);
+    });
+
+    it('rejects excess and invalid files while retaining accepted files, and requires at least one', async () => {
+        mockBackend();const user=userEvent.setup({applyAccept:false});render(<CreateListing />);
+        await fillValidListing(user);
+        const input=screen.getByLabelText('Item photos');
+        await user.upload(input,Array.from({length:5},(_,i)=>new File(['x'],`${i}.png`,{type:'image/png'})));
+        expect(screen.getByText('Choose no more than 5 item photos.')).toBeInTheDocument();
+        expect(screen.getAllByRole('button',{name:/^Remove /})).toHaveLength(1);
+        await user.upload(input,new File(['bad'],'bad.txt',{type:'text/plain'}));
+        expect(screen.getByText('Select a JPEG, PNG, or WebP image.')).toBeInTheDocument();
+        await user.upload(input,new File([],'empty.png',{type:'image/png'}));
+        expect(screen.getByText('The selected image is empty.')).toBeInTheDocument();
+        await user.upload(input,new File([new Uint8Array(5*1024*1024+1)],'large.png',{type:'image/png'}));
+        expect(screen.getByText('The image must be 5 MB or smaller.')).toBeInTheDocument();
+        await user.click(screen.getByRole('button',{name:'Remove Community Listing Test.jpg'}));
+        await user.click(screen.getByRole('button',{name:'Create listing'}));
+        expect(screen.getByText('Item photo is required.')).toBeInTheDocument();
+    });
+});
 
 async function chooseCommunityAndLocation(user, community = CAMPUS, location = CAPEN.label) {
     await waitFor(() => expect(communitySelect()).toBeEnabled());
@@ -347,6 +402,7 @@ describe('Create listing Community selection', () => {
             meeting_location_id: CAPEN.location_id,
             description: 'Community listing frontend test item.',
             image_url: 'listing/api/image.php?file=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg',
+            image_urls: ['listing/api/image.php?file=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg'],
         });
     });
 

@@ -446,3 +446,8 @@ textarea.listing-control {
     padding-inline: 12px;
   }
 }
+.listing-selected-photos { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 10px; }
+.listing-selected-photos li { display: grid; grid-template-columns: 56px minmax(0,1fr) auto; align-items: center; gap: 8px; }
+.listing-selected-photos img { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; }
+.listing-selected-photos span { overflow-wrap: anywhere; font-size: 13px; }
+.listing-selected-photos button { padding: 8px; border: 1px solid #738095; border-radius: 6px; background: white; color: #152a47; cursor: pointer; }

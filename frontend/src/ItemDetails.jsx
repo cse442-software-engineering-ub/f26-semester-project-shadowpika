@@ -3,7 +3,7 @@ import NavBar from './NavBar.jsx';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
-import ItemCover from './ItemCover.jsx';
+import ListingGallery from './ListingGallery.jsx';
 import { fetchListingOwnership, fetchMyMeetingRequests, itemPageFrom, loadListing, meetPageUrl } from './meetingRequests.js';
 import HeartIcon from './HeartIcon.jsx';
 import { fetchFavoriteStatus, removeFavorite, saveFavorite } from './favorites.js';
@@ -154,9 +154,7 @@ function ItemDetails() {
                                 <HeartIcon filled={saved} />
                             </button>
                         )}
-                        <div className="id-cover">
-                            <ItemCover name={listing.name} imageUrl={listing.image_url} />
-                        </div>
+                        <ListingGallery name={listing.name} imageUrl={listing.image_url} imageUrls={listing.image_urls} />
 
                         <div className="id-info">
                             {listing.category && <span className="id-category">{listing.category.toUpperCase()}</span>}
