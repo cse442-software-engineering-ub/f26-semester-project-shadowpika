@@ -128,6 +128,14 @@ final class TestDatabase
             listing_id INTEGER NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
             message TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 1,
             `timestamp` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+        // Mirrors database/migrations/016_ratings.sql.
+        $pdo->exec("CREATE TABLE ratings (
+            rating_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reviewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            seller_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            stars INTEGER NOT NULL, review TEXT NULL,
+            `time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (reviewer_id, seller_id))");
 
         return $pdo;
     }

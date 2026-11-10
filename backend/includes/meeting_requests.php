@@ -49,6 +49,7 @@ function karavan_format_meeting_request(array $row): array
     return array_merge([
         'request_id'   => (int) $row['request_id'],
         'listing_id'   => (int) $row['listing_id'],
+        'seller_id'    => $row['owner_id'] === null ? null : (int) $row['owner_id'],
         'name'         => $row['name'],
         'price'        => number_format((float) $row['price'], 2, '.', ''),
         'image_url'    => ($imageUrl === null || trim($imageUrl) === '') ? null : $imageUrl,
