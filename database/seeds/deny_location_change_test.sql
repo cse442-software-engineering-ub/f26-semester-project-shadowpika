@@ -2,7 +2,7 @@
 -- david.buyer@test.com and david.seller@test.com (location change requested with a saved original location, sold item,
 -- pending, approved, denied, another user's request, hidden item, no saved original location, and two requests that
 -- carry an accepted / denied result).
--- Run after database/migrations/015_location_change_response.sql, database/seeds/listings.sql and database/migrations/meeting_requests.sql.
+-- Run after database/migrations/017_location_change_response.sql, database/seeds/listings.sql and database/migrations/meeting_requests.sql.
 -- david.buyer@test.com and david.seller@test.com must already be registered.
 -- Safe to re-run: resets only the rows with ids 92111-92120 that carry this fixture's marker description.
 -- It never changes community memberships or Karavan settings, so both accounts stay as they are.
