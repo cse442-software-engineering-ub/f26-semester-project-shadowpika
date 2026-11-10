@@ -117,7 +117,8 @@ final class TestDatabase
             location_id INTEGER NULL REFERENCES approved_locations(id) ON DELETE SET NULL,
             location_label TEXT NOT NULL, status TEXT NOT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            checked_in_at TEXT NULL, seller_checked_in_at TEXT NULL)");
+            checked_in_at TEXT NULL, seller_checked_in_at TEXT NULL,
+            original_location_id INTEGER NULL, original_location_label TEXT NULL, location_change_result TEXT NULL)");
 
         return $pdo;
     }
