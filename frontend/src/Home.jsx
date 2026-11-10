@@ -7,6 +7,7 @@ import PreviouslyViewed from './PreviouslyViewed.jsx';
 import MeetingProgress from './MeetingProgress.jsx';
 import useMeetingList from './useMeetingList.js';
 import { canCheckIn } from './listingSales.js';
+import { sellerPageUrl } from './ratings.js';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
@@ -143,6 +144,9 @@ function Home() {
                                             {STATUS_LABELS[request.status] ?? request.status}
                                         </span>
                                         <MeetingProgress request={request} />
+                                        {request.status === 'approved' && request.both_checked_in && request.seller_id && (
+                                            <a className="mr-rate-seller" href={sellerPageUrl(request.seller_id)}>Rate Seller</a>
+                                        )}
                                         {request.status === 'pending' && (
                                             <button
                                                 type="button"

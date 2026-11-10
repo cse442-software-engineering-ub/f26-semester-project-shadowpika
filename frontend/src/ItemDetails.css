@@ -181,6 +181,28 @@
   color: var(--ps-muted);
 }
 
+.id-seller {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 12px 0 0;
+  color: var(--ps-navy);
+}
+
+.id-seller-link {
+  color: var(--ps-navy);
+  font-weight: 700;
+}
+
+.id-seller-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--ps-muted);
+}
+
 .id-actions {
   display: flex;
   flex-wrap: wrap;

@@ -37,6 +37,7 @@ export default defineConfig({
                 notFound: '404.html',
                 manageListings: 'manage-listings.html',
                 message: 'message.html',
+                seller: 'seller.html',
             }
         }
     },
