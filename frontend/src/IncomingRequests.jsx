@@ -4,7 +4,7 @@ import MeetingProgress from './MeetingProgress.jsx';
 import useMeetingList from './useMeetingList.js';
 import { canCheckIn, canMarkSold, updateListing } from './listingSales.js';
 import { fetchMeetingLocations } from './api.js';
-import { STATUS_LABELS, fetchIncomingMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl, respondMeetingRequest } from './meetingRequests.js';
+import { STATUS_LABELS, dismissLocationChangeResult, fetchIncomingMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl, respondMeetingRequest } from './meetingRequests.js';
 
 const SUCCESS_TEXT = {
     approve: 'You approved the meeting request.',
@@ -44,6 +44,26 @@ function IncomingRequests() {
         } finally {
             finishMutation();
             if (reload) refresh();
+            setBusy(false);
+        }
+    }
+
+    // Removes the seller's "Location change ..." label; the server's answer (result null) replaces the row.
+    async function dismissResult(request) {
+        if (!startMutation()) return;
+        setMessage(null);
+        setBusy(true);
+        try {
+            const data = await dismissLocationChangeResult(request.request_id);
+            if (data.success) {
+                setRequests((current) => current.map((item) => (item.request_id === request.request_id ? data.request : item)));
+            } else {
+                setMessage({ kind: 'error', text: data.error || 'Unable to dismiss the location change label.' });
+            }
+        } catch {
+            setMessage({ kind: 'error', text: 'Could not connect to the server.' });
+        } finally {
+            finishMutation();
             setBusy(false);
         }
     }
@@ -145,6 +165,13 @@ function IncomingRequests() {
                                     <span className={`mr-status mr-status-${request.status}`}>
                                         {STATUS_LABELS[request.status] ?? request.status}
                                     </span>
+                                    {(request.location_change_result === 'accepted' || request.location_change_result === 'denied') && (
+                                        <p className="mr-location-result">
+                                            <span>Location change {request.location_change_result}</span>
+                                            <button type="button" className="mr-location-result-dismiss" aria-label="Dismiss"
+                                                disabled={busy} onClick={() => dismissResult(request)}>×</button>
+                                        </p>
+                                    )}
                                     <MeetingProgress request={request} seller />
                                     {request.status === 'approved' && (
                                         <div className="mr-actions">

@@ -105,6 +105,25 @@
   font-weight: 700;
 }
 
+.mr-location-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  color: #c62828;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.mr-location-result-dismiss {
+  border: none;
+  background: none;
+  color: #c62828;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .mr-requests {
   margin-top: 28px;
 }

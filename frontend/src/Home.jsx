@@ -10,7 +10,7 @@ import { canCheckIn } from './listingSales.js';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
-import { STATUS_LABELS, acceptLocationChange, cancelMeetingRequest, fetchMyMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl } from './meetingRequests.js';
+import { STATUS_LABELS, acceptLocationChange, cancelMeetingRequest, denyLocationChange, fetchMyMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl } from './meetingRequests.js';
 
 // Home page: recommended items, previously viewed items, then the logged-in buyer's meeting requests, in the order the server sends them.
 function Home() {
@@ -19,6 +19,7 @@ function Home() {
     const [message, setMessage] = useState(null); // result of the last cancel: { kind, text }
     const [cancellingId, setCancellingId] = useState(null);
     const [acceptingId, setAcceptingId] = useState(null);
+    const [denyingId, setDenyingId] = useState(null);
 
     // Only a pending request can be canceled; the server refuses anything else and its error is shown.
     async function handleCancel(listingId) {
@@ -67,6 +68,31 @@ function Home() {
             finishMutation();
             if (reload) refresh();
             setAcceptingId(null);
+        }
+    }
+
+    // Denying keeps the original location; the server's answer (back to pending) replaces that request.
+    async function handleDeny(request) {
+        if (!startMutation()) return;
+        let reload = false;
+        setMessage(null);
+        setDenyingId(request.request_id);
+        try {
+            const data = await denyLocationChange(request.request_id);
+            if (data.success) {
+                setRequests((current) => current.map((item) => (item.request_id === request.request_id ? data.request : item)));
+                setMessage({ kind: 'success', text: 'You denied the new meeting location.' });
+            } else {
+                reload = true;
+                setMessage({ kind: 'error', text: data.error || 'Unable to deny the new meeting location.' });
+            }
+        } catch {
+            reload = true;
+            setMessage({ kind: 'error', text: 'Could not connect to the server.' });
+        } finally {
+            finishMutation();
+            if (reload) refresh();
+            setDenyingId(null);
         }
     }
 
@@ -131,10 +157,20 @@ function Home() {
                                             <button
                                                 type="button"
                                                 className="mr-cancel"
-                                                disabled={acceptingId === request.request_id}
+                                                disabled={acceptingId === request.request_id || denyingId === request.request_id}
                                                 onClick={() => handleAccept(request)}
                                             >
                                                 Accept New Location
+                                            </button>
+                                        )}
+                                        {request.status === 'location_change_requested' && (
+                                            <button
+                                                type="button"
+                                                className="mr-cancel"
+                                                disabled={acceptingId === request.request_id || denyingId === request.request_id}
+                                                onClick={() => handleDeny(request)}
+                                            >
+                                                Deny New Location
                                             </button>
                                         )}
                                         {canCheckIn(request) && (
