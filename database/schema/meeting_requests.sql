@@ -22,6 +22,9 @@ SET @migration_sql = CONCAT(
         created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
         checked_in_at  DATETIME(6)   NULL DEFAULT NULL,
         seller_checked_in_at DATETIME(6) NULL DEFAULT NULL,
+        original_location_id INT UNSIGNED NULL DEFAULT NULL,
+        original_location_label VARCHAR(100) NULL DEFAULT NULL,
+        location_change_result ENUM(''accepted'', ''denied'') NULL DEFAULT NULL,
         KEY idx_meeting_requests_buyer (buyer_id),
         KEY idx_meeting_requests_listing (listing_id),
         CONSTRAINT fk_meeting_requests_buyer
