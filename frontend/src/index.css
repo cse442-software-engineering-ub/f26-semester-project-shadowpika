@@ -71,9 +71,7 @@ body {
   color: #9b7130;
 }
 
-.auth-recovery-link:focus-visible,
-.auth-security-fields select:focus-visible,
-.auth-security-fields input:focus-visible {
+.auth-recovery-link:focus-visible {
   outline: 2px solid #152a47;
   outline-offset: 3px;
 }
@@ -109,6 +107,16 @@ body {
 
 .auth-security-fields select {
   padding-right: 28px;
+}
+
+.auth-security-fields select:focus,
+.auth-security-fields input:focus {
+  outline: none;
+}
+
+.auth-security-fields select:focus-visible,
+.auth-security-fields input:focus-visible {
+  border-color: #152a47;
 }
 
 .auth-security-fields input {
