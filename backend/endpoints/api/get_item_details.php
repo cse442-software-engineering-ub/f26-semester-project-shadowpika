@@ -30,6 +30,7 @@ function respond(int $status, array $payload) {
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/http.php';
 require_once __DIR__ . '/../includes/communities.php';
+require_once __DIR__ . '/../includes/ratings.php';
 require_once __DIR__ . '/../listing/lib/listing_locations.php';
 require_once __DIR__ . '/../listing/lib/listing_images.php';
 
@@ -84,7 +85,8 @@ try {
         $stmt->execute([(int) $row['owner_id']]);
         $owner = $stmt->fetch();
         if ($owner) {
-            $seller = ['id' => (int) $owner['id'], 'username' => $owner['username']];
+            $seller = array_merge(['id' => (int) $owner['id'], 'username' => $owner['username']],
+                karavan_seller_rating_summary($pdo, (int) $owner['id']));
         }
     }
 
