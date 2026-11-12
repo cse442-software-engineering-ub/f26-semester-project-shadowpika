@@ -135,7 +135,10 @@ function Home() {
                                     </div>
                                     <div className="mr-request-body">
                                         <h3 className="mr-request-name"><a className="mr-request-link" href={requestItemUrl(request.listing_id)}>{request.name}</a></h3>
-                                        <p className="mr-request-price">${request.price}</p>
+                                        <p className="mr-request-price">${request.offer_price ?? request.price}</p>
+                                        {request.offer_price != null && (
+                                            <p className="mr-request-offer">Price changed through an offer (listed at ${request.price})</p>
+                                        )}
                                         <p className="mr-request-when">
                                             {formatMeetingDate(request.meeting_date)}, {formatMeetingTime(request.meeting_time)}
                                         </p>

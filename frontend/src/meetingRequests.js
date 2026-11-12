@@ -50,17 +50,19 @@ export async function fetchIncomingMeetingRequests() {
     return response.json();
 }
 
-export async function createMeetingRequest({ listingId, date, time, locationId }) {
+export async function createMeetingRequest({ listingId, date, time, locationId, offerPrice }) {
+    const body = {
+        listing_id: Number(listingId),
+        meeting_date: date,
+        meeting_time: time,
+        location_id: Number(locationId),
+    };
+    if (offerPrice !== undefined && offerPrice !== null) body.offer_price = String(offerPrice).trim();
     const response = await fetch('./api/create_meeting_request.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({
-            listing_id: Number(listingId),
-            meeting_date: date,
-            meeting_time: time,
-            location_id: Number(locationId),
-        }),
+        body: JSON.stringify(body),
     });
     return response.json();
 }
@@ -131,6 +133,32 @@ export function meetingRequestError({ date, time, locationId }, today = campusTo
     if (!date) return 'A date is required.';
     if (!time) return 'A time is required.';
     if (date <= today) return 'The meeting date must be in the future.';
+    return '';
+}
+
+// Price offers (card #115): the same limits as the backend, in whole cents so rounding never differs.
+const priceToCents = (price) => {
+    const [whole, fraction = ''] = String(price).trim().split('.');
+    return Number(whole) * 100 + Number(fraction.padEnd(2, '0').slice(0, 2));
+};
+const centsToText = (cents) => `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
+
+// Lowest and highest allowed offers as "X.XX" text: 60% rounded up, 150% rounded down.
+export function offerLimits(price) {
+    const cents = priceToCents(price);
+    return { min: centsToText(Math.ceil((cents * 60) / 100)), max: centsToText(Math.floor((cents * 150) / 100)) };
+}
+
+// Same checks, order, and messages as the backend. Returns '' when the offer is fine.
+export function offerError(price, value) {
+    const text = String(value ?? '').trim();
+    if (text === '') return 'Enter your offer amount.';
+    if (!/^(?:0|[1-9]\d{0,6})(?:\.\d{1,2})?$/.test(text)) return 'Enter a valid dollar amount with no more than two decimal places.';
+    const offer = priceToCents(text);
+    const { min, max } = offerLimits(price);
+    if (offer < priceToCents(min)) return `Your offer must be at least $${min}.`;
+    if (offer > priceToCents(max)) return `Your offer can be at most $${max}.`;
+    if (offer === priceToCents(price)) return `Your offer must be different from the asking price of $${centsToText(priceToCents(price))}.`;
     return '';
 }
 

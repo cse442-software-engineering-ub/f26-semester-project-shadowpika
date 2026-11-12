@@ -26,7 +26,8 @@ export default function CheckIn() {
                     <section className="ci-details" aria-label="Meeting details">
                         <h2>{meeting.name}</h2>
                         <p>You are checking in as the {meeting.participant_role}.</p>
-                        <p>${meeting.price}</p>
+                        <p>${meeting.offer_price ?? meeting.price}</p>
+                        {meeting.offer_price != null && <p className="ci-offer">Price changed through an offer (listed at ${meeting.price})</p>}
                         <p>{formatMeetingDate(meeting.meeting_date)}, {formatMeetingTime(meeting.meeting_time)}</p>
                         <p>{meeting.location_label}</p>
                     </section>

@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ItemDetails from '../ItemDetails.jsx';
 import OrganizeMeet from '../OrganizeMeet.jsx';
 import Home from '../Home.jsx';
-import { formatMeetingDate, formatMeetingTime, meetingRequestError } from '../meetingRequests.js';
+import { formatMeetingDate, formatMeetingTime, meetingRequestError, offerError, offerLimits } from '../meetingRequests.js';
 
 vi.mock('../NavBar.jsx', () => ({
     default: () => <nav aria-label="Main">Karavan navigation</nav>,
@@ -499,6 +499,80 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
         const alert = await screen.findByRole('alert');
         expect(alert).toHaveTextContent('The meeting locations could not be loaded.');
         expect(alert).toHaveClass('id-error');
+    });
+});
+
+describe('Frontend: Make Offer (#115)', () => {
+    beforeEach(() => vi.unstubAllGlobals());
+
+    it('computes limits and messages in whole cents', () => {
+        expect(offerLimits('20.00')).toEqual({ min: '12.00', max: '30.00' });
+        expect(offerLimits('0.99')).toEqual({ min: '0.60', max: '1.48' });
+        expect(offerError('20.00', '')).toBe('Enter your offer amount.');
+        expect(offerError('20.00', '-5')).toBe('Enter a valid dollar amount with no more than two decimal places.');
+        expect(offerError('20.00', '15.555')).toBe('Enter a valid dollar amount with no more than two decimal places.');
+        expect(offerError('20.00', '11.99')).toBe('Your offer must be at least $12.00.');
+        expect(offerError('20.00', '30.01')).toBe('Your offer can be at most $30.00.');
+        expect(offerError('20.00', '20')).toBe('Your offer must be different from the asking price of $20.00.');
+        expect(offerError('20.00', '12')).toBe('');
+        expect(offerError('20.00', '30.00')).toBe('');
+    });
+
+    it('hides the offer controls and says offers are not accepted when the listing disallows or lacks allow_offers', async () => {
+        const { container } = await openMeetPage();
+        expect(screen.getByText('The seller does not accept offers on this item.')).toBeVisible();
+        expect(screen.queryByLabelText('Make an offer')).not.toBeInTheDocument();
+        fill(container, { date: '2026-12-12', time: '16:00' });
+    });
+
+    it('validates the offer, then sends offer_price only when "Make an offer" is ticked', async () => {
+        open('meet.html?listing_id=91002');
+        const fetchMock = serve({
+            'get_item_details.php': () => json(200, { success: true, listing: { ...workbook, community: 'All of UB', allow_offers: true } }),
+            'create_meeting_request.php': () => json(201, { success: true, request: {} }),
+        });
+        const { container } = render(<OrganizeMeet />);
+        await screen.findByRole('textbox', { name: 'Meeting Location' });
+        fill(container, { date: '2026-12-12', time: '16:00' });
+
+        fireEvent.click(screen.getByLabelText('Make an offer'));
+        expect(screen.getByText('Offers from $12.00 to $30.00.')).toBeVisible();
+        confirm();
+        expect(await screen.findByText('Enter your offer amount.')).toBeVisible();
+        fireEvent.change(screen.getByLabelText('Your offer ($)'), { target: { value: '31' } });
+        confirm();
+        expect(await screen.findByText('Your offer can be at most $30.00.')).toBeVisible();
+        expect(callsTo(fetchMock, 'create_meeting_request.php')).toHaveLength(0);
+
+        fireEvent.change(screen.getByLabelText('Your offer ($)'), { target: { value: ' 15.5 ' } });
+        confirm();
+        expect(await screen.findByText('Your meeting request was sent.')).toBeInTheDocument();
+        expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[0][1].body).offer_price).toBe('15.5');
+
+        fireEvent.click(screen.getByLabelText('Make an offer'));
+        confirm();
+        await waitFor(() => expect(callsTo(fetchMock, 'create_meeting_request.php')).toHaveLength(2));
+        expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[1][1].body)).not.toHaveProperty('offer_price');
+    });
+
+    it('shows the offer price and the listed price on a request card, and nothing extra without an offer', async () => {
+        open('home.html');
+        serve({
+            ...noIncoming, 'get_my_meeting_requests.php': () => json(200, {
+                success: true,
+                requests: [
+                    { listing_id: 1, name: 'With Offer', price: '20.00', offer_price: '15.50', meeting_date: '2027-01-03', meeting_time: '09:05', location: 'Capen', status: 'pending' },
+                    { listing_id: 2, name: 'No Offer', price: '10.00', offer_price: null, meeting_date: '2027-01-03', meeting_time: '09:05', location: 'Capen', status: 'pending' },
+                    { listing_id: 3, name: 'Old Data', price: '11.00', meeting_date: '2027-01-03', meeting_time: '09:05', location: 'Capen', status: 'pending' },
+                ],
+            }),
+        });
+        const { container } = render(<Home />);
+        await screen.findByRole('link', { name: 'With Offer' });
+        const bodies = [...container.querySelectorAll('.mr-request-body')].map((body) => body.textContent);
+        expect(bodies[0]).toContain('$15.50Price changed through an offer (listed at $20.00)');
+        expect(bodies[1]).toContain('$10.00Jan 3');
+        expect(bodies[2]).toContain('$11.00Jan 3');
     });
 });
 

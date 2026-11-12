@@ -401,9 +401,17 @@ describe('Create listing Community selection', () => {
             community: CAMPUS,
             meeting_location_id: CAPEN.location_id,
             description: 'Community listing frontend test item.',
+            allow_offers: false,
             image_url: 'listing/api/image.php?file=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg',
             image_urls: ['listing/api/image.php?file=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg'],
         });
+    });
+
+    it('offers an unticked "Allow buyers to make offers" checkbox', async () => {
+        mockBackend();
+        render(<CreateListing />);
+        await waitFor(() => expect(communitySelect()).toBeEnabled());
+        expect(screen.getByLabelText('Allow buyers to make offers')).not.toBeChecked();
     });
 
     it('does not send create-listing when the mocked image upload fails', async () => {

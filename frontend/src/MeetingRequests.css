@@ -221,6 +221,27 @@ h3 > .mr-request-link:hover {
   color: var(--ps-muted);
 }
 
+.mr-request-offer {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ps-muted);
+}
+
+.mr-offer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mr-offer-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ps-muted);
+}
+
 .mr-status {
   margin-top: 6px;
   padding: 3px 10px;
