@@ -20,7 +20,7 @@ try{
  CREATE TABLE community_join_requests(user_id INT,community_id INT,status VARCHAR(20)) ENGINE=InnoDB;
  CREATE TABLE auth_tokens(id INT AUTO_INCREMENT PRIMARY KEY,user_id INT,selector VARCHAR(24),token_hash VARCHAR(64),expires_at DATETIME) ENGINE=InnoDB;
  CREATE TABLE approved_locations(id INT PRIMARY KEY,label VARCHAR(100),community VARCHAR(255),lat DECIMAL(9,6),lng DECIMAL(9,6)) ENGINE=InnoDB;
- CREATE TABLE listings(listing_id INT AUTO_INCREMENT PRIMARY KEY,owner_id INT,name VARCHAR(255),category VARCHAR(100),`condition` VARCHAR(50),price DECIMAL(10,2),related_course VARCHAR(100),community VARCHAR(255),meeting_location VARCHAR(255),meeting_location_id INT,description TEXT,image_url VARCHAR(255),status VARCHAR(20),created_at DATETIME DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB;
+ CREATE TABLE listings(listing_id INT AUTO_INCREMENT PRIMARY KEY,owner_id INT,name VARCHAR(255),category VARCHAR(100),`condition` VARCHAR(50),price DECIMAL(10,2),related_course VARCHAR(100),community VARCHAR(255),meeting_location VARCHAR(255),meeting_location_id INT,description TEXT,image_url VARCHAR(255),status VARCHAR(20),allow_offers TINYINT(1) NOT NULL DEFAULT 0,created_at DATETIME DEFAULT CURRENT_TIMESTAMP,updated_at DATETIME DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB;
  CREATE TABLE meeting_requests(request_id INT PRIMARY KEY,listing_id INT,buyer_id INT,status VARCHAR(20),checked_in_at DATETIME,seller_checked_in_at DATETIME) ENGINE=InnoDB;
  INSERT INTO users VALUES(1,'seller','seller@example.test','local','user'),(2,'buyer','buyer@example.test','local','user');
  INSERT INTO admin_requests VALUES(5001,'Karavan','approved',NULL),(5002,'Keller Properties LLC','approved',NULL);

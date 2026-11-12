@@ -10,6 +10,10 @@ const KARAVAN_LISTING_NOT_FOUND_ERROR = 'Listing not found.';
 // "Today" for the future-date check is the campus date, not the server's default timezone.
 const KARAVAN_MEETING_TIMEZONE = 'America/New_York';
 
+// An offer must be between these percentages of the asking price (rounded to the cent) and differ from it.
+const KARAVAN_OFFER_MIN_PERCENT = 60;
+const KARAVAN_OFFER_MAX_PERCENT = 150;
+
 function karavan_not_logged_in(): array
 {
     return [401, ['success' => false, 'error' => KARAVAN_NOT_LOGGED_IN_ERROR]];
@@ -36,10 +40,16 @@ function karavan_parse_positive_id($value): ?int
 /** Only active listings can be viewed or requested; sold, inactive, and missing ones return null. */
 function karavan_find_active_listing(PDO $pdo, int $listingId): ?array
 {
-    $stmt = $pdo->prepare("SELECT listing_id, owner_id, community FROM listings WHERE listing_id = ? AND status = 'active'");
+    $stmt = $pdo->prepare("SELECT listing_id, owner_id, community, price, allow_offers FROM listings WHERE listing_id = ? AND status = 'active'");
     $stmt->execute([$listingId]);
     $row = $stmt->fetch();
     return $row ?: null;
+}
+
+/** The buyer's offer as "X.XX", or null when the request has no offer. */
+function karavan_format_offer_price($value): ?string
+{
+    return $value === null ? null : number_format((float) $value, 2, '.', '');
 }
 
 function karavan_format_meeting_request(array $row): array
@@ -57,7 +67,9 @@ function karavan_format_meeting_request(array $row): array
         'meeting_time' => substr($row['meeting_time'], 0, 5),
         'location'     => $row['location_label'],
         'status'       => $row['status'],
-    ], karavan_meeting_progress($row));
+    ], karavan_meeting_progress($row), [
+        'offer_price'  => karavan_format_offer_price($row['offer_price'] ?? null),
+    ]);
 }
 
 /** Database timestamps are UTC; return the same wire format as the check-in endpoint. */
@@ -88,7 +100,7 @@ function karavan_meeting_progress(array $row, bool $seller = false): array
 const KARAVAN_MEETING_REQUEST_SELECT =
     'SELECT r.request_id, r.buyer_id, r.listing_id, l.owner_id, l.name, l.price, l.image_url, r.meeting_date, r.meeting_time,
             r.location_label, r.status, r.checked_in_at, r.seller_checked_in_at, l.status AS listing_status,
-            r.original_location_id, r.original_location_label
+            r.original_location_id, r.original_location_label, r.offer_price
        FROM meeting_requests r
        JOIN listings l ON l.listing_id = r.listing_id';
 
@@ -182,6 +194,46 @@ function karavan_meeting_date_error($value): ?string
     return null;
 }
 
+/**
+ * Checks the buyer's offer against the listing. Returns [status, error] when it is refused, or
+ * [null, offer in whole cents] when it is valid (null cents = no offer). Absent or null offer_price = no offer.
+ * Money is compared in whole cents so rounding never lets an invalid offer through.
+ */
+function karavan_check_offer(array $input, array $listing): array
+{
+    if (!array_key_exists('offer_price', $input) || $input['offer_price'] === null) {
+        return [null, null];
+    }
+    if (empty($listing['allow_offers'])) {
+        return [403, 'The seller does not accept offers on this item.'];
+    }
+
+    $offer = $input['offer_price'];
+    if (is_string($offer) && trim($offer) === '') {
+        return [400, 'Enter your offer amount.'];
+    }
+    if (!(is_string($offer) || is_int($offer) || is_float($offer))
+        || !preg_match('/\A(?:0|[1-9]\d{0,6})(?:\.\d{1,2})?\z/', trim((string) $offer))) {
+        return [400, 'Enter a valid dollar amount with no more than two decimal places.'];
+    }
+    [$whole, $fraction] = array_pad(explode('.', trim((string) $offer), 2), 2, '');
+    $offerCents = (int) $whole * 100 + (int) str_pad($fraction, 2, '0');
+
+    $priceCents = (int) round((float) $listing['price'] * 100);
+    $minCents = intdiv($priceCents * KARAVAN_OFFER_MIN_PERCENT + 99, 100);
+    $maxCents = intdiv($priceCents * KARAVAN_OFFER_MAX_PERCENT, 100);
+    if ($offerCents < $minCents) {
+        return [400, 'Your offer must be at least $' . number_format($minCents / 100, 2, '.', '') . '.'];
+    }
+    if ($offerCents > $maxCents) {
+        return [400, 'Your offer can be at most $' . number_format($maxCents / 100, 2, '.', '') . '.'];
+    }
+    if ($offerCents === $priceCents) {
+        return [400, 'Your offer must be different from the asking price of $' . number_format($priceCents / 100, 2, '.', '') . '.'];
+    }
+    return [null, $offerCents];
+}
+
 /** Returns an error message for the meeting time, or null when it is a 24-hour HH:MM time. */
 function karavan_meeting_time_error($value): ?string
 {
@@ -241,6 +293,12 @@ function karavan_create_meeting_request(PDO $pdo, ?int $userId, $input): array
         return [400, ['success' => false, 'error' => $timeError]];
     }
 
+    [$offerStatus, $offerResult] = karavan_check_offer($input, $listing);
+    if ($offerStatus !== null) {
+        return [$offerStatus, ['success' => false, 'error' => $offerResult]];
+    }
+    $offerPrice = $offerResult === null ? null : number_format($offerResult / 100, 2, '.', '');
+
     // A denied request doesn't count, so the buyer can try again with new details.
     $existing = $pdo->prepare("SELECT 1 FROM meeting_requests WHERE buyer_id = ? AND listing_id = ? AND status <> 'denied' LIMIT 1");
     $existing->execute([$userId, $listingId]);
@@ -250,10 +308,10 @@ function karavan_create_meeting_request(PDO $pdo, ?int $userId, $input): array
 
     try {
         $insert = $pdo->prepare(
-            "INSERT INTO meeting_requests (buyer_id, listing_id, meeting_date, meeting_time, location_id, location_label, status)
-             VALUES (?, ?, ?, ?, ?, ?, 'pending')"
+            "INSERT INTO meeting_requests (buyer_id, listing_id, meeting_date, meeting_time, location_id, location_label, status, offer_price)
+             VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)"
         );
-        $insert->execute([$userId, $listingId, $input['meeting_date'], $input['meeting_time'] . ':00', (int) $location['id'], $location['label']]);
+        $insert->execute([$userId, $listingId, $input['meeting_date'], $input['meeting_time'] . ':00', (int) $location['id'], $location['label'], $offerPrice]);
         $requestId = (int) $pdo->lastInsertId();
 
         $created = $pdo->prepare(KARAVAN_MEETING_REQUEST_SELECT . ' WHERE r.request_id = ?');
@@ -292,7 +350,7 @@ function karavan_cancel_meeting_request(PDO $pdo, ?int $userId, $input): array
 const KARAVAN_INCOMING_REQUEST_SELECT =
     'SELECT r.request_id, r.buyer_id, r.listing_id, l.name, l.price, l.image_url, l.community, u.email AS buyer,
             r.meeting_date, r.meeting_time, r.location_id, r.location_label, r.status, r.checked_in_at,
-            r.seller_checked_in_at, l.status AS listing_status, l.owner_id, r.location_change_result
+            r.seller_checked_in_at, l.status AS listing_status, l.owner_id, r.location_change_result, r.offer_price
        FROM meeting_requests r
        JOIN listings l ON l.listing_id = r.listing_id
        JOIN users u ON u.id = r.buyer_id';
@@ -316,6 +374,7 @@ function karavan_format_incoming_request(array $row): array
     ], karavan_meeting_progress($row, true), [
         // "accepted" or "denied" until the seller dismisses it; null otherwise.
         'location_change_result' => $row['location_change_result'] ?? null,
+        'offer_price' => karavan_format_offer_price($row['offer_price'] ?? null),
     ]);
 }
 

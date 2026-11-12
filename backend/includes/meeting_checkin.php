@@ -49,7 +49,7 @@ function karavan_checkin_find(PDO $pdo, int $userId, int $requestId, bool $lock 
     }
     $sql = 'SELECT r.request_id, r.buyer_id, r.listing_id, r.meeting_date, r.meeting_time,
                    r.status, r.location_id, r.location_label, r.checked_in_at, r.seller_checked_in_at,
-                   l.owner_id, l.status AS listing_status, l.name, l.price, l.image_url, a.lat, a.lng
+                   l.owner_id, l.status AS listing_status, l.name, l.price, l.image_url, r.offer_price, a.lat, a.lng
               FROM meeting_requests r
               JOIN listings l ON l.listing_id = r.listing_id
               LEFT JOIN approved_locations a ON a.id = r.location_id
@@ -97,7 +97,9 @@ function karavan_checkin_details(array $row, DateTimeImmutable $now, ?int $viewe
         'opens_at' => karavan_checkin_iso($opens), 'closes_at' => karavan_checkin_iso($closes),
         'server_now' => karavan_checkin_iso($now), 'checkin_state' => $state,
         'participant_role' => $role, 'self_checked_in_at' => $checked,
-    ], $progress);
+    ], $progress, [
+        'offer_price' => karavan_format_offer_price($row['offer_price'] ?? null),
+    ]);
 }
 
 function karavan_checkin_success(array $row, int $userId, DateTimeImmutable $now): array
