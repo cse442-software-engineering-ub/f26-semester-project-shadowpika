@@ -54,6 +54,21 @@ it('preserves a multi-image gallery when editing ordinary fields', async () => {
     expect(JSON.parse(request[1].body).image_urls).toBeUndefined();
 });
 
+it('shows the offers checkbox and notes, and saves allow_offers (missing counts as off)', async () => {
+    items = [{ ...ITEM, allow_offers: true }, { ...ITEM, listing_id: 82 }];
+    await mount();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit listing' })[0]);
+    await act(async () => window.dispatchEvent(new HashChangeEvent('hashchange')));
+    const box = screen.getByLabelText('Allow buyers to make offers');
+    expect(box).toBeChecked();
+    expect(screen.getByText('Turning offers off does not change offers already sent in purchase requests.')).toBeVisible();
+    expect(screen.getByText('Changing the meeting location does not change the location of purchase requests you have already received.')).toBeVisible();
+    fireEvent.click(box);
+    fireEvent.submit(document.querySelector('form'));
+    await act(async () => {});
+    expect(JSON.parse(calls('update_listing.php')[0][1].body).allow_offers).toBe(false);
+});
+
 it('disables Sold before both arrivals and does not submit when clicked', async () => {
     await mount();
     expect(screen.getByRole('button', { name: 'Mark as sold' })).toBeDisabled();

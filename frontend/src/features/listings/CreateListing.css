@@ -350,6 +350,13 @@ textarea.listing-control {
   padding: 13px;
 }
 
+.listing-offers-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
 .listing-actions {
   display: flex;
   justify-content: flex-end;

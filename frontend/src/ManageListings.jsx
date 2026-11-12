@@ -255,6 +255,7 @@ export default function ManageListings() {
                                         related_course: selectedListing.related_course || '',
                                         meeting_location: selectedListing.meeting_location,
                                         description: selectedListing.description,
+                                        allow_offers: selectedListing.allow_offers === true,
                                         image_url: finalImageUrl // Sends the fresh server link pointer to database arrays
                                     })
                                 });
@@ -361,11 +362,20 @@ export default function ManageListings() {
                                     <option value="Center for the Arts · Main entrance">Center for the Arts · Main entrance</option>
                                     <option value="Abbott Library · Main entrance">Abbott Library · Main entrance</option>
                                 </select>
+                                <span style={{ fontSize: '13px', color: '#6E87A0', fontFamily: 'DM Sans' }}>Changing the meeting location does not change the location of purchase requests you have already received.</span>
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <span style={{ fontSize: '11px', fontWeight: '700', color: '#1F2F46', fontFamily: 'DM Sans', textTransform: 'uppercase' }}>Description *</span>
                                 <textarea rows="4" value={selectedListing.description || ''} onChange={(e) => updateField('description', e.target.value)} style={{ width: '100%', padding: '12px 16px', border: '1px solid #D1D9E0', borderRadius: '8px', fontSize: '15px', color: '#1F2F46', backgroundColor: '#ffffff', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}></textarea>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '15px', color: '#1F2F46', fontFamily: 'DM Sans' }}>
+                                    <input type="checkbox" checked={selectedListing.allow_offers === true} onChange={(e) => updateField('allow_offers', e.target.checked)} />
+                                    <span>Allow buyers to make offers</span>
+                                </label>
+                                <span style={{ fontSize: '13px', color: '#6E87A0', fontFamily: 'DM Sans' }}>Turning offers off does not change offers already sent in purchase requests.</span>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>

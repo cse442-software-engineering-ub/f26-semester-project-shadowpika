@@ -4,7 +4,7 @@ import ItemCover from './ItemCover.jsx';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
-import { createMeetingRequest, itemPageFrom, itemUrlFrom, loadListing, meetingRequestError } from './meetingRequests.js';
+import { createMeetingRequest, itemPageFrom, itemUrlFrom, loadListing, meetingRequestError, offerError, offerLimits } from './meetingRequests.js';
 
 const CONNECTION_ERROR = 'Could not connect to the server.';
 const LOCATION_UNAVAILABLE = "The seller's meeting location is unavailable. Return to the item and try again.";
@@ -20,6 +20,9 @@ function OrganizeMeet() {
     const [time, setTime] = useState('');
     const [message, setMessage] = useState(null); // { kind: 'success' | 'error', text }
     const [sending, setSending] = useState(false);
+    const [makeOffer, setMakeOffer] = useState(false);
+    const [offer, setOffer] = useState('');
+    const allowOffers = listing?.allow_offers === true;
     const locationId = listing?.meeting_location_id;
     const locationLabel = typeof listing?.meeting_location === 'string' ? listing.meeting_location.trim() : '';
     const hasLocation = Number.isInteger(locationId) && locationId > 0 && locationLabel !== '';
@@ -58,9 +61,16 @@ function OrganizeMeet() {
             return;
         }
 
+        const sendOffer = allowOffers && makeOffer;
+        const offerProblem = sendOffer ? offerError(listing.price, offer) : '';
+        if (offerProblem) {
+            setMessage({ kind: 'error', text: offerProblem });
+            return;
+        }
+
         setSending(true);
         setMessage(null);
-        createMeetingRequest({ listingId, date, time, locationId })
+        createMeetingRequest({ listingId, date, time, locationId, ...(sendOffer ? { offerPrice: offer } : {}) })
             .then((data) => {
                 setMessage(data.success
                     ? { kind: 'success', text: 'Your meeting request was sent.' }
@@ -108,6 +118,25 @@ function OrganizeMeet() {
                                 <input type="text" value={locationLabel} readOnly aria-describedby="mr-location-note" />
                             </label>
                             <p id="mr-location-note">Set by the seller. This meeting location cannot be changed.</p>
+                            {allowOffers ? (
+                                <>
+                                    <label className="mr-offer-toggle">
+                                        <input type="checkbox" checked={makeOffer} onChange={(e) => setMakeOffer(e.target.checked)} />
+                                        <span>Make an offer</span>
+                                    </label>
+                                    {makeOffer && (
+                                        <>
+                                            <label className="mr-field">
+                                                <span>Your offer ($)</span>
+                                                <input type="text" inputMode="decimal" value={offer} onChange={(e) => setOffer(e.target.value)} aria-describedby="mr-offer-hint" />
+                                            </label>
+                                            <p id="mr-offer-hint">Offers from ${offerLimits(listing.price).min} to ${offerLimits(listing.price).max}.</p>
+                                        </>
+                                    )}
+                                </>
+                            ) : (
+                                <p className="mr-offer-note">The seller does not accept offers on this item.</p>
+                            )}
                             {!hasLocation && <p className="mr-message id-error" role="alert">{LOCATION_UNAVAILABLE}</p>}
 
                             {message && (

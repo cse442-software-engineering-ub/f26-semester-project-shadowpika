@@ -22,6 +22,7 @@ const INITIAL_FORM = {
     community: '',
     meeting_location_id: '',
     description: '',
+    allow_offers: false,
 };
 
 const FIELD_LABELS = {
@@ -348,6 +349,7 @@ function CreateListing() {
             community: form.community,
             meeting_location_id: Number(form.meeting_location_id),
             description: form.description.trim(),
+            allow_offers: form.allow_offers === true,
         };
 
         try {
@@ -367,6 +369,7 @@ function CreateListing() {
                         (location) => Number(location.location_id) === payload.meeting_location_id,
                     )?.label || '',
                     description: payload.description,
+                    allow_offers: payload.allow_offers,
                     image_url: imageUrl,
                     image_urls: imageUrls,
                     status: 'active',
@@ -608,6 +611,16 @@ function CreateListing() {
                             error={errors.description}
                             fieldRef={setFieldRef('description')}
                         />
+
+                        <label className="listing-offers-toggle">
+                            <input
+                                type="checkbox"
+                                name="allow_offers"
+                                checked={form.allow_offers}
+                                onChange={(event) => setForm((current) => ({ ...current, allow_offers: event.target.checked }))}
+                            />
+                            <span>Allow buyers to make offers</span>
+                        </label>
 
                         <div className="listing-actions">
                             <a className="listing-secondary-button" href="./product-search.html">Cancel</a>
