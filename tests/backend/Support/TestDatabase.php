@@ -101,7 +101,8 @@ final class TestDatabase
                 meeting_location TEXT NULL,
                 meeting_location_id INTEGER NULL REFERENCES approved_locations (id) ON DELETE SET NULL,
                 description TEXT NULL,
-                status TEXT NOT NULL DEFAULT 'active'
+                status TEXT NOT NULL DEFAULT 'active',
+                allow_offers INTEGER NOT NULL DEFAULT 0
             )"
         );
 
@@ -118,7 +119,7 @@ final class TestDatabase
             location_label TEXT NOT NULL, status TEXT NOT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             checked_in_at TEXT NULL, seller_checked_in_at TEXT NULL,
-            original_location_id INTEGER NULL, original_location_label TEXT NULL, location_change_result TEXT NULL)");
+            original_location_id INTEGER NULL, original_location_label TEXT NULL, location_change_result TEXT NULL, offer_price NUMERIC NULL)");
 
         // Mirrors database/migrations/015_messages.sql.
         $pdo->exec("CREATE TABLE messages (
@@ -220,16 +221,17 @@ final class TestDatabase
             'meeting_location_id' => null,
             'description'      => 'Used for one semester.',
             'status'           => 'active',
+            'allow_offers'     => 0,
         ], $overrides);
         $stmt = $pdo->prepare(
             'INSERT INTO listings
-                (owner_id, name, price, `condition`, image_url, category, related_course, community, meeting_location, meeting_location_id, description, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                (owner_id, name, price, `condition`, image_url, category, related_course, community, meeting_location, meeting_location_id, description, status, allow_offers)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $ownerId, $row['name'], $row['price'], $row['condition'], $row['image_url'],
             $row['category'], $row['related_course'], $row['community'], $row['meeting_location'],
-            $row['meeting_location_id'], $row['description'], $row['status'],
+            $row['meeting_location_id'], $row['description'], $row['status'], $row['allow_offers'],
         ]);
         return (int) $pdo->lastInsertId();
     }

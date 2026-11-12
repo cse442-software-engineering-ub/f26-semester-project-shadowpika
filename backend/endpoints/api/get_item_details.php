@@ -60,7 +60,7 @@ try {
     $pdo = item_details_pdo();
     $stmt = $pdo->prepare(
         "SELECT listing_id, owner_id, name, price, `condition`, image_url, category, community, description,
-                meeting_location, meeting_location_id
+                meeting_location, meeting_location_id, allow_offers
            FROM listings
           WHERE listing_id = ? AND status = 'active'"
     );
@@ -106,6 +106,7 @@ try {
             "meeting_location_id" => $locationId,
             "meeting_location_details" => $locationDetails,
             "seller"      => $seller,
+            "allow_offers" => (bool) $row['allow_offers'],
         ],
     ]);
 } catch (Throwable $e) {
