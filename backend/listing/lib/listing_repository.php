@@ -22,15 +22,16 @@ function create_listing(mysqli $connection, array $listing, ?int $ownerId): arra
     $meetingLocationId = $listing['meeting_location_id'];
     $description = $listing['description'];
     $imageUrl = $listing['image_url'];
+    $allowOffers = !empty($listing['allow_offers']) ? 1 : 0;
 
     if ($ownerId !== null && $ownerId > 0) {
         $statement = $connection->prepare(
             "INSERT INTO listings
-                (owner_id, name, category, `condition`, price, related_course, community, meeting_location, meeting_location_id, description, image_url, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
+                (owner_id, name, category, `condition`, price, related_course, community, meeting_location, meeting_location_id, description, image_url, allow_offers, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
         );
         $statement->bind_param(
-            'isssssssiss',
+            'isssssssissi',
             $ownerId,
             $title,
             $category,
@@ -41,16 +42,17 @@ function create_listing(mysqli $connection, array $listing, ?int $ownerId): arra
             $meetingLocation,
             $meetingLocationId,
             $description,
-            $imageUrl
+            $imageUrl,
+            $allowOffers
         );
     } else {
         $statement = $connection->prepare(
             "INSERT INTO listings
-                (name, category, `condition`, price, related_course, community, meeting_location, meeting_location_id, description, image_url, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
+                (name, category, `condition`, price, related_course, community, meeting_location, meeting_location_id, description, image_url, allow_offers, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
         );
         $statement->bind_param(
-            'sssssssiss',
+            'sssssssissi',
             $title,
             $category,
             $condition,
@@ -60,7 +62,8 @@ function create_listing(mysqli $connection, array $listing, ?int $ownerId): arra
             $meetingLocation,
             $meetingLocationId,
             $description,
-            $imageUrl
+            $imageUrl,
+            $allowOffers
         );
     }
 
@@ -87,7 +90,7 @@ function find_listing_by_id(mysqli $connection, int $listingId): ?array
 {
     $select = $connection->prepare(
         "SELECT listing_id, owner_id, name, category, `condition`, price,
-                related_course, community, meeting_location, meeting_location_id, description, image_url, status,
+                related_course, community, meeting_location, meeting_location_id, description, image_url, status, allow_offers,
                 created_at, updated_at
            FROM listings
           WHERE listing_id = ?"
@@ -128,6 +131,7 @@ function find_listing_by_id(mysqli $connection, int $listingId): ?array
         'image_url' => $createdListing['image_url'],
         'image_urls' => listing_images_mysqli($connection, $listingId, $createdListing['image_url']),
         'status' => $createdListing['status'],
+        'allow_offers' => (bool) $createdListing['allow_offers'],
         'created_at' => $createdListing['created_at'],
         'updated_at' => $createdListing['updated_at'],
     ];

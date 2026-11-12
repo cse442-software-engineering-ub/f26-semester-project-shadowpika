@@ -25,6 +25,7 @@ SET @migration_sql = CONCAT(
         original_location_id INT UNSIGNED NULL DEFAULT NULL,
         original_location_label VARCHAR(100) NULL DEFAULT NULL,
         location_change_result ENUM(''accepted'', ''denied'') NULL DEFAULT NULL,
+        offer_price DECIMAL(10,2) NULL DEFAULT NULL,
         KEY idx_meeting_requests_buyer (buyer_id),
         KEY idx_meeting_requests_listing (listing_id),
         CONSTRAINT fk_meeting_requests_buyer

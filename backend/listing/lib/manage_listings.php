@@ -62,6 +62,7 @@ function manage_listings_format(array $row): array
         'status'           => $row['status'],
         'sale_request_id' => $row['sale_request_id'] === null ? null : (int) $row['sale_request_id'],
         'can_mark_sold' => $row['status'] === 'active' && $row['sale_request_id'] !== null,
+        'allow_offers' => (bool) ($row['allow_offers'] ?? false),
     ];
 }
 
@@ -73,7 +74,7 @@ function get_my_listings(PDO $pdo, ?int $userId): array
 
     $stmt = $pdo->prepare(
         'SELECT listing_id, name, price, `condition`, image_url, category,
-                related_course, community, meeting_location, meeting_location_id, description, status
+                related_course, community, meeting_location, meeting_location_id, description, status, allow_offers
            FROM listings
           WHERE owner_id = ?
           ORDER BY listing_id'
@@ -153,6 +154,14 @@ function manage_listings_price($value): ?string
     return $price >= 0.01 && $price <= 9999.99 ? number_format($price, 2, '.', '') : null;
 }
 
+/** true/false/1/0/"1"/"0" give the boolean; anything else is null (invalid). */
+function manage_listings_allow_offers($value): ?bool
+{
+    if ($value === true || $value === 1 || $value === '1') return true;
+    if ($value === false || $value === 0 || $value === '0') return false;
+    return null;
+}
+
 function manage_listings_save_data(array $input): array
 {
     $data = [
@@ -222,6 +231,12 @@ function update_my_listing(PDO $pdo, ?int $userId, $input): array
 
     if ($action === 'save_changes') {
         [$valid, $data] = manage_listings_save_data($input);
+        // Missing allow_offers keeps the current value; present must be a real boolean.
+        $allowOffers = null;
+        if (array_key_exists('allow_offers', $input)) {
+            $allowOffers = manage_listings_allow_offers($input['allow_offers']);
+            $valid = $valid && $allowOffers !== null;
+        }
         if (!$valid) {
             return [422, ['success' => false, 'error' => 'Enter valid listing details.']];
         }
@@ -244,7 +259,8 @@ function update_my_listing(PDO $pdo, ?int $userId, $input): array
             $stmt = $pdo->prepare(
                 'UPDATE listings
                     SET name = ?, price = ?, category = ?, `condition` = ?, related_course = ?,
-                        meeting_location = ?, meeting_location_id = ?, description = ?, image_url = ?
+                        meeting_location = ?, meeting_location_id = ?, description = ?, image_url = ?,
+                        allow_offers = COALESCE(?, allow_offers)
                   WHERE listing_id = ? AND owner_id = ?'
             );
             $stmt->execute([
@@ -252,6 +268,7 @@ function update_my_listing(PDO $pdo, ?int $userId, $input): array
                 $data['related_course'] === '' ? null : $data['related_course'],
                 $data['meeting_location'], $locationId, $data['description'],
                 $data['image_url'] === '' ? null : $data['image_url'],
+                $allowOffers === null ? null : (int) $allowOffers,
                 $listingId, $userId,
             ]);
             if (count($gallery) <= 1 && $data['image_url'] !== ($listing['image_url'] ?? '')) {
