@@ -38,7 +38,9 @@ try {
     $pdo->exec('CREATE TABLE meeting_requests (request_id INT PRIMARY KEY, buyer_id INT, listing_id INT,
         meeting_date DATE, meeting_time TIME, location_id INT, location_label VARCHAR(100),
         status VARCHAR(30), checked_in_at DATETIME(6), seller_checked_in_at DATETIME(6), created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        offer_price DECIMAL(10,2) NULL DEFAULT NULL) ENGINE=InnoDB');
+        offer_price DECIMAL(10,2) NULL DEFAULT NULL,
+        original_location_id INT NULL, original_location_label VARCHAR(100) NULL,
+        location_change_result VARCHAR(20) NULL) ENGINE=InnoDB');
     $pdo->exec("INSERT INTO users VALUES (1, 'buyer@test.invalid'), (2, 'seller@test.invalid')");
     $pdo->exec("INSERT INTO listings (listing_id, owner_id, name, price, image_url, community) VALUES (1, 2, 'Disposable location-lock test', 10, NULL, 'QA')");
     $pdo->exec("INSERT INTO approved_locations VALUES (1, 'Original spot', 'QA'), (2, 'Proposed spot', 'QA')");
@@ -70,7 +72,8 @@ try {
     foreach ($workers as &$worker) {
         $exit = proc_close($worker['process']);
         $worker['process'] = null;
-        if ($exit !== 0) throw new RuntimeException('Location-lock worker failed.');
+        if ($exit !== 0) throw new RuntimeException('Location-lock worker failed: '
+            . file_get_contents("{$worker['base']}.err") . file_get_contents("{$worker['base']}.out"));
         $results[$worker['action']] = json_decode(file_get_contents($worker['base'] . '.out'), true, 512, JSON_THROW_ON_ERROR);
     }
     unset($worker);

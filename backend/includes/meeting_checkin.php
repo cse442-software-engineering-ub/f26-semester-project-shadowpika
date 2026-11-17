@@ -63,13 +63,7 @@ function karavan_checkin_find(PDO $pdo, int $userId, int $requestId, bool $lock 
 
 function karavan_checkin_details(array $row, DateTimeImmutable $now, ?int $viewerId = null): array
 {
-    $timezone = new DateTimeZone(KARAVAN_MEETING_TIMEZONE);
-    $meeting = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $row['meeting_date'] . ' ' . $row['meeting_time'], $timezone);
-    if (!$meeting || $meeting->format('Y-m-d H:i:s') !== $row['meeting_date'] . ' ' . $row['meeting_time']) {
-        throw new RuntimeException('Invalid stored meeting time.');
-    }
-    $opens = $meeting->modify('-15 minutes');
-    $closes = $meeting->modify('+2 hours');
+    ['opens' => $opens, 'closes' => $closes] = karavan_meeting_window($row);
     $location = null;
     if ($row['location_id'] !== null && is_numeric($row['lat']) && is_numeric($row['lng'])
         && is_finite((float) $row['lat']) && is_finite((float) $row['lng'])

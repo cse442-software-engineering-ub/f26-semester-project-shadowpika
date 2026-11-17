@@ -53,7 +53,7 @@ try {
     $listing = find_listing_by_id($connection, (int) $listingId);
     $connection->close();
 
-    if ($listing === null) {
+    if ($listing === null || $listing['status'] === 'inactive') {
         listing_json_response(404, [
             'success' => false,
             'error' => 'Listing not found.',
