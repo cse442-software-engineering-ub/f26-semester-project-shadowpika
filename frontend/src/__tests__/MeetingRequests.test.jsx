@@ -115,6 +115,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(screen.getByLabelText('Preferred Time')).toBeInTheDocument();
         expect(screen.getByRole('textbox', { name: 'Meeting Location' })).toHaveValue('Capen Hall Main Entrance');
         expect(screen.getByRole('textbox', { name: 'Meeting Location' })).toHaveAttribute('readonly');
+        expect(screen.getByRole('textbox', { name: 'Meeting Location' })).toBeDisabled();
         expect(screen.queryByRole('combobox', { name: 'Meeting Location' })).not.toBeInTheDocument();
         expect(screen.getByText('Set by the seller. This meeting location cannot be changed.')).toBeVisible();
         expect(callsTo(fetchMock, 'get_meeting_locations.php')).toHaveLength(0);
@@ -140,6 +141,12 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         });
         await userEvent.type(screen.getByLabelText('Meeting Location'), 'Student Union Main Entrance');
         expect(screen.getByLabelText('Meeting Location')).toHaveValue(workbook.meeting_location);
+        expect(screen.getByLabelText('Meeting Location')).toBeDisabled();
+        await userEvent.click(screen.getByLabelText('Date'));
+        await userEvent.tab();
+        expect(screen.getByLabelText('Preferred Time')).toHaveFocus();
+        await userEvent.tab();
+        expect(screen.getByRole('button', { name: 'Confirm Meeting Request' })).toHaveFocus();
         fill(container, { date: '2026-12-12', time: '16:00' });
         confirm();
         await screen.findByText('Your meeting request was sent.');
