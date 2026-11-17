@@ -180,7 +180,13 @@ function ItemDetails() {
                     <article className="id-item">
                         <div className="id-corner">
                             <div className="id-corner-row">
-                                <button type="button" className="id-share" onClick={handleShareClick} disabled={sharePending}>
+                                <button
+                                    type="button"
+                                    className="id-share"
+                                    title="Copy a link to this item"
+                                    onClick={handleShareClick}
+                                    disabled={sharePending}
+                                >
                                     <ShareIcon />
                                     <span>Share</span>
                                 </button>

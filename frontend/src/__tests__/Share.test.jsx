@@ -57,6 +57,12 @@ describe('Share button (#158)', () => {
         expect(writeText).toHaveBeenCalledWith('https://aptitude.cse.buffalo.edu/CSE442/2026-Fall/cse-442j/davidjob/item.html?listing_id=92001');
     });
 
+    it('hovering Share shows the tooltip Copy a link to this item', async () => {
+        stubApi({ details: { success: true, listing: LISTING }, share: '{}' });
+        render(<ItemDetails />);
+        expect(await screen.findByRole('button', { name: 'Share' })).toHaveAttribute('title', 'Copy a link to this item');
+    });
+
     it('Test 2: Share shows for a non-owner (with the heart) and for the owner (without it)', async () => {
         stubApi({ details: { success: true, listing: LISTING }, share: '{}', owner: false });
         const { unmount } = render(<ItemDetails />);
