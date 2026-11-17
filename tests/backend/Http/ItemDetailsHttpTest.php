@@ -141,11 +141,10 @@ final class ItemDetailsHttpTest extends TestCase
         ]], '?listing_id=91002');
     }
 
-    public function testReportsMissingAndSoldListingsAsNotFound(): void
+    public function testReportsMissingListingsAsNotFoundAndSoldListingsAsSold(): void
     {
-        $notFound = ['success' => false, 'error' => 'Listing not found.'];
-        $this->assertResponse(404, $notFound, '?listing_id=99999');
-        $this->assertResponse(404, $notFound, '?listing_id=91004');
+        $this->assertResponse(404, ['success' => false, 'error' => 'Listing not found.'], '?listing_id=99999');
+        $this->assertResponse(410, ['success' => false, 'error' => 'This item has been sold.'], '?listing_id=91004');
     }
 
     public function testRejectsAMissingOrInvalidListingId(): void
