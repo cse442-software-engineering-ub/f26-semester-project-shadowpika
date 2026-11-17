@@ -21,6 +21,17 @@ User-story acceptance tests exercise the integrated UI on Cattle from an ordinar
 user's perspective. Frontend/backend task tests use Aptitude and must not rely on the
 other layer being correct. This migration does not rewrite the outstanding task cards.
 
+## #231 listing freeze frontend
+
+In `frontend/`, run `npm test -- src/__tests__/ListingFreeze.test.jsx
+src/__tests__/ManageListings.test.jsx src/__tests__/MeetingRequests.test.jsx`.
+These use API mocks and cover confirmation/dismissal, metadata compatibility,
+duplicate clicks, stale polling, failure recovery, individual resume and the
+disabled meeting location's keyboard behavior/saved JSON ID. See
+`docs/listing-freeze.md` for the frontend/backend contract. Native dialog focus
+and responsive layout also require browser inspection; jsdom supplies only a
+minimal dialog API for the unit tests.
+
 ## #232 listing freeze regression
 
 `php tests/mysql/listing_freeze_test.php` uses a disposable loopback MySQL server

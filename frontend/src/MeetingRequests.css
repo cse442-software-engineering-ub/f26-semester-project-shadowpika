@@ -95,6 +95,15 @@
   border-color: var(--ps-gold);
 }
 
+.mr-field input.mr-locked-location:disabled {
+  background: #eceef0;
+  color: #26374e;
+  -webkit-text-fill-color: #26374e;
+  border-color: #c8ced5;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
 .mr-message {
   margin: 0;
   font-size: 14px;
