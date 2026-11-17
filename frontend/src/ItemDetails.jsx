@@ -12,6 +12,7 @@ import { recordViewedItem } from './previouslyViewed.js';
 import Stars from './components/Stars.jsx';
 import { messagePageUrl } from './messages.js';
 import { ratingSummaryText, sellerPageUrl } from './ratings.js';
+import { shareListing } from './shareListing.js';
 
 const SEARCH_HREF = './product-search.html';
 
@@ -48,6 +49,26 @@ function BackToFavorites() {
     );
 }
 
+// Opened from Messages: back goes to Messages.
+function BackToMessages() {
+    return (
+        <a className="id-back" href="./message.html">
+            <span aria-hidden="true">←</span> Back to messages
+        </a>
+    );
+}
+
+function ShareIcon() {
+    return (
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4" />
+        </svg>
+    );
+}
+
 function ItemDetails() {
     const from = itemPageFrom(window.location.search);
     const [listing, setListing] = useState(null);
@@ -60,6 +81,8 @@ function ItemDetails() {
     const [saved, setSaved] = useState(false);
     const [saveError, setSaveError] = useState('');
     const [heartPending, setHeartPending] = useState(false);
+    const [shareNote, setShareNote] = useState({ ok: false, message: '' });
+    const [sharePending, setSharePending] = useState(false);
 
     useEffect(() => {
         const listingId = new URLSearchParams(window.location.search).get('listing_id') ?? '';
@@ -134,29 +157,56 @@ function ItemDetails() {
         }
     };
 
+    // One request per click; the earlier message is cleared first and nothing is copied unless it succeeds.
+    const handleShareClick = async () => {
+        if (sharePending) return;
+        setShareNote({ ok: false, message: '' });
+        setSharePending(true);
+        const result = await shareListing(listing.listing_id);
+        setShareNote(result.ok ? { ok: true, message: 'Link copied!' } : { ok: false, message: result.message });
+        setSharePending(false);
+    };
+
     return (
         <div className="ps-page">
             <NavBar />
-            <main className="ps-frame id-frame">
-                {from === 'favorites' ? <BackToFavorites /> : from === 'request' ? <BackToHome /> : <BackToSearch />}
+            <main className="ps-frame id-frame id-page">
+                {from === 'favorites' ? <BackToFavorites /> : from === 'request' || from === 'home' ? <BackToHome /> : from === 'messages' ? <BackToMessages /> : <BackToSearch />}
 
                 {status === 'loading' && <p className="id-message">Loading item details...</p>}
                 {status === 'error' && <p className="id-message id-error" role="alert">{error}</p>}
 
                 {status === 'done' && listing && (
                     <article className="id-item">
-                        {canBuy && (
-                            <button
-                                type="button"
-                                className={`id-heart${saved ? ' is-saved' : ''}`}
-                                aria-label="Save to Favorites"
-                                aria-pressed={saved}
-                                title={saved ? 'Remove from Favorites' : 'Add to Favorites'}
-                                onClick={handleHeartClick}
-                            >
-                                <HeartIcon filled={saved} />
-                            </button>
-                        )}
+                        <div className="id-corner">
+                            <div className="id-corner-row">
+                                <button
+                                    type="button"
+                                    className="id-share"
+                                    title="Copy a link to this item"
+                                    onClick={handleShareClick}
+                                    disabled={sharePending}
+                                >
+                                    <ShareIcon />
+                                    <span>Share</span>
+                                </button>
+                                {canBuy && (
+                                    <button
+                                        type="button"
+                                        className={`id-heart${saved ? ' is-saved' : ''}`}
+                                        aria-label="Save to Favorites"
+                                        aria-pressed={saved}
+                                        title={saved ? 'Remove from Favorites' : 'Add to Favorites'}
+                                        onClick={handleHeartClick}
+                                    >
+                                        <HeartIcon filled={saved} />
+                                    </button>
+                                )}
+                            </div>
+                            {shareNote.message && (shareNote.ok
+                                ? <p className="id-share-note" role="status">{shareNote.message}</p>
+                                : <p className="id-share-note id-error" role="alert">{shareNote.message}</p>)}
+                        </div>
                         <ListingGallery name={listing.name} imageUrl={listing.image_url} imageUrls={listing.image_urls} />
 
                         <div className="id-info">

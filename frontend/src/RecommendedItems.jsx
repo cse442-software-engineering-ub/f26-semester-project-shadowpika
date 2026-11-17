@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ItemCover from './ItemCover.jsx';
 import './RecommendedItems.css';
 import { fetchRecommendedItems } from './recommendedItems.js';
-import { itemPageUrl } from './localListings.js';
+import { itemUrlFrom } from './meetingRequests.js';
 
 // Home page row of recommended items, in the order the server sends them.
 function RecommendedItems() {
@@ -49,7 +49,7 @@ function RecommendedItems() {
                 <ul className="ri-row">
                     {items.map((item, index) => (
                         <li key={`${item.listing_id}-${index}`}>
-                            <a className="ri-card" href={itemPageUrl(item.listing_id)}>
+                            <a className="ri-card" href={itemUrlFrom(item.listing_id, 'home')}>
                                 <div className="ri-cover">
                                     <ItemCover name={item.name} imageUrl={item.image_url} />
                                 </div>

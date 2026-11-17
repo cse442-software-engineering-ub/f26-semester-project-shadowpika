@@ -91,7 +91,7 @@ describe('Recommended Items on Home (card #200)', () => {
         render(<Home />);
 
         const link = (await screen.findByText('Physical Chemistry')).closest('a');
-        expect(link).toHaveAttribute('href', './item.html?listing_id=91005');
+        expect(link).toHaveAttribute('href', './item.html?listing_id=91005&from=home');
     });
 
     it('Test 4: shows the empty message and no items', async () => {

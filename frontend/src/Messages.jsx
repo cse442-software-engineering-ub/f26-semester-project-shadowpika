@@ -4,6 +4,7 @@ import './ProductSearch.css';
 import './Messages.css';
 import { MESSAGE_MAX_LENGTH, fetchConversation, fetchConversations, formatMessageTime, sendMessage } from './messages.js';
 import { sellerPageUrl } from './ratings.js';
+import { itemUrlFrom } from './meetingRequests.js';
 
 const REFRESH_MS = 5000;
 const EMPTY_MESSAGE_ERROR = 'Type a message before sending.';
@@ -136,7 +137,7 @@ function Thread({ chat, onBack, onSent }) {
                         <h2 className="msg-thread-name">
                             <a href={sellerPageUrl(thread.other_user_id)}>{thread.other_username}</a>
                         </h2>
-                        <a className="msg-thread-listing" href={`./item.html?listing_id=${encodeURIComponent(thread.listing_id)}`}>
+                        <a className="msg-thread-listing" href={itemUrlFrom(thread.listing_id, 'messages')}>
                             About: {thread.listing_name}
                         </a>
                     </header>

@@ -3,12 +3,19 @@ import './index.css'
 import './styles/karavan.css'
 import KaravanHeader from './components/KaravanHeader.jsx';
 import { KaravanHero } from './components/KaravanBrand.jsx';
-import { pathFor } from './routes.js';
+import { appBase, pathFor } from './routes.js';
+import { clearReturnPath, takeReturnPath } from './returnTo.js';
 import { markNewAccount, recordLogin } from './community.js';
 import { fetchSession, isLocalMockBackend, isLoggedIn } from './api.js';
 import { SECURITY_QUESTIONS } from './securityQuestions.js';
 
 const HOME_PAGE = './home.html';
+
+// A person who opened a shared listing link while logged out goes to that listing instead of Home.
+const userLandingPage = () => {
+    const next = takeReturnPath();
+    return next ? appBase() + next : HOME_PAGE;
+};
 
 // Moderators work from the moderator dashboard rather than the marketplace home page.
 const landingPageFor = (role) => (role === 'moderator' ? pathFor('moderator') : HOME_PAGE);
@@ -36,7 +43,10 @@ function App() {
         fetchSession()
             .then((session) => {
                 if (cancelled) return;
-                if (isLoggedIn(session)) window.location.replace(landingPageFor(session.role));
+                if (isLoggedIn(session)) {
+                    if (session.role === 'moderator') clearReturnPath();
+                    window.location.replace(session.role === 'moderator' ? landingPageFor(session.role) : userLandingPage());
+                }
                 else setIsLoading(false);
             })
             .catch(() => {
@@ -54,7 +64,7 @@ function App() {
 
     const loginSuccess = () => {
         setMessage('Login successful!');
-        window.location.href = HOME_PAGE;
+        window.location.href = userLandingPage();
     };
 
     const handleSubmit = async (e) => {
@@ -140,10 +150,11 @@ function App() {
                 }
                 recordLogin(email, data);
                 if (data.role === 'moderator') {
+                    clearReturnPath();
                     window.location.assign(pathFor('moderator'));
                 } else {
                     setMessage('Login successful!');
-                    window.location.href = HOME_PAGE;
+                    window.location.href = userLandingPage();
                 }
             } else {
                 setMessage(data.error || 'An error occurred.');
