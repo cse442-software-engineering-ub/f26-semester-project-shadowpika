@@ -137,7 +137,7 @@ function ItemDetails() {
     return (
         <div className="ps-page">
             <NavBar />
-            <main className="ps-frame id-frame">
+            <main className="ps-frame id-frame id-page">
                 {from === 'favorites' ? <BackToFavorites /> : from === 'request' ? <BackToHome /> : <BackToSearch />}
 
                 {status === 'loading' && <p className="id-message">Loading item details...</p>}

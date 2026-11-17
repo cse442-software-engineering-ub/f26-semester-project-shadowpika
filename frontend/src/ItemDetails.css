@@ -4,6 +4,13 @@
   padding: 32px 40px 48px;
 }
 
+/* Item page only (Home, Check In and the meet page share id-frame): the back link and the item card
+   sit in one centered column as wide as the card (1040px), instead of hugging the left edge. */
+.ps-frame.id-frame.id-page {
+  padding-left: max(40px, calc((100% - 1040px) / 2));
+  padding-right: max(40px, calc((100% - 1040px) / 2));
+}
+
 .id-back {
   display: inline-flex;
   align-items: center;
@@ -264,7 +271,8 @@
 }
 
 @media (max-width: 768px) {
-  .ps-frame.id-frame {
+  .ps-frame.id-frame,
+  .ps-frame.id-frame.id-page {
     padding: 20px 15px 40px;
   }
 
