@@ -13,6 +13,7 @@ import Stars from './components/Stars.jsx';
 import { messagePageUrl } from './messages.js';
 import { ratingSummaryText, sellerPageUrl } from './ratings.js';
 import { shareListing } from './shareListing.js';
+import { loadRequestCountText } from './requestCount.js';
 
 const SEARCH_HREF = './product-search.html';
 
@@ -83,6 +84,7 @@ function ItemDetails() {
     const [heartPending, setHeartPending] = useState(false);
     const [shareNote, setShareNote] = useState({ ok: false, message: '' });
     const [sharePending, setSharePending] = useState(false);
+    const [requestCountText, setRequestCountText] = useState(null);
 
     useEffect(() => {
         const listingId = new URLSearchParams(window.location.search).get('listing_id') ?? '';
@@ -110,6 +112,10 @@ function ItemDetails() {
                 if (!cancelled) setSaved(data.success === true && data.saved === true);
             })
             .catch(() => {});
+
+        loadRequestCountText(listingId).then((text) => {
+            if (!cancelled) setRequestCountText(text);
+        });
 
         loadListing(listingId)
             .then((data) => {
@@ -247,6 +253,8 @@ function ItemDetails() {
                                     )}
                                 </div>
                             )}
+
+                            {requestCountText && <p className="id-request-count">{requestCountText}</p>}
 
                             <dl className="id-facts">
                                 <div>

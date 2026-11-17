@@ -188,6 +188,14 @@
   font-weight: 700;
 }
 
+.id-request-count {
+  max-width: 100%;
+  margin: 16px 0 0;
+  font-size: 14px;
+  color: var(--ps-muted);
+  overflow-wrap: anywhere;
+}
+
 .id-facts {
   margin: 20px 0 0;
 }
