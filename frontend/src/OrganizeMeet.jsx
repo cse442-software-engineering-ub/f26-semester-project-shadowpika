@@ -115,7 +115,7 @@ function OrganizeMeet() {
                             </label>
                             <label className="mr-field">
                                 <span>Meeting Location</span>
-                                <input type="text" value={locationLabel} readOnly aria-describedby="mr-location-note" />
+                                <input type="text" className="mr-locked-location" value={locationLabel} readOnly disabled aria-describedby="mr-location-note" />
                             </label>
                             <p id="mr-location-note">Set by the seller. This meeting location cannot be changed.</p>
                             {allowOffers ? (

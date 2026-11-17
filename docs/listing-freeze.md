@@ -3,6 +3,42 @@
 Backend for #81; the Manage Listings controls and disabled meeting-location field
 are the separate #231 frontend task. No database migration is required.
 
+## #231 frontend behavior
+
+Manage Listings now has View Active, View Sold and **View Paused**, with **Freeze
+All Listings** aligned right on the desktop toolbar; mobile controls wrap. The
+button is disabled when no item is eligible, while loading/mutating, after a load
+failure, or when backend eligibility metadata is missing/inconsistent. Reloading
+authoritative data is required before a failed/uncertain mutation can enable it.
+
+The confirmation explains protected meetings and request cancellation. **Keep
+Listings**, the close control and Escape send no mutation. Initial focus goes to
+Keep Listings; Tab/Shift+Tab stay in the dialog. While submitting, controls and
+Escape dismissal are protected. On close, focus returns to the trigger or the
+Paused control if the trigger is disabled. Successful freezing shows the server's
+three counts and opens View Paused. A stale earlier poll cannot undo that result.
+
+Each paused item shows **Paused** rather than the stored `inactive` value, and
+**Mark as available** sends `action: resume` for that one ID. The UI waits for
+server success, then rereads listings and opens View Active. Existing Sold,
+ordinary edit and gallery behavior are retained. This task adds only the freeze
+confirmation; other action-confirmation stories remain separate.
+
+Organize a Meet keeps the seller's location read-only and actually **disabled**,
+with a light grey background and dark text at full opacity. Keyboard navigation
+skips it. The create-request JSON still uses the saved location ID, independent
+of native disabled-input form serialization.
+
+From `frontend/`, run the related frontend tests:
+
+```text
+npm test -- src/__tests__/ListingFreeze.test.jsx src/__tests__/ManageListings.test.jsx src/__tests__/MeetingRequests.test.jsx
+```
+
+`ListingFreeze.test.jsx` mocks APIs independently of PHP and supplies jsdom's
+missing dialog methods. Real keyboard/modal behavior and desktop/mobile rendering
+were additionally checked in an isolated Chromium + PHP/MySQL integration flow.
+
 ## Rules
 
 - Persist Paused as the existing `inactive` listing status. Only the signed-in
@@ -114,6 +150,22 @@ build used for automated checks is not a release for upload. User uploads via th
 existing WinSCP process: Aptitude validation first, then Cattle acceptance.
 
 ## Local verification — November 16, 2026
+
+Frontend #231, based on merged #232 (`a10c51a`, PR #149):
+
+- All 428 frontend tests in 31 files passed, including 20 new freeze UI cases.
+  Changed-file lint passed without warnings.
+- Thirty-six local Chromium + real PHP/MySQL checks passed: confirmation/back,
+  keyboard focus containment/return, pending protection, exact counts, protected
+  meetings, old item links, canceled requests, resume and fresh purchase.
+- Desktop (1280×900) and mobile (390×844) screenshots were inspected. The toolbar
+  aligns on desktop; mobile has no horizontal overflow and the full dialog fits.
+  The actual disabled location retains readable colors and its saved ID is sent.
+- Isolated production/manifest verification and six release regressions passed.
+  Main `Repo/deploy` is still unchanged pending the frontend merge. These are
+  local synthetic-fixture checks, not a Cattle/Aptitude acceptance pass.
+
+Backend #232:
 
 - Ten new deterministic business-rule tests passed (54 assertions).
 - Forty real MySQL 8.0.46/HTTP checks passed, including both forced race orders,
