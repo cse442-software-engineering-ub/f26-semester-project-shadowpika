@@ -95,7 +95,7 @@ describe('Previously Viewed on Home (card #217)', () => {
         render(<Home />);
 
         const link = (await screen.findByText('Physical Chemistry')).closest('a');
-        expect(link.getAttribute('href')).toMatch(/item\.html\?listing_id=91005$/);
+        expect(link.getAttribute('href')).toMatch(/item\.html\?listing_id=91005&from=home$/);
     });
 
     it('Test 4: shows the empty message and no items', async () => {

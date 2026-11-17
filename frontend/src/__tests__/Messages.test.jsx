@@ -55,7 +55,7 @@ describe('Messages page (#97)', () => {
         render(<Messages />);
 
         expect(await screen.findByRole('heading', { name: 'morgan.keller1' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'About: Messaging Test Desk Lamp' })).toHaveAttribute('href', './item.html?listing_id=95023');
+        expect(screen.getByRole('link', { name: 'About: Messaging Test Desk Lamp' })).toHaveAttribute('href', './item.html?listing_id=95023&from=messages');
         const list = screen.getByRole('list', { name: 'Messages with morgan.keller1' });
         expect(within(list).getAllByRole('listitem').map((item) => item.querySelector('.msg-text')?.textContent).filter(Boolean))
             .toEqual(['Is the lamp available?', 'Yes it is.']);

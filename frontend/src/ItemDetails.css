@@ -58,10 +58,62 @@
   border-radius: 12px;
 }
 
-.id-heart {
+/* Top-right corner of the item card: Share, then the heart, with the share message below. */
+.id-corner {
   position: absolute;
   top: 16px;
   right: 16px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  max-width: calc(100% - 32px);
+}
+
+.id-corner-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.id-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 20px;
+  background: none;
+  color: var(--ps-navy);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.id-share:hover,
+.id-share:focus-visible {
+  background: rgba(31, 45, 68, 0.08);
+}
+
+.id-share:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.id-share-note {
+  max-width: 240px;
+  margin: 4px 0 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--ps-white);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.id-heart {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -104,6 +156,12 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+/* Keep the name and category clear of the Share button and heart on wide screens. */
+.id-info > .id-category,
+.id-info > .id-name {
+  padding-right: 150px;
 }
 
 .id-category {
@@ -279,7 +337,12 @@
   .id-item {
     grid-template-columns: minmax(0, 1fr);
     gap: 24px;
-    padding: 20px;
+    padding: 64px 20px 20px;
+  }
+
+  .id-info > .id-category,
+  .id-info > .id-name {
+    padding-right: 0;
   }
 
   .id-cover {

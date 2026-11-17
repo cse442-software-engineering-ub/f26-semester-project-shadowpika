@@ -5,10 +5,11 @@ import { buildItemDetailsUrl, findLocalListing } from './localListings.js';
 export const meetPageUrl = (listingId, from = '') =>
     `./meet.html?listing_id=${encodeURIComponent(listingId)}${from ? `&from=${from}` : ''}`;
 
-// Only known values ('request', 'favorites') pass, so the raw address value never reaches another URL.
+// Only known values pass, so the raw address value never reaches another URL.
+const ITEM_PAGE_FROM = ['request', 'favorites', 'home', 'messages'];
 export const itemPageFrom = (search) => {
     const from = new URLSearchParams(search).get('from');
-    return from === 'request' || from === 'favorites' ? from : '';
+    return ITEM_PAGE_FROM.includes(from) ? from : '';
 };
 
 export const itemUrlFrom = (listingId, from = '') =>
