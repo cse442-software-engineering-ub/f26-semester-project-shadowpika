@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/listing_locations.php';
 require_once __DIR__ . '/listing_images.php';
+require_once __DIR__ . '/listing_freeze.php';
 
 const MANAGE_LISTING_CATEGORIES = [
     'Textbooks',
@@ -63,10 +64,12 @@ function manage_listings_format(array $row): array
         'sale_request_id' => $row['sale_request_id'] === null ? null : (int) $row['sale_request_id'],
         'can_mark_sold' => $row['status'] === 'active' && $row['sale_request_id'] !== null,
         'allow_offers' => (bool) ($row['allow_offers'] ?? false),
+        'can_freeze' => $row['status'] === 'active' && ($row['freeze_block_reason'] ?? null) === null,
+        'freeze_block_reason' => $row['freeze_block_reason'] ?? null,
     ];
 }
 
-function get_my_listings(PDO $pdo, ?int $userId): array
+function get_my_listings(PDO $pdo, ?int $userId, ?DateTimeImmutable $now = null): array
 {
     if ($userId === null) {
         return manage_listings_not_logged_in();
@@ -89,7 +92,9 @@ function get_my_listings(PDO $pdo, ?int $userId): array
     $eligible->execute([$userId]);
     $saleRequests = $eligible->fetchAll(PDO::FETCH_KEY_PAIR);
     $results = $stmt->fetchAll();
+    $freezeReasons = listing_freeze_reasons($pdo, $userId, $now ?? new DateTimeImmutable('now', new DateTimeZone('UTC')));
     foreach ($results as &$row) {
+        $row['freeze_block_reason'] = $freezeReasons[(int) $row['listing_id']] ?? null;
         $row['sale_request_id'] = $saleRequests[$row['listing_id']] ?? null;
         $row['image_urls'] = listing_images_pdo($pdo, (int)$row['listing_id'], $row['image_url']);
     }
@@ -187,7 +192,7 @@ function manage_listings_save_data(array $input): array
     return [$valid, $data];
 }
 
-function update_my_listing(PDO $pdo, ?int $userId, $input): array
+function update_my_listing(PDO $pdo, ?int $userId, $input, ?DateTimeImmutable $now = null): array
 {
     if ($userId === null) {
         return manage_listings_not_logged_in();
@@ -195,6 +200,9 @@ function update_my_listing(PDO $pdo, ?int $userId, $input): array
     if (!is_array($input)) {
         return [400, ['success' => false, 'error' => 'The request body must contain valid JSON.']];
     }
+
+    $action = manage_listings_text($input['action'] ?? '');
+    if ($action === 'freeze_all') return freeze_my_listings($pdo, $userId, $now);
 
     $listingId = manage_listings_positive_id($input['listing_id'] ?? null);
     if ($listingId === null) {
@@ -204,7 +212,7 @@ function update_my_listing(PDO $pdo, ?int $userId, $input): array
         return [404, ['success' => false, 'error' => 'Listing not found.']];
     }
 
-    $action = manage_listings_text($input['action'] ?? '');
+    if ($action === 'resume') return resume_my_listing($pdo, $userId, $listingId);
     if ($action === 'delete') {
         $stmt = $pdo->prepare('DELETE FROM listings WHERE listing_id = ? AND owner_id = ?');
         $stmt->execute([$listingId, $userId]);

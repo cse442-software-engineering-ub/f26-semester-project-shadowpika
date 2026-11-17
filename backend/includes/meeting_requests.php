@@ -7,8 +7,7 @@ require_once __DIR__ . '/communities.php';
 const KARAVAN_NOT_LOGGED_IN_ERROR = 'You must be logged in.';
 const KARAVAN_LISTING_NOT_FOUND_ERROR = 'Listing not found.';
 
-// "Today" for the future-date check is the campus date, not the server's default timezone.
-const KARAVAN_MEETING_TIMEZONE = 'America/New_York';
+require_once __DIR__ . '/meeting_state.php';
 
 // An offer must be between these percentages of the asking price (rounded to the cent) and differ from it.
 const KARAVAN_OFFER_MIN_PERCENT = 60;
@@ -248,6 +247,15 @@ function karavan_meeting_time_error($value): ?string
 
 function karavan_create_meeting_request(PDO $pdo, ?int $userId, $input): array
 {
+    $listingId = is_array($input) ? karavan_parse_positive_id($input['listing_id'] ?? null) : null;
+    $operation = static fn() => karavan_create_meeting_request_locked($pdo, $userId, $input);
+    if ($userId === null || $listingId === null) return $operation();
+    return karavan_with_listing_transaction($pdo, $listingId, $operation);
+}
+
+/** Internal implementation; the public entry point holds the listing lock. */
+function karavan_create_meeting_request_locked(PDO $pdo, ?int $userId, $input): array
+{
     if ($userId === null) {
         return karavan_not_logged_in();
     }
@@ -393,6 +401,12 @@ function karavan_list_incoming_meeting_requests(PDO $pdo, ?int $userId): array
 /** Lets the listing's owner approve, deny, or ask for a new location on a pending request. */
 function karavan_respond_meeting_request(PDO $pdo, ?int $userId, $input): array
 {
+    return karavan_with_request_listing_transaction($pdo, $userId, $input,
+        static fn() => karavan_respond_meeting_request_locked($pdo, $userId, $input));
+}
+
+function karavan_respond_meeting_request_locked(PDO $pdo, ?int $userId, $input): array
+{
     if ($userId === null) {
         return karavan_not_logged_in();
     }
@@ -416,6 +430,9 @@ function karavan_respond_meeting_request(PDO $pdo, ?int $userId, $input): array
     }
     if ($row['owner_id'] === null || (int) $row['owner_id'] !== $userId) {
         return [403, ['success' => false, 'error' => 'You can only respond to requests for your own items.']];
+    }
+    if ($row['listing_status'] !== 'active') {
+        return [409, ['success' => false, 'error' => 'This item is no longer available.']];
     }
     if ($row['status'] !== 'pending') {
         if ($row['status'] === 'approved' && $action === 'change_location') {
@@ -472,6 +489,12 @@ function karavan_respond_meeting_request(PDO $pdo, ?int $userId, $input): array
 /** Lets the buyer accept the new location the seller suggested, which approves the request. */
 function karavan_accept_location_change(PDO $pdo, ?int $userId, $input): array
 {
+    return karavan_with_request_listing_transaction($pdo, $userId, $input,
+        static fn() => karavan_accept_location_change_locked($pdo, $userId, $input));
+}
+
+function karavan_accept_location_change_locked(PDO $pdo, ?int $userId, $input): array
+{
     if ($userId === null) {
         return karavan_not_logged_in();
     }
@@ -518,6 +541,12 @@ function karavan_accept_location_change(PDO $pdo, ?int $userId, $input): array
 
 /** Lets the buyer turn down the seller's new location: the request goes back to Pending at the original location. */
 function karavan_deny_location_change(PDO $pdo, ?int $userId, $input): array
+{
+    return karavan_with_request_listing_transaction($pdo, $userId, $input,
+        static fn() => karavan_deny_location_change_locked($pdo, $userId, $input));
+}
+
+function karavan_deny_location_change_locked(PDO $pdo, ?int $userId, $input): array
 {
     if ($userId === null) {
         return karavan_not_logged_in();
