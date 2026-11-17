@@ -2,9 +2,9 @@
 // GET /api/get_item_details.php?listing_id=<id>
 // Returns the details shown on item.html for one ACTIVE listing: name, price, condition,
 // image, category, community, description, and the selected approved meeting spot.
-// Sold, inactive, and missing listings are all
-// "Listing not found." Requires a login; only the owner and members of the listing's
-// community can view it.
+// Inactive and missing listings are "Listing not found."; a sold listing is 410 "This item has been sold."
+// (after the membership check, so non-members never learn it sold). Requires a login; only the owner
+// and members of the listing's community can view it.
 header("Content-Type: application/json");
 
 // Suppress all warnings/notices so nothing (SQL errors, stack traces) leaks into the JSON payload
@@ -60,9 +60,9 @@ try {
     $pdo = item_details_pdo();
     $stmt = $pdo->prepare(
         "SELECT listing_id, owner_id, name, price, `condition`, image_url, category, community, description,
-                meeting_location, meeting_location_id, allow_offers
+                meeting_location, meeting_location_id, allow_offers, status
            FROM listings
-          WHERE listing_id = ? AND status = 'active'"
+          WHERE listing_id = ? AND status IN ('active', 'sold')"
     );
     $stmt->execute([$listingId]);
     $row = $stmt->fetch();
@@ -72,6 +72,9 @@ try {
     }
     if (!karavan_can_shop_listing($pdo, $userId, $row)) {
         respond(403, ["success" => false, "error" => KARAVAN_NOT_A_MEMBER_ERROR]);
+    }
+    if ($row['status'] === 'sold') {
+        respond(410, ["success" => false, "error" => "This item has been sold."]);
     }
 
     $description = $row['description'] ?? null;
