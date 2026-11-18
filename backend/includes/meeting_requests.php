@@ -354,7 +354,46 @@ function karavan_cancel_meeting_request(PDO $pdo, ?int $userId, $input): array
     return [200, ['success' => true]];
 }
 
-// Seller side: requests on listings the logged-in user owns, with the buyer's email.
+/** Lets the buyer delete one of their own denied requests, whatever the listing's status. */
+function karavan_remove_denied_request(PDO $pdo, ?int $userId, $input): array
+{
+    if ($userId === null) {
+        return karavan_not_logged_in();
+    }
+    $input = is_array($input) ? $input : [];
+
+    $requestId = karavan_parse_positive_id($input['request_id'] ?? null);
+    if ($requestId === null) {
+        return [400, ['success' => false, 'error' => 'A valid request_id is required.']];
+    }
+
+    $stmt = $pdo->prepare('SELECT request_id, buyer_id, status FROM meeting_requests WHERE request_id = ?');
+    $stmt->execute([$requestId]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        return [404, ['success' => false, 'error' => 'Meeting request not found.']];
+    }
+    if ((int) $row['buyer_id'] !== $userId) {
+        return [403, ['success' => false, 'error' => 'You can only remove your own requests.']];
+    }
+    if ($row['status'] !== 'denied') {
+        return [409, ['success' => false, 'error' => 'Only a denied request can be removed.']];
+    }
+
+    try {
+        $delete = $pdo->prepare("DELETE FROM meeting_requests WHERE request_id = ? AND buyer_id = ? AND status = 'denied'");
+        $delete->execute([$requestId, $userId]);
+        if ($delete->rowCount() === 0) {
+            return [404, ['success' => false, 'error' => 'Meeting request not found.']];
+        }
+    } catch (PDOException $e) {
+        return [500, ['success' => false, 'error' => 'Could not remove the meeting request.']];
+    }
+
+    return [200, ['success' => true]];
+}
+
+// Seller side: requests on listings the logged-in user owns, with the buyer's email. Denied requests are left out.
 const KARAVAN_INCOMING_REQUEST_SELECT =
     'SELECT r.request_id, r.buyer_id, r.listing_id, l.name, l.price, l.image_url, l.community, u.email AS buyer,
             r.meeting_date, r.meeting_time, r.location_id, r.location_label, r.status, r.checked_in_at,
@@ -392,7 +431,7 @@ function karavan_list_incoming_meeting_requests(PDO $pdo, ?int $userId): array
         return karavan_not_logged_in();
     }
 
-    $stmt = $pdo->prepare(KARAVAN_INCOMING_REQUEST_SELECT . ' WHERE l.owner_id = ? ORDER BY r.created_at ASC, r.request_id ASC');
+    $stmt = $pdo->prepare(KARAVAN_INCOMING_REQUEST_SELECT . " WHERE l.owner_id = ? AND r.status <> 'denied' ORDER BY r.created_at ASC, r.request_id ASC");
     $stmt->execute([$userId]);
 
     return [200, ['success' => true, 'requests' => array_map('karavan_format_incoming_request', $stmt->fetchAll())]];
