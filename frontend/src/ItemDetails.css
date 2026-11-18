@@ -191,9 +191,20 @@
 .id-request-count {
   max-width: 100%;
   margin: 16px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 14px;
-  color: var(--ps-muted);
+  color: var(--ps-navy);
   overflow-wrap: anywhere;
+}
+
+.id-request-count svg {
+  flex-shrink: 0;
+}
+
+.id-request-count strong {
+  font-weight: 700;
 }
 
 .id-facts {

@@ -18,15 +18,21 @@ export function requestCountText(count) {
     return `${count} people have requested this item`;
 }
 
-// Resolves to the line to show, or null when the answer is an error or cannot be used. Never throws.
-export async function loadRequestCountText(listingId) {
+// Resolves to the valid count, or null when the answer is an error or cannot be used. Never throws.
+export async function loadRequestCount(listingId) {
     try {
         const data = await fetchRequestCount(listingId);
         if (data && data.success === true && Number.isInteger(data.request_count) && data.request_count >= 0) {
-            return requestCountText(data.request_count);
+            return data.request_count;
         }
     } catch {
         // Network failure, empty or invalid answer: no line.
     }
     return null;
+}
+
+// Resolves to the line to show, or null when there is no usable count.
+export async function loadRequestCountText(listingId) {
+    const count = await loadRequestCount(listingId);
+    return count === null ? null : requestCountText(count);
 }

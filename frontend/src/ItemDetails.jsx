@@ -13,7 +13,7 @@ import Stars from './components/Stars.jsx';
 import { messagePageUrl } from './messages.js';
 import { ratingSummaryText, sellerPageUrl } from './ratings.js';
 import { shareListing } from './shareListing.js';
-import { loadRequestCountText } from './requestCount.js';
+import { loadRequestCount } from './requestCount.js';
 
 const SEARCH_HREF = './product-search.html';
 
@@ -70,6 +70,16 @@ function ShareIcon() {
     );
 }
 
+function PeopleIcon() {
+    return (
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+            <circle cx="9" cy="8" r="3.5" />
+            <path d="M2.5 20v-1a5.5 5.5 0 0 1 5.5-5.5h2a5.5 5.5 0 0 1 5.5 5.5v1" />
+            <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14a5.5 5.5 0 0 1 3 5v1" />
+        </svg>
+    );
+}
+
 function ItemDetails() {
     const from = itemPageFrom(window.location.search);
     const [listing, setListing] = useState(null);
@@ -84,7 +94,7 @@ function ItemDetails() {
     const [heartPending, setHeartPending] = useState(false);
     const [shareNote, setShareNote] = useState({ ok: false, message: '' });
     const [sharePending, setSharePending] = useState(false);
-    const [requestCountText, setRequestCountText] = useState(null);
+    const [requestCount, setRequestCount] = useState(null);
 
     useEffect(() => {
         const listingId = new URLSearchParams(window.location.search).get('listing_id') ?? '';
@@ -113,8 +123,8 @@ function ItemDetails() {
             })
             .catch(() => {});
 
-        loadRequestCountText(listingId).then((text) => {
-            if (!cancelled) setRequestCountText(text);
+        loadRequestCount(listingId).then((count) => {
+            if (!cancelled) setRequestCount(count);
         });
 
         loadListing(listingId)
@@ -254,7 +264,19 @@ function ItemDetails() {
                                 </div>
                             )}
 
-                            {requestCountText && <p className="id-request-count">{requestCountText}</p>}
+                            {requestCount !== null && (
+                                <p className="id-request-count">
+                                    <PeopleIcon />
+                                    {requestCount === 0
+                                        ? <span>No purchase requests yet</span>
+                                        : (
+                                            <span>
+                                                <strong>{requestCount === 1 ? '1 person' : `${requestCount} people`}</strong>
+                                                {requestCount === 1 ? ' has requested this item' : ' have requested this item'}
+                                            </span>
+                                        )}
+                                </p>
+                            )}
 
                             <dl className="id-facts">
                                 <div>
