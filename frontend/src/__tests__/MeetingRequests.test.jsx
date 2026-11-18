@@ -4,9 +4,9 @@
  */
 // Mirrors frontend task card #168 (Buyer Meeting Request Frontend), using the same payloads.
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ItemDetails from '../ItemDetails.jsx';
 import OrganizeMeet from '../OrganizeMeet.jsx';
 import Home from '../Home.jsx';
@@ -87,6 +87,16 @@ const fill = (container, { date, time }) => {
 
 const confirm = () => fireEvent.click(screen.getByRole('button', { name: 'Confirm Meeting Request' }));
 
+// A sent request takes the buyer to Home with a notice; location is replaced so the test page does not really navigate.
+const stubAssign = () => {
+    const assign = vi.fn();
+    const { pathname, search, hash } = window.location;
+    vi.stubGlobal('location', { pathname, search, hash, assign });
+    return assign;
+};
+afterEach(() => vi.unstubAllGlobals());
+const expectSentToHome = (assign) => waitFor(() => expect(assign).toHaveBeenCalledWith(expect.stringMatching(/home\.html\?request_sent=1$/)));
+
 describe('Frontend: Buyer Meeting Request (#168)', () => {
     beforeEach(() => open('item.html?listing_id=91002'));
 
@@ -128,9 +138,10 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
             'create_meeting_request.php': () => json(201, { success: true, request: {} }),
         });
         expect(screen.getByLabelText('Meeting Location')).toHaveValue('Lockwood Memorial Library Main Entrance');
+        const assign = stubAssign();
         fill(container, { date: '2026-12-12', time: '16:00' });
         confirm();
-        await screen.findByText('Your meeting request was sent.');
+        await expectSentToHome(assign);
         expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[0][1].body).location_id).toBe(91003);
         expect(callsTo(fetchMock, 'get_meeting_locations.php')).toHaveLength(0);
     });
@@ -147,9 +158,10 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(screen.getByLabelText('Preferred Time')).toHaveFocus();
         await userEvent.tab();
         expect(screen.getByRole('button', { name: 'Confirm Meeting Request' })).toHaveFocus();
+        const assign = stubAssign();
         fill(container, { date: '2026-12-12', time: '16:00' });
         confirm();
-        await screen.findByText('Your meeting request was sent.');
+        await expectSentToHome(assign);
         expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[0][1].body).location_id).toBe(workbook.meeting_location_id);
     });
 
@@ -183,14 +195,15 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(screen.queryByRole('button', { name: 'Buy Now' })).not.toBeInTheDocument();
     });
 
-    it('Test 3: sends the seller location ID with the buyers entered date/time and confirms success', async () => {
+    it('Test 3: sends the seller location ID with the buyers entered date/time and goes to Home with the sent notice', async () => {
         const { fetchMock, container } = await openMeetPage({
             'create_meeting_request.php': () => json(201, { success: true, request: {} }),
         });
+        const assign = stubAssign();
         fill(container, { date: '2026-12-12', time: '16:00' });
         confirm();
 
-        expect(await screen.findByText('Your meeting request was sent.')).toBeInTheDocument();
+        await expectSentToHome(assign);
         const [[, options]] = callsTo(fetchMock, 'create_meeting_request.php');
         expect(options.method).toBe('POST');
         expect(options.body).toBe('{"listing_id":91002,"meeting_date":"2026-12-12","meeting_time":"16:00","location_id":91001}');
@@ -258,7 +271,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(cards).toEqual([
             'Physics Lab Manual$7.50Jan 3, 9:05 AMCapen Hall Main EntrancePendingCancel Request',
             'Graphing Calculator$60.00Jan 4, 12:00 PMStudent Union Main EntranceApprovedMeeting location locked after approval.Check-in status unavailable.Seller check-in status unavailable.',
-            'Desk Chair$25.00Jan 5, 6:45 PMLockwood Memorial Library Main EntranceDenied',
+            'Desk Chair$25.00Jan 5, 6:45 PMLockwood Memorial Library Main EntranceDeniedRemove',
             'Mini Fridge$50.00Jan 6, 12:30 AMStudent Union Main EntranceLocation Change RequestedAccept New LocationDeny New Location',
         ]);
 
@@ -370,7 +383,6 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
     }
 
     const bodyOf = (fetchMock) => callsTo(fetchMock, 'respond_meeting_request.php')[0][1].body;
-    const lastCard = (container) => container.querySelectorAll('.mr-request')[1];
 
     it('lists the requests in server order with buttons only on pending ones', async () => {
         const { container } = await openHome([
@@ -426,7 +438,7 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
         expect(screen.getAllByRole('button', { name: 'Approve' })).toHaveLength(1);
     });
 
-    it('denies a request, sending exactly its id, and removes its buttons', async () => {
+    it('denies a request, sending exactly its id, and removes it from the list', async () => {
         const { fetchMock, container } = await openHome([pendingOne, pendingTwo], {
             'respond_meeting_request.php': () => json(200, { success: true, request: { ...pendingTwo, status: 'denied' } }),
         });
@@ -435,8 +447,10 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
 
         expect(await screen.findByText('You denied the meeting request.')).toBeInTheDocument();
         expect(bodyOf(fetchMock)).toBe('{"request_id":91062,"action":"deny"}');
-        expect(lastCard(container)).toHaveTextContent('Denied');
-        expect(lastCard(container).querySelector('button')).toBeNull();
+        expect(container.querySelectorAll('.mr-request')).toHaveLength(1);
+        expect(screen.queryByRole('heading', { name: 'Desk Lamp' })).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Calculus Textbook' })).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: 'Deny' })).toHaveLength(1);
     });
 
     it("shows the server's error in orange-red and leaves the request pending with its buttons", async () => {
@@ -540,6 +554,7 @@ describe('Frontend: Make Offer (#115)', () => {
         });
         const { container } = render(<OrganizeMeet />);
         await screen.findByRole('textbox', { name: 'Meeting Location' });
+        const assign = stubAssign();
         fill(container, { date: '2026-12-12', time: '16:00' });
 
         fireEvent.click(screen.getByLabelText('Make an offer'));
@@ -553,10 +568,15 @@ describe('Frontend: Make Offer (#115)', () => {
 
         fireEvent.change(screen.getByLabelText('Your offer ($)'), { target: { value: ' 15.5 ' } });
         confirm();
-        expect(await screen.findByText('Your meeting request was sent.')).toBeInTheDocument();
+        await expectSentToHome(assign);
         expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[0][1].body).offer_price).toBe('15.5');
 
-        fireEvent.click(screen.getByLabelText('Make an offer'));
+        // After a successful send the page leaves for Home, so the second send starts on a fresh page.
+        cleanup();
+        const again = render(<OrganizeMeet />);
+        await screen.findByRole('textbox', { name: 'Meeting Location' });
+        fill(again.container, { date: '2026-12-12', time: '16:00' });
+        expect(screen.getByLabelText('Make an offer')).not.toBeChecked();
         confirm();
         await waitFor(() => expect(callsTo(fetchMock, 'create_meeting_request.php')).toHaveLength(2));
         expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[1][1].body)).not.toHaveProperty('offer_price');

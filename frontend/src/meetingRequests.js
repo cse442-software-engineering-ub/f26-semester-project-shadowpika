@@ -124,6 +124,17 @@ export async function dismissLocationChangeResult(requestId) {
     return response.json();
 }
 
+// Buyer removes a denied request from "My Purchase Requests" (card #237).
+export async function removeDeniedRequest(requestId) {
+    const response = await fetch('./api/remove_denied_request.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ request_id: Number(requestId) }),
+    });
+    return response.json();
+}
+
 // "Today" is the campus date, matching the backend's future-date check.
 export const campusToday = (now = new Date()) =>
     new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(now);
