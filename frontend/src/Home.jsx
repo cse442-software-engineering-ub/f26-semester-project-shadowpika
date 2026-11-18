@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import NavBar from './NavBar.jsx';
 import ItemCover from './ItemCover.jsx';
 import IncomingRequests from './IncomingRequests.jsx';
@@ -11,16 +11,31 @@ import { sellerPageUrl } from './ratings.js';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
-import { STATUS_LABELS, acceptLocationChange, cancelMeetingRequest, denyLocationChange, fetchMyMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl } from './meetingRequests.js';
+import { STATUS_LABELS, acceptLocationChange, cancelMeetingRequest, denyLocationChange, fetchMyMeetingRequests, formatMeetingDate, formatMeetingTime, removeDeniedRequest, requestItemUrl } from './meetingRequests.js';
 
 // Home page: recommended items, previously viewed items, then the logged-in buyer's meeting requests, in the order the server sends them.
 function Home() {
     const { requests, setRequests, status, error, startMutation, finishMutation, refresh } =
         useMeetingList(fetchMyMeetingRequests, 'Unable to load your purchase requests.');
-    const [message, setMessage] = useState(null); // result of the last cancel: { kind, text }
+    // Result of the last action: { kind, text }. Starts as the "request sent" notice when Organize a Meet sent the buyer here.
+    const [message, setMessage] = useState(() => (
+        new URLSearchParams(window.location.search).get('request_sent') === '1'
+            ? { kind: 'success', text: 'Your meeting request was sent.' }
+            : null
+    ));
     const [cancellingId, setCancellingId] = useState(null);
     const [acceptingId, setAcceptingId] = useState(null);
     const [denyingId, setDenyingId] = useState(null);
+    const [removingId, setRemovingId] = useState(null);
+
+    // Drop the notice flag from the address so a reload does not show it again.
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has('request_sent')) return;
+        params.delete('request_sent');
+        const query = params.toString();
+        window.history.replaceState({}, '', window.location.pathname + (query ? `?${query}` : '') + window.location.hash);
+    }, []);
 
     // Only a pending request can be canceled; the server refuses anything else and its error is shown.
     async function handleCancel(listingId) {
@@ -97,6 +112,31 @@ function Home() {
         }
     }
 
+    // Only a denied request can be removed; the server refuses anything else and its error is shown.
+    async function handleRemove(request) {
+        if (!startMutation()) return;
+        let reload = false;
+        setMessage(null);
+        setRemovingId(request.request_id);
+        try {
+            const data = await removeDeniedRequest(request.request_id);
+            if (data.success) {
+                setRequests((current) => current.filter((item) => item.request_id !== request.request_id));
+                setMessage({ kind: 'success', text: 'The denied request was removed.' });
+            } else {
+                reload = true;
+                setMessage({ kind: 'error', text: data.error || 'Unable to remove the denied request.' });
+            }
+        } catch {
+            reload = true;
+            setMessage({ kind: 'error', text: 'Could not connect to the server.' });
+        } finally {
+            finishMutation();
+            if (reload) refresh();
+            setRemovingId(null);
+        }
+    }
+
     return (
         <div className="ps-page">
             <NavBar />
@@ -158,6 +198,16 @@ function Home() {
                                                 onClick={() => handleCancel(request.listing_id)}
                                             >
                                                 Cancel Request
+                                            </button>
+                                        )}
+                                        {request.status === 'denied' && (
+                                            <button
+                                                type="button"
+                                                className="mr-cancel"
+                                                disabled={removingId === request.request_id}
+                                                onClick={() => handleRemove(request)}
+                                            >
+                                                Remove
                                             </button>
                                         )}
                                         {request.status === 'location_change_requested' && (

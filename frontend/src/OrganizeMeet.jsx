@@ -5,6 +5,7 @@ import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
 import { createMeetingRequest, itemPageFrom, itemUrlFrom, loadListing, meetingRequestError, offerError, offerLimits } from './meetingRequests.js';
+import { apiUrl } from './routes.js';
 
 const CONNECTION_ERROR = 'Could not connect to the server.';
 const LOCATION_UNAVAILABLE = "The seller's meeting location is unavailable. Return to the item and try again.";
@@ -72,12 +73,18 @@ function OrganizeMeet() {
         setMessage(null);
         createMeetingRequest({ listingId, date, time, locationId, ...(sendOffer ? { offerPrice: offer } : {}) })
             .then((data) => {
-                setMessage(data.success
-                    ? { kind: 'success', text: 'Your meeting request was sent.' }
-                    : { kind: 'error', text: data.error || 'Your meeting request could not be sent.' });
+                if (data.success) {
+                    // Stay disabled while the browser leaves for Home, so a second click cannot send it twice.
+                    window.location.assign(apiUrl('home.html?request_sent=1'));
+                    return;
+                }
+                setMessage({ kind: 'error', text: data.error || 'Your meeting request could not be sent.' });
+                setSending(false);
             })
-            .catch(() => setMessage({ kind: 'error', text: CONNECTION_ERROR }))
-            .finally(() => setSending(false));
+            .catch(() => {
+                setMessage({ kind: 'error', text: CONNECTION_ERROR });
+                setSending(false);
+            });
     };
 
     return (

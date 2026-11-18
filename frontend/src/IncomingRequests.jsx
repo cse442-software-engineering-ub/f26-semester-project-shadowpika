@@ -29,7 +29,10 @@ function IncomingRequests() {
         try {
             const data = await respondMeetingRequest(request.request_id, action, locationId);
             if (data.success) {
-                setRequests((current) => current.map((item) => (item.request_id === request.request_id ? data.request : item)));
+                // A denied request leaves the list; the server no longer lists denied requests.
+                setRequests((current) => (action === 'deny'
+                    ? current.filter((item) => item.request_id !== request.request_id)
+                    : current.map((item) => (item.request_id === request.request_id ? data.request : item))));
                 setPicker(null);
                 setMessage({ kind: 'success', text: SUCCESS_TEXT[action] });
             } else {
