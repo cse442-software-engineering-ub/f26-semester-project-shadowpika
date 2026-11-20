@@ -4,6 +4,7 @@ import MeetingProgress from './MeetingProgress.jsx';
 import useMeetingList from './useMeetingList.js';
 import { canCheckIn, canMarkSold, updateListing } from './listingSales.js';
 import { fetchMeetingLocations } from './api.js';
+import ActionConfirmationDialog from './components/ActionConfirmationDialog.jsx';
 import { STATUS_LABELS, dismissLocationChangeResult, fetchIncomingMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl, respondMeetingRequest } from './meetingRequests.js';
 
 const SUCCESS_TEXT = {
@@ -18,6 +19,8 @@ function IncomingRequests() {
         useMeetingList(fetchIncomingMeetingRequests, 'Unable to load requests for your items.');
     const [message, setMessage] = useState(null); // result of the last action: { kind, text }
     const [busy, setBusy] = useState(false);
+    const [saleConfirmation, setSaleConfirmation] = useState(null);
+    const headingRef = React.useRef(null);
     const [picker, setPicker] = useState(null); // { requestId, locations, choice } while a Change Location picker is open
 
     // Only a pending request can be answered; the server refuses anything else and its error is shown.
@@ -130,7 +133,7 @@ function IncomingRequests() {
 
     return (
         <section className="mr-requests" aria-labelledby="mr-incoming-title">
-            <h2 id="mr-incoming-title" className="mr-section-title">Requests for My Items</h2>
+            <h2 ref={headingRef} tabIndex={-1} id="mr-incoming-title" className="mr-section-title">Requests for My Items</h2>
 
             {status === 'loading' && <p className="id-message">Loading requests for your items...</p>}
             {error && <p className="id-message id-error" role="alert">{error} <button type="button" className="mr-cancel" onClick={refresh}>Reload incoming requests</button></p>}
@@ -184,7 +187,7 @@ function IncomingRequests() {
                                             {canCheckIn(request, true) && <a className="mr-cancel"
                                                 href={`./check-in.html?request_id=${encodeURIComponent(request.request_id)}`}>Check In</a>}
                                             {canMarkSold(request) && <button type="button" className="mr-cancel"
-                                                disabled={busy} onClick={() => markSold(request)}>Mark as sold</button>}
+                                                disabled={busy} onClick={(event) => setSaleConfirmation({ request, trigger: event.currentTarget })}>Mark as sold</button>}
                                         </div>
                                     )}
                                     {request.status === 'pending' && !pickerOpen && (
@@ -217,6 +220,20 @@ function IncomingRequests() {
                     })}
                 </ul>
             )}
+            {saleConfirmation && <ActionConfirmationDialog title="Mark this listing as sold?"
+                confirmLabel="Mark as Sold" cancelLabel="Keep Listing" busy={busy}
+                trigger={saleConfirmation.trigger} fallbackRef={headingRef}
+                onDismiss={() => { if (!busy) setSaleConfirmation(null); }}
+                onConfirm={async () => {
+                    const current = requests.find((request) => request.request_id === saleConfirmation.request.request_id);
+                    if (!current || !canMarkSold(current)) {
+                        setMessage({ kind: 'error', text: 'This listing is no longer ready to be marked as sold. Reload to check its status.' });
+                    } else await markSold(current);
+                    setSaleConfirmation(null);
+                }}>
+                <p><strong>{saleConfirmation.request.name}</strong></p>
+                <p>Both participants have checked in. This listing will be marked Sold and removed from marketplace results.</p>
+            </ActionConfirmationDialog>}
         </section>
     );
 }

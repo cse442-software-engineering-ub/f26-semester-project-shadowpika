@@ -85,7 +85,9 @@ it('confirms an explicit sale, blocks double clicks, invalidates old polls and u
     await tick();
     sale = () => pending.promise;
     const button = screen.getByRole('button', { name: 'Mark as sold' });
-    fireEvent.click(button); fireEvent.click(button);
+    fireEvent.click(button);
+    const saleConfirm = screen.getByRole('button', { name: 'Mark as Sold', exact: true });
+    fireEvent.click(saleConfirm); fireEvent.click(saleConfirm);
     expect(calls('update_listing.php')).toHaveLength(1);
     expect(screen.queryByText('Listing marked as sold.')).not.toBeInTheDocument();
     expect(JSON.parse(calls('update_listing.php')[0][1].body)).toEqual({
@@ -107,7 +109,8 @@ it('shows a Sold rejection and reloads attendance without claiming success', asy
     await mount();
     incoming = [{ ...REQUEST }];
     sale = () => new Response(JSON.stringify({ success: false, code: 'checkins_required', error: 'Both parties must check in first.' }), { status: 409 });
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as sold' })));
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as sold' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as Sold', exact: true })));
     expect(screen.getByRole('alert')).toHaveTextContent('Both parties must check in first.');
     expect(screen.queryByText('Listing marked as sold.')).not.toBeInTheDocument();
     expect(screen.queryByText('Listing sold.')).not.toBeInTheDocument();
@@ -178,7 +181,8 @@ it('removes a confirmed sale immediately even when the follow-up refresh fails',
     incoming = [READY, { ...READY, request_id: 72 }];
     await mount();
     sellerLoad = () => { throw new TypeError('Failed to fetch'); };
-    await act(async () => fireEvent.click(screen.getAllByRole('button', { name: 'Mark as sold' })[0]));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Mark as sold' })[0]);
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as Sold', exact: true })));
     expect(screen.getByText('Listing marked as sold.')).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent('Could not connect to the server.');
     expect(screen.queryByText('Temporary meeting')).not.toBeInTheDocument();
@@ -192,7 +196,8 @@ it('hides a remotely confirmed sale after its POST response is lost without inve
         incoming = [{ ...READY, listing_status: 'sold', can_mark_sold: false }];
         throw new TypeError('Connection lost');
     };
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as sold' })));
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as sold' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as Sold', exact: true })));
     expect(screen.getByRole('alert')).toHaveTextContent('Reload to check the listing status.');
     expect(screen.queryByText('Listing marked as sold.')).not.toBeInTheDocument();
     expect(screen.queryByText('Temporary meeting')).not.toBeInTheDocument();
@@ -331,7 +336,8 @@ it('does not restore a canceled pending request from an earlier poll', async () 
     await mount();
     const old = deferred(); buyerLoad = () => old.promise;
     await tick();
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Cancel Request' })));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel Request' }));
+    await act(async () => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel Request' })));
     await act(async () => old.resolve(json({ success: true, requests: [{ ...REQUEST, status: 'pending' }] })));
     const buyer = screen.getByRole('region', { name: 'My Purchase Requests' });
     expect(within(buyer).queryByText('Temporary meeting')).not.toBeInTheDocument();

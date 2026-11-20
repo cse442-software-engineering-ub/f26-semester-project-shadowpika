@@ -7,6 +7,7 @@ import { apiUrl } from './routes.js';
 import { updateListing } from './listingSales.js';
 import { MEETING_REFRESH_MS } from './useMeetingList.js';
 import FreezeListingsDialog from './components/FreezeListingsDialog.jsx';
+import ActionConfirmationDialog from './components/ActionConfirmationDialog.jsx';
 
 const BASE_API_PATH = apiUrl('listing/api');
 
@@ -19,6 +20,7 @@ export default function ManageListings() {
     const [loadError, setLoadError] = useState('');
     const [notice, setNotice] = useState(null);
     const [busyId, setBusyId] = useState(null);
+    const [actionConfirmation, setActionConfirmation] = useState(null);
     const [freezeDialogOpen, setFreezeDialogOpen] = useState(false);
     const [freezing, setFreezing] = useState(false);
     const [freezeNeedsRefresh, setFreezeNeedsRefresh] = useState(false);
@@ -232,7 +234,7 @@ export default function ManageListings() {
             if (!mounted.current) return;
             const { frozen_count: frozen, skipped_count: skipped, cancelled_request_count: cancelled } = result;
             if (![frozen, skipped, cancelled].every((count) => Number.isInteger(count) && count >= 0)) {
-                throw new Error('Freeze result unavailable. Reload listings to check the current state before trying again.');
+                throw new Error('Pause result unavailable. Reload listings to check the current state before trying again.');
             }
             const plural = (count, noun) => `${count} ${noun}${count === 1 ? '' : 's'}`;
             setNotice({ kind: 'success', text: `Paused ${plural(frozen, 'listing')}. Skipped ${plural(skipped, 'listing')} with protected meetings. Canceled ${plural(cancelled, 'unapproved request')}.` });
@@ -240,7 +242,7 @@ export default function ManageListings() {
         } catch (err) {
             if (mounted.current) setNotice({ kind: 'error', text: err instanceof TypeError
                 ? 'Could not connect to the server. Reload listings to check the current state before trying again.'
-                : err.message || 'Unable to freeze your listings. Reload listings to check the current state.' });
+                : err.message || 'Unable to pause your listings. Reload listings to check the current state.' });
         } finally {
             mutating.current = false;
             if (mounted.current) {
@@ -466,12 +468,12 @@ export default function ManageListings() {
                     </div>
                     <button ref={freezeButtonRef} type="button" className="ml-status-action ml-freeze-button ml-freeze-trigger"
                         disabled={busy || !canFreeze} aria-describedby="ml-freeze-note"
-                        onClick={() => { if (!mutating.current && canFreeze) setFreezeDialogOpen(true); }}>Freeze All Listings</button>
+                        onClick={() => { if (!mutating.current && canFreeze) setFreezeDialogOpen(true); }}>Pause All Listings</button>
                 </div>
                 <p id="ml-freeze-note" className="ml-freeze-note">
-                    {loading ? 'Loading freeze availability…' : loadError ? 'Freeze availability is unavailable. Reload listings above to check the current state.' : !freezeAvailabilityKnown
-                        ? <>Freeze availability is unavailable. <button type="button" disabled={busy} onClick={() => loadDatabaseListings()}>Reload listings</button> to check the current state.</>
-                        : eligibleCount === 0 ? 'No eligible active listings to freeze.'
+                    {loading ? 'Loading pause availability…' : loadError ? 'Pause availability is unavailable. Reload listings above to check the current state.' : !freezeAvailabilityKnown
+                        ? <>Pause availability is unavailable. <button type="button" disabled={busy} onClick={() => loadDatabaseListings()}>Reload listings</button> to check the current state.</>
+                        : eligibleCount === 0 ? 'No eligible active listings to pause.'
                         : 'Listings with protected meetings stay active. Unapproved requests for paused listings will be canceled.'}
                 </p>
 
@@ -538,11 +540,13 @@ export default function ManageListings() {
                                                 onClick={() => { setSelectedListing(item); window.location.hash = `edit=${item.listing_id}`; }}>Edit listing</button>
                                             <button type="button" className="ml-status-action"
                                                 disabled={busy || (itemStatus === 'active' && item.can_mark_sold !== true)}
-                                                onClick={() => handleAction(item.listing_id, itemStatus === 'active' ? 'mark_sold' : itemStatus === 'inactive' ? 'resume' : 'mark_active')}>
+                                                onClick={(event) => itemStatus === 'active'
+                                                    ? setActionConfirmation({ item, action: 'mark_sold', trigger: event.currentTarget })
+                                                    : handleAction(item.listing_id, itemStatus === 'inactive' ? 'resume' : 'mark_active')}>
                                                 {itemStatus === 'active' ? 'Mark as sold' : 'Mark as available'}
                                             </button>
                                             <button type="button" className="ml-status-action ml-delete" disabled={busy}
-                                                onClick={() => handleAction(item.listing_id, 'delete')}>Delete</button>
+                                                onClick={(event) => setActionConfirmation({ item, action: 'delete', trigger: event.currentTarget })}>Delete</button>
                                         </div>
                                     </div>
                                 </div>
@@ -554,6 +558,25 @@ export default function ManageListings() {
             {freezeDialogOpen && <FreezeListingsDialog busy={freezing} canConfirm={canFreeze}
                 onConfirm={handleFreeze} onDismiss={() => { if (!mutating.current) setFreezeDialogOpen(false); }}
                 triggerRef={freezeButtonRef} fallbackRef={pausedTabRef} />}
+            {actionConfirmation && <ActionConfirmationDialog
+                title={actionConfirmation.action === 'delete' ? 'Delete this listing?' : 'Mark this listing as sold?'}
+                confirmLabel={actionConfirmation.action === 'delete' ? 'Delete Listing' : 'Mark as Sold'}
+                cancelLabel="Keep Listing" busy={busyId !== null}
+                trigger={actionConfirmation.trigger} fallbackRef={pausedTabRef}
+                onDismiss={() => { if (!mutating.current) setActionConfirmation(null); }}
+                onConfirm={async () => {
+                    if (mutating.current) return;
+                    const item = listings.find((listing) => listing.listing_id === actionConfirmation.item.listing_id);
+                    if (!item || (actionConfirmation.action === 'mark_sold' && item.can_mark_sold !== true)) {
+                        setNotice({ kind: 'error', text: 'This listing is no longer available for this action. Reload to check its status.' });
+                    } else await handleAction(item.listing_id, actionConfirmation.action);
+                    if (mounted.current) setActionConfirmation(null);
+                }}>
+                <p><strong>{actionConfirmation.item.name}</strong></p>
+                <p>{actionConfirmation.action === 'delete'
+                    ? 'This will permanently delete this listing and its meeting requests. This cannot be undone.'
+                    : 'Both participants have checked in. This listing will be marked Sold and removed from marketplace results.'}</p>
+            </ActionConfirmationDialog>}
         </div>
     );
 }

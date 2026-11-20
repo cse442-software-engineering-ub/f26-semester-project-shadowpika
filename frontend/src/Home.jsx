@@ -8,6 +8,7 @@ import MeetingProgress from './MeetingProgress.jsx';
 import useMeetingList from './useMeetingList.js';
 import { canCheckIn } from './listingSales.js';
 import { sellerPageUrl } from './ratings.js';
+import ActionConfirmationDialog from './components/ActionConfirmationDialog.jsx';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
@@ -24,6 +25,8 @@ function Home() {
             : null
     ));
     const [cancellingId, setCancellingId] = useState(null);
+    const [cancelConfirmation, setCancelConfirmation] = useState(null);
+    const headingRef = React.useRef(null);
     const [acceptingId, setAcceptingId] = useState(null);
     const [denyingId, setDenyingId] = useState(null);
     const [removingId, setRemovingId] = useState(null);
@@ -141,7 +144,7 @@ function Home() {
         <div className="ps-page">
             <NavBar />
             <main className="ps-frame id-frame">
-                <h1 className="ps-title">Home</h1>
+                <h1 ref={headingRef} tabIndex={-1} className="ps-title">Home</h1>
 
                 <RecommendedItems />
 
@@ -195,7 +198,7 @@ function Home() {
                                                 type="button"
                                                 className="mr-cancel"
                                                 disabled={cancellingId === request.listing_id}
-                                                onClick={() => handleCancel(request.listing_id)}
+                                                onClick={(event) => setCancelConfirmation({ request, trigger: event.currentTarget })}
                                             >
                                                 Cancel Request
                                             </button>
@@ -242,6 +245,22 @@ function Home() {
 
                 <IncomingRequests />
             </main>
+            {cancelConfirmation && <ActionConfirmationDialog title="Cancel this meeting request?"
+                confirmLabel="Cancel Request" cancelLabel="Keep Request" busy={cancellingId !== null}
+                trigger={cancelConfirmation.trigger} fallbackRef={headingRef}
+                onDismiss={() => { if (cancellingId === null) setCancelConfirmation(null); }}
+                onConfirm={async () => {
+                    const current = requests.find((request) => request.request_id === cancelConfirmation.request.request_id
+                        && request.listing_id === cancelConfirmation.request.listing_id);
+                    if (!current || current.status !== 'pending') {
+                        setMessage({ kind: 'error', text: 'This request is no longer pending. Reload to check its status.' });
+                    } else await handleCancel(current.listing_id);
+                    setCancelConfirmation(null);
+                }}>
+                <p><strong>{cancelConfirmation.request.name}</strong></p>
+                <p>{formatMeetingDate(cancelConfirmation.request.meeting_date)}, {formatMeetingTime(cancelConfirmation.request.meeting_time)} — {cancelConfirmation.request.location}</p>
+                <p>The meeting request will be canceled. The listing will remain available.</p>
+            </ActionConfirmationDialog>}
         </div>
     );
 }
