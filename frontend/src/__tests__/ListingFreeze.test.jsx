@@ -63,8 +63,8 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 const mount = async () => { let view; await act(async () => { view = render(<ManageListings />); }); return view; };
 const writes = () => fetchMock.mock.calls.filter(([url]) => url.endsWith('update_listing.php'));
-const open = () => fireEvent.click(screen.getByRole('button', { name: 'Freeze All Listings' }));
-const confirm = () => fireEvent.click(screen.getByRole('button', { name: 'Freeze Listings', exact: true }));
+const open = () => fireEvent.click(screen.getByRole('button', { name: 'Pause All Listings' }));
+const confirm = () => fireEvent.click(screen.getByRole('button', { name: 'Pause Listings', exact: true }));
 const mixed = () => {
     items = [{ ...ITEM }, { ...ITEM, listing_id: 82, name: 'Backpack', can_freeze: false, freeze_block_reason: 'approved_meeting' },
         { ...ITEM, listing_id: 83, name: 'Study Lamp', can_freeze: false, freeze_block_reason: 'completed_meeting', can_mark_sold: true },
@@ -74,8 +74,8 @@ const mixed = () => {
 
 it('cycles Tab and Shift+Tab inside the confirmation controls', async () => {
     await mount(); open();
-    const first = screen.getByRole('button', { name: 'Close freeze confirmation' });
-    const last = screen.getByRole('button', { name: 'Freeze Listings', exact: true });
+    const first = screen.getByRole('button', { name: 'Close pause confirmation' });
+    const last = screen.getByRole('button', { name: 'Pause Listings', exact: true });
     last.focus(); fireEvent.keyDown(last, { key: 'Tab' });
     expect(first).toHaveFocus();
     fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
@@ -83,9 +83,9 @@ it('cycles Tab and Shift+Tab inside the confirmation controls', async () => {
     expect(writes()).toHaveLength(0);
 });
 
-it.each(['Keep Listings', 'Close freeze confirmation', 'Escape'])('dismisses with %s without sending a mutation and returns focus', async (choice) => {
+it.each(['Keep Listings', 'Close pause confirmation', 'Escape'])('dismisses with %s without sending a mutation and returns focus', async (choice) => {
     await mount(); open();
-    const dialog = screen.getByRole('dialog', { name: 'Freeze eligible active listings?' });
+    const dialog = screen.getByRole('dialog', { name: 'Pause eligible active listings?' });
     expect(within(dialog).getByText(/both participants checked in/)).toBeVisible();
     expect(within(dialog).getByText(/will not restore those requests/)).toBeVisible();
     expect(screen.getByRole('button', { name: 'Keep Listings' })).toHaveFocus();
@@ -95,21 +95,21 @@ it.each(['Keep Listings', 'Close freeze confirmation', 'Escape'])('dismisses wit
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(writes()).toHaveLength(0);
     expect(screen.getByRole('button', { name: 'View Active (1)' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Freeze All Listings' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Pause All Listings' })).toHaveFocus();
 });
 
 it('waits for confirmation, blocks repeated clicks and shows exact server counts and paused results', async () => {
     mixed(); const response = deferred(); const apply = post;
     post = () => response.promise;
     await mount(); open();
-    const freezeButton = screen.getByRole('button', { name: 'Freeze Listings', exact: true });
+    const freezeButton = screen.getByRole('button', { name: 'Pause Listings', exact: true });
     fireEvent.click(freezeButton); fireEvent.click(freezeButton);
     expect(writes()).toHaveLength(1);
     const [url, options] = writes()[0];
     expect(url).toBe('/CSE442/2026-Fall/cse-442j/listing/api/update_listing.php');
     expect(options.credentials).toBe('same-origin');
     expect(JSON.parse(options.body)).toEqual({ action: 'freeze_all' });
-    expect(screen.getByRole('button', { name: 'Freezing…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Pausing…' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Keep Listings' })).toBeDisabled();
     fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -138,11 +138,11 @@ it.each([
 ])('fails closed with %s until a successful metadata reload', async (_, changes) => {
     items = [{ ...ITEM, ...changes }];
     await mount();
-    expect(screen.getByRole('button', { name: 'Freeze All Listings' })).toBeDisabled();
-    expect(screen.getByText(/Freeze availability is unavailable/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Pause All Listings' })).toBeDisabled();
+    expect(screen.getByText(/Pause availability is unavailable/)).toBeVisible();
     items = [{ ...ITEM }];
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Reload listings' })));
-    expect(screen.getByRole('button', { name: 'Freeze All Listings' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Pause All Listings' })).toBeEnabled();
     expect(writes()).toHaveLength(0);
 });
 
@@ -151,8 +151,8 @@ it.each(['protected', 'empty', 'only paused and sold'])('disables freeze with an
     if (state === 'empty') items = [];
     if (state === 'only paused and sold') items = [{ ...ITEM, status: 'inactive', can_freeze: false }, { ...ITEM, listing_id: 82, status: 'sold', can_freeze: false }];
     await mount();
-    expect(screen.getByRole('button', { name: 'Freeze All Listings' })).toBeDisabled();
-    expect(screen.getByText('No eligible active listings to freeze.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Pause All Listings' })).toBeDisabled();
+    expect(screen.getByText('No eligible active listings to pause.')).toBeVisible();
     open(); expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(writes()).toHaveLength(0);
 });
@@ -161,7 +161,7 @@ it('rechecks eligibility while the confirmation is open and allows a non-destruc
     await mount(); open();
     items = [{ ...ITEM, can_freeze: false, freeze_block_reason: 'approved_meeting' }];
     await act(async () => fireEvent(window, new Event('focus')));
-    expect(screen.getByRole('button', { name: 'Freeze Listings', exact: true })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Pause Listings', exact: true })).toBeDisabled();
     confirm(); expect(writes()).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: 'Keep Listings' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -199,7 +199,7 @@ it('reloads a lost successful outcome and stays disabled if authoritative reload
     await mount(); open();
     read = () => { throw new TypeError('No connection'); };
     await act(async () => confirm());
-    expect(screen.getByRole('button', { name: 'Freeze All Listings' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Pause All Listings' })).toBeDisabled();
     expect(screen.queryByText(/Paused 1 listing\./)).not.toBeInTheDocument();
     read = () => json({ success: true, results: items });
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Reload listings' })));
@@ -223,7 +223,7 @@ it('restores one paused item through resume, blocks repeated clicks and displays
     expect(screen.getByText('Listing marked as available.')).toBeVisible();
     expect(screen.getByRole('button', { name: 'View Active (1)' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'View Paused (0)' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Freeze All Listings' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Pause All Listings' })).toBeEnabled();
 });
 
 it('keeps Paused after a rejected restore and rereads the actual item state', async () => {

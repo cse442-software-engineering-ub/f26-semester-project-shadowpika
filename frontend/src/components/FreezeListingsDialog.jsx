@@ -43,9 +43,9 @@ export default function FreezeListingsDialog({ busy, canConfirm, onConfirm, onDi
             aria-describedby="ml-freeze-description" aria-busy={busy}
             onKeyDown={keepFocusInDialog}
             onCancel={(event) => { event.preventDefault(); if (!busy) onDismiss(); }}>
-            <button type="button" className="ml-dialog-close" aria-label="Close freeze confirmation"
+            <button type="button" className="ml-dialog-close" aria-label="Close pause confirmation"
                 disabled={busy} onClick={onDismiss}>×</button>
-            <h2 id="ml-freeze-title">Freeze eligible active listings?</h2>
+            <h2 id="ml-freeze-title">Pause eligible active listings?</h2>
             <div id="ml-freeze-description">
                 <p>Your eligible active listings will be paused and hidden from the marketplace.</p>
                 <p>Listings with an upcoming meeting, an open check-in window, or both participants checked in will stay active.</p>
@@ -55,7 +55,7 @@ export default function FreezeListingsDialog({ busy, canConfirm, onConfirm, onDi
                 <button ref={keepRef} type="button" className="ml-status-action" disabled={busy}
                     onClick={onDismiss}>Keep Listings</button>
                 <button type="button" className="ml-status-action ml-freeze-button" disabled={busy || !canConfirm}
-                    onClick={onConfirm}>{busy ? 'Freezing…' : 'Freeze Listings'}</button>
+                    onClick={onConfirm}>{busy ? 'Pausing…' : 'Pause Listings'}</button>
             </div>
         </dialog>
     );

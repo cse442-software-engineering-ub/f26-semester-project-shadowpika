@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import NavBar from './NavBar.jsx';
 import ItemCover from './ItemCover.jsx';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
-import { createMeetingRequest, itemPageFrom, itemUrlFrom, loadListing, meetingRequestError, offerError, offerLimits } from './meetingRequests.js';
+import { createMeetingRequest, formatMeetingDate, formatMeetingTime, itemPageFrom, itemUrlFrom, loadListing, meetingRequestError, offerError, offerLimits } from './meetingRequests.js';
 import { apiUrl } from './routes.js';
+import ActionConfirmationDialog from './components/ActionConfirmationDialog.jsx';
 
 const CONNECTION_ERROR = 'Could not connect to the server.';
 const LOCATION_UNAVAILABLE = "The seller's meeting location is unavailable. Return to the item and try again.";
@@ -21,6 +22,8 @@ function OrganizeMeet() {
     const [time, setTime] = useState('');
     const [message, setMessage] = useState(null); // { kind: 'success' | 'error', text }
     const [sending, setSending] = useState(false);
+    const [review, setReview] = useState(null);
+    const sendingRef = useRef(false);
     const [makeOffer, setMakeOffer] = useState(false);
     const [offer, setOffer] = useState('');
     const allowOffers = listing?.allow_offers === true;
@@ -69,22 +72,31 @@ function OrganizeMeet() {
             return;
         }
 
-        setSending(true);
         setMessage(null);
-        createMeetingRequest({ listingId, date, time, locationId, ...(sendOffer ? { offerPrice: offer } : {}) })
-            .then((data) => {
-                if (data.success) {
-                    // Stay disabled while the browser leaves for Home, so a second click cannot send it twice.
-                    window.location.assign(apiUrl('home.html?request_sent=1'));
-                    return;
-                }
+        setReview({ payload: { listingId, date, time, locationId, ...(sendOffer ? { offerPrice: offer } : {}) },
+            trigger: document.activeElement });
+    };
+
+    const sendReviewedRequest = async () => {
+        if (sendingRef.current || !review) return;
+        sendingRef.current = true;
+        setSending(true);
+        let leaving = false;
+        try {
+            const data = await createMeetingRequest(review.payload);
+            if (data.success) {
+                // Keep submission disabled during the existing redirect to Home.
+                leaving = true;
+                window.location.assign(apiUrl('home.html?request_sent=1'));
+            } else {
                 setMessage({ kind: 'error', text: data.error || 'Your meeting request could not be sent.' });
-                setSending(false);
-            })
-            .catch(() => {
-                setMessage({ kind: 'error', text: CONNECTION_ERROR });
-                setSending(false);
-            });
+            }
+        } catch {
+            setMessage({ kind: 'error', text: CONNECTION_ERROR });
+        } finally {
+            setReview(null);
+            if (!leaving) { sendingRef.current = false; setSending(false); }
+        }
     };
 
     return (
@@ -162,6 +174,14 @@ function OrganizeMeet() {
                     </section>
                 )}
             </main>
+            {review && <ActionConfirmationDialog title="Send this meeting request?"
+                confirmLabel="Send Request" cancelLabel="Back to Edit" busy={sending}
+                trigger={review.trigger} onConfirm={sendReviewedRequest}
+                onDismiss={() => { if (!sendingRef.current) setReview(null); }}>
+                <p><strong>{listing.name}</strong></p>
+                <p>{formatMeetingDate(review.payload.date)}, {formatMeetingTime(review.payload.time)} — {locationLabel}</p>
+                <p>{review.payload.offerPrice !== undefined ? 'Your offer' : 'Price'}: ${review.payload.offerPrice ?? listing.price}</p>
+            </ActionConfirmationDialog>}
         </div>
     );
 }

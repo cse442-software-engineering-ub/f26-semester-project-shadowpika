@@ -85,7 +85,11 @@ const fill = (container, { date, time }) => {
     if (time !== undefined) fireEvent.change(container.querySelector('input[type="time"]'), { target: { value: time } });
 };
 
-const confirm = () => fireEvent.click(screen.getByRole('button', { name: 'Confirm Meeting Request' }));
+const confirm = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Meeting Request' }));
+    const send = screen.queryByRole('button', { name: 'Send Request' });
+    if (send) fireEvent.click(send);
+};
 
 // A sent request takes the buyer to Home with a notice; location is replaced so the test page does not really navigate.
 const stubAssign = () => {
@@ -316,6 +320,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         render(<Home />);
 
         fireEvent.click(await screen.findByRole('button', { name: 'Cancel Request' }));
+        fireEvent.click(screen.getAllByRole('button', { name: 'Cancel Request' }).find((button) => button.closest('dialog')));
 
         expect(await screen.findByText('Your meeting request was canceled.')).toBeInTheDocument();
         const [[url, options]] = callsTo(fetchMock, 'cancel_meeting_request.php');
@@ -348,6 +353,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(container.querySelector('.mr-request').contains(buttons[0])).toBe(true);
 
         fireEvent.click(buttons[0]);
+        fireEvent.click(screen.getAllByRole('button', { name: 'Cancel Request' }).find((button) => button.closest('dialog')));
 
         const alert = await screen.findByRole('alert');
         expect(alert).toHaveTextContent('You have no pending meeting request for this item.');
