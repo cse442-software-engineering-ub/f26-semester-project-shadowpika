@@ -1,11 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 
 const settingsDir = resolve(__dirname, '../../settings');
 const html = readFileSync(resolve(settingsDir, 'account-settings.html'), 'utf8');
-const css = readFileSync(resolve(settingsDir, 'account-settings.css'), 'utf8');
 
 function loadPage(sessionBody) {
     document.body.innerHTML = html.match(/<body>([\s\S]*)<\/body>/)[1];
@@ -13,11 +12,6 @@ function loadPage(sessionBody) {
     globalThis.fetch = vi.fn(() => Promise.resolve({ json: () => Promise.resolve(sessionBody) }));
     const inline = [...document.body.querySelectorAll('script:not([src])')].map((s) => s.textContent).join('\n');
     window.eval(inline);
-}
-
-function cssRule(selector) {
-    const escaped = selector.replace('.', '\\.');
-    return css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))[1];
 }
 
 afterEach(() => {
@@ -43,7 +37,11 @@ describe('Account settings page', () => {
         expect(document.getElementById('name').value).toBe('');
     });
 
-    it.each(['.change-password', '.delete-button', '.save-button'])('%s uses white text', (selector) => {
-        expect(cssRule(selector)).toMatch(/(^|[\s;])color:\s*#ffffff/i);
+    it('links Reset Password directly to the password reset page', async () => {
+        loadPage({ success: false, logged_in: false });
+        await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+        const link = screen.getByRole('link', { name: 'Reset Password' });
+        expect(link).toHaveAttribute('href', '../reset-password.html');
+        expect(link.querySelector('button')).toBeNull();
     });
 });

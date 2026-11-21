@@ -69,7 +69,7 @@ export default function PendingJoinRequests() {
                                 <div className="kv-join-requests__actions">
                                     <button
                                         type="button"
-                                        className="kv-join-requests__approve"
+                                        className="kv-action-button kv-action-button--primary"
                                         disabled={busyKey !== null}
                                         onClick={() => decide(request, 'approve')}
                                     >
@@ -77,7 +77,7 @@ export default function PendingJoinRequests() {
                                     </button>
                                     <button
                                         type="button"
-                                        className="kv-join-requests__deny"
+                                        className="kv-action-button"
                                         disabled={busyKey !== null}
                                         onClick={() => decide(request, 'deny')}
                                     >

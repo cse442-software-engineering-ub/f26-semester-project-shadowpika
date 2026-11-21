@@ -43,8 +43,10 @@ export default function ActionConfirmationDialog({ title, children, confirmLabel
             <h2 id={titleId}>{title}</h2>
             <div id={descriptionId}>{children}</div>
             <div className="action-confirmation-actions">
-                <button ref={cancelRef} type="button" disabled={busy} onClick={onDismiss}>{cancelLabel}</button>
-                <button className="action-confirmation-submit" type="button" disabled={busy} onClick={onConfirm}>
+                <button ref={cancelRef} className="kv-action-button" type="button" disabled={busy} onClick={onDismiss}>
+                    {cancelLabel}
+                </button>
+                <button className="kv-action-button kv-action-button--primary" type="button" disabled={busy} onClick={onConfirm}>
                     {busy ? 'Working…' : confirmLabel}
                 </button>
             </div>

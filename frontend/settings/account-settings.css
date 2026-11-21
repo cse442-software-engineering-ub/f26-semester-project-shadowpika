@@ -1,3 +1,5 @@
+@import '../src/styles/action-buttons.css';
+
 * {
             box-sizing: border-box;
             margin: 0;
@@ -335,18 +337,6 @@
             color: #8A94A6;
         }
 
-        .change-password {
-            border-radius: 6px;
-            height: 38px;
-            padding: 0 18px;
-            font-size: 12px;
-            font-weight: 600;
-            background: #24364f;
-            color: #ffffff;
-            font-family: DM Sans,system-ui,sans-serif;
-            cursor: pointer;
-        }
-
         .password-description {
             margin-left: 9px;
             font-size: 14px;
@@ -376,18 +366,6 @@
             color: #8A94A6;
         }
 
-        .delete-button {
-            border-radius: 6px;
-            height: 38px;
-            padding: 0 18px;
-            font-size: 12px;
-            font-weight: 600;
-            background: #e32d25;
-            color: #ffffff;
-            font-family: DM Sans,system-ui,sans-serif;
-            cursor: pointer;
-        }
-
         .delete-description {
             margin-left: 9px;
             font-size: 14px;
@@ -404,18 +382,6 @@
             align-items: center;
         }
 
-        .save-button {
-            border-radius: 6px;
-            height: 38px;
-            padding: 0 18px;
-            font-size: 12px;
-            font-weight: 600;
-            background: #24364f;
-            color: #ffffff;
-            font-family: DM Sans,system-ui,sans-serif;
-            cursor: pointer;
-         }
-
         .save-description {
             margin-left: 9px;
             font-size: 14px;
@@ -430,7 +396,7 @@
             color: #526982;
         }
 
-        button:hover {
+        button:where(:not(.kv-action-button)):hover {
             opacity: 0.9;
         }
 
