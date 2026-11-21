@@ -44,7 +44,7 @@ export default function Settings() {
                 <p className="kv-settings-section__hint">
                     Register as a community partner without logging out. A moderator reviews the request before you can manage a community.
                 </p>
-                <a className="kv-admin-gate__button" href={ADMIN_REGISTER_HREF}>
+                <a className="kv-action-button kv-action-button--primary" href={ADMIN_REGISTER_HREF}>
                     Register as an admin
                 </a>
             </div>
