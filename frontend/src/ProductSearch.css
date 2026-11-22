@@ -620,7 +620,17 @@ body:has(.ps-page) {
   font-size: 12px;
   line-height: 16px;
   font-weight: 700;
-  cursor: not-allowed;
+  text-align: center;
+  text-decoration: none;
+}
+
+.ps-manage-button:hover {
+  background: #d6b477;
+}
+
+.ps-manage-button:focus-visible {
+  outline: 2px solid var(--ps-navy);
+  outline-offset: 2px;
 }
 
 .ps-published-section {
