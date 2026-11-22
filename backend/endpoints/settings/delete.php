@@ -153,6 +153,17 @@ $user_id = $user["id"];
 
 try {
 
+    // Listings have no foreign key to users, so remove them with the account
+    $pdo->beginTransaction();
+
+    $stmt = $pdo->prepare(
+        "DELETE FROM listings WHERE owner_id = ?"
+    );
+
+    $stmt->execute([
+        $user_id
+    ]);
+
     $stmt = $pdo->prepare(
         "DELETE FROM users WHERE id = ?"
     );
@@ -162,6 +173,8 @@ try {
     ]);
 
     if ($stmt->rowCount() === 1) {
+
+        $pdo->commit();
 
         // Delete authentication cookie
         karavan_set_auth_cookie('', time() - 3600);
@@ -179,6 +192,8 @@ try {
 
     } else {
 
+        $pdo->rollBack();
+
         echo json_encode([
             "success" => false,
             "error" => "Account could not be deleted."
@@ -188,6 +203,10 @@ try {
     }
 
 } catch (\PDOException $e) {
+
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
 
     echo json_encode([
         "success" => false,

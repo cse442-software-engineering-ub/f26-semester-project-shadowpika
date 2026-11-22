@@ -479,6 +479,9 @@ function karavan_respond_meeting_request_locked(PDO $pdo, ?int $userId, $input):
         }
         return [409, ['success' => false, 'error' => 'Only pending requests can be answered.']];
     }
+    if ($action === 'approve' && karavan_meeting_time_passed($row)) {
+        return [409, ['success' => false, 'error' => 'This meeting time has passed. Deny the request instead.']];
+    }
 
     $newStatus = $action === 'approve' ? 'approved' : ($action === 'deny' ? 'denied' : 'location_change_requested');
     $location = null;
@@ -558,6 +561,9 @@ function karavan_accept_location_change_locked(PDO $pdo, ?int $userId, $input): 
     }
     if ($row['listing_status'] !== 'active') {
         return [409, ['success' => false, 'error' => 'This item is no longer available.']];
+    }
+    if (karavan_meeting_time_passed($row)) {
+        return [409, ['success' => false, 'error' => 'This meeting time has passed.']];
     }
 
     try {
