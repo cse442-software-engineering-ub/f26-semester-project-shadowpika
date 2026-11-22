@@ -1,10 +1,8 @@
 <?php
 
-session_start();
-
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+error_reporting(0);
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
@@ -52,12 +50,8 @@ if (!$data) {
 
 
 // -----------------------------
-// GET USERNAME AND PASSWORD
+// GET PASSWORD
 // -----------------------------
-
-$current_username = isset($data["current_username"])
-    ? trim($data["current_username"])
-    : "";
 
 $password = isset($data["password"])
     ? $data["password"]
@@ -65,18 +59,35 @@ $password = isset($data["password"])
 
 
 // -----------------------------
-// VALIDATE INPUT
+// FIND CURRENT USER FROM LOGIN SESSION
 // -----------------------------
 
-if (empty($current_username)) {
+try {
+    $user = karavan_current_user($pdo);
+} catch (\Throwable $e) {
     echo json_encode([
         "success" => false,
-        "error" => "Username is required."
+        "error" => "Failed to find current user."
     ]);
 
-    http_response_code(400);
+    http_response_code(500);
     exit;
 }
+
+if ($user === null) {
+    echo json_encode([
+        "success" => false,
+        "error" => "You are not logged in."
+    ]);
+
+    http_response_code(401);
+    exit;
+}
+
+
+// -----------------------------
+// VALIDATE INPUT
+// -----------------------------
 
 if (empty($password)) {
     echo json_encode([
@@ -90,23 +101,22 @@ if (empty($password)) {
 
 
 // -----------------------------
-// FIND USER
+// GET CURRENT PASSWORD HASH
 // -----------------------------
 
 try {
 
     $stmt = $pdo->prepare(
-        "SELECT id, password_hash, email
+        "SELECT password_hash
          FROM users
-         WHERE username = ? OR email = ?"
+         WHERE id = ?"
     );
 
     $stmt->execute([
-        $current_username,
-        $current_username
+        $user["id"]
     ]);
 
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $password_hash = $stmt->fetchColumn();
 
 } catch (\PDOException $e) {
 
@@ -121,25 +131,10 @@ try {
 
 
 // -----------------------------
-// CHECK USER
-// -----------------------------
-
-if (!$user) {
-    echo json_encode([
-        "success" => false,
-        "error" => "Invalid username or password."
-    ]);
-
-    http_response_code(401);
-    exit;
-}
-
-
-// -----------------------------
 // VERIFY PASSWORD
 // -----------------------------
 
-if (!password_verify($password, $user["password_hash"])) {
+if (!is_string($password_hash) || !password_verify($password, $password_hash)) {
     echo json_encode([
         "success" => false,
         "error" => "Invalid username or password."
