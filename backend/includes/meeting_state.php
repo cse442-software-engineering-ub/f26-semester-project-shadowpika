@@ -15,6 +15,12 @@ function karavan_meeting_window(array $row): array
     return ['opens' => $meeting->modify('-15 minutes'), 'closes' => $meeting->modify('+2 hours')];
 }
 
+/** True once the check-in window (meeting time + 2 hours, campus time) has closed. */
+function karavan_meeting_time_passed(array $row): bool
+{
+    return new DateTimeImmutable('now', new DateTimeZone(KARAVAN_MEETING_TIMEZONE)) > karavan_meeting_window($row)['closes'];
+}
+
 /** Serialize mutations with Sold/check-in: listing first, then its meeting rows. */
 function karavan_with_listing_transaction(PDO $pdo, int $listingId, callable $operation): array
 {
