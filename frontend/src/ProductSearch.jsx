@@ -3,6 +3,7 @@ import NavBar from './NavBar.jsx';
 import ShoppingCommunities from './components/ShoppingCommunities.jsx';
 import './ProductSearch.css';
 import { buildSearchUrl, itemPageUrl, searchLocalListings } from './localListings.js';
+import { fetchListingOwnership } from './meetingRequests.js';
 
 const MAX_QUERY_LENGTH = 50;
 const SEARCH_DELAY_MS = 300;
@@ -183,14 +184,7 @@ function BookCard({ book, isOwner = false }) {
                     <span className="ps-book-condition">{book.condition}</span>
                 </div>
                 {isOwner && (
-                    <button
-                        type="button"
-                        className="ps-manage-button"
-                        disabled
-                        title="Listing management will be added in a separate task."
-                    >
-                        Manage
-                    </button>
+                    <a className="ps-manage-button" href="./manage-listings.html">Manage</a>
                 )}
             </div>
         </article>
@@ -238,9 +232,16 @@ function ProductSearch() {
                         throw new Error('The newly created listing could not be loaded.');
                     }
                 } else {
-                    const response = await fetch(`./listing/api/get_listing.php?listing_id=${encodeURIComponent(publishedId)}`);
+                    const [response, ownership] = await Promise.all([
+                        fetch(`./listing/api/get_listing.php?listing_id=${encodeURIComponent(publishedId)}`),
+                        fetchListingOwnership(publishedId),
+                    ]);
+                    if (ownership.success === true && ownership.is_owner === false) {
+                        if (!cancelled) setPublishedStatus('idle');
+                        return;
+                    }
                     const data = await response.json();
-                    if (!response.ok || !data.success) {
+                    if (!response.ok || !data.success || ownership.success !== true || ownership.is_owner !== true) {
                         throw new Error(data.error || 'The newly created listing could not be loaded.');
                     }
                     listing = data.listing;
