@@ -450,6 +450,8 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
         });
         await screen.findByRole('heading', { name: 'Desk Lamp' });
         fireEvent.click(screen.getAllByRole('button', { name: 'Deny' })[1]);
+        expect(callsTo(fetchMock, 'respond_meeting_request.php')).toHaveLength(0);
+        fireEvent.click(screen.getByRole('button', { name: 'Deny Request', exact: true }));
 
         expect(await screen.findByText('You denied the meeting request.')).toBeInTheDocument();
         expect(bodyOf(fetchMock)).toBe('{"request_id":91062,"action":"deny"}');

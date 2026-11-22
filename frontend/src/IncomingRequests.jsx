@@ -20,6 +20,7 @@ function IncomingRequests() {
     const [message, setMessage] = useState(null); // result of the last action: { kind, text }
     const [busy, setBusy] = useState(false);
     const [saleConfirmation, setSaleConfirmation] = useState(null);
+    const [denyConfirmation, setDenyConfirmation] = useState(null);
     const headingRef = React.useRef(null);
     const [picker, setPicker] = useState(null); // { requestId, locations, choice } while a Change Location picker is open
 
@@ -193,7 +194,8 @@ function IncomingRequests() {
                                     {request.status === 'pending' && !pickerOpen && (
                                         <div className="mr-actions">
                                             <button type="button" className="mr-cancel" disabled={busy} onClick={() => respond(request, 'approve')}>Approve</button>
-                                            <button type="button" className="mr-cancel" disabled={busy} onClick={() => respond(request, 'deny')}>Deny</button>
+                                            <button type="button" className="mr-cancel" disabled={busy}
+                                                onClick={(event) => setDenyConfirmation({ request, trigger: event.currentTarget })}>Deny</button>
                                             <button type="button" className="mr-cancel" disabled={busy} onClick={() => openPicker(request)}>Change Location</button>
                                         </div>
                                     )}
@@ -220,6 +222,23 @@ function IncomingRequests() {
                     })}
                 </ul>
             )}
+            {denyConfirmation && <ActionConfirmationDialog title="Deny this meeting request?"
+                confirmLabel="Deny Request" cancelLabel="Keep Request" busy={busy}
+                trigger={denyConfirmation.trigger} fallbackRef={headingRef}
+                onDismiss={() => { if (!busy) setDenyConfirmation(null); }}
+                onConfirm={async () => {
+                    const current = requests.find((request) => request.request_id === denyConfirmation.request.request_id);
+                    if (current?.status === 'pending') {
+                        await respond(current, 'deny');
+                    } else {
+                        setMessage({ kind: 'error', text: 'This request is no longer pending. Reload to check its status.' });
+                    }
+                    setDenyConfirmation(null);
+                }}>
+                <p><strong>{denyConfirmation.request.name}</strong></p>
+                <p>Requested by {denyConfirmation.request.buyer}</p>
+                <p>The buyer will see this request as Denied.</p>
+            </ActionConfirmationDialog>}
             {saleConfirmation && <ActionConfirmationDialog title="Mark this listing as sold?"
                 confirmLabel="Mark as Sold" cancelLabel="Keep Listing" busy={busy}
                 trigger={saleConfirmation.trigger} fallbackRef={headingRef}
