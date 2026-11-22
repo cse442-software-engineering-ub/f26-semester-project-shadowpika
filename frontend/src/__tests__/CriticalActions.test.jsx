@@ -29,15 +29,18 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
 const FLOWS = [
     { name: 'send', title: 'Send this meeting request?', confirm: 'Send Request', cancel: 'Back to Edit',
         endpoint: 'create_meeting_request.php', body: { listing_id: 81, meeting_date: '2026-12-19', meeting_time: '14:00', location_id: 91004, offer_price: '15.00' } },
-    { name: 'cancel', title: 'Cancel this meeting request?', confirm: 'Cancel Request', cancel: 'Keep Request',
+    { name: 'cancel', homeTrigger: 'Cancel Request', title: 'Cancel this meeting request?', confirm: 'Cancel Request', cancel: 'Keep Request',
         endpoint: 'cancel_meeting_request.php', body: { listing_id: 81 } },
-    { name: 'sold on Home', title: 'Mark this listing as sold?', confirm: 'Mark as Sold', cancel: 'Keep Listing',
+    { name: 'sold on Home', homeTrigger: 'Mark as sold', title: 'Mark this listing as sold?', confirm: 'Mark as Sold', cancel: 'Keep Listing',
         endpoint: 'update_listing.php', body: { action: 'update_status', listing_id: 81, status: 'sold', request_id: 71 } },
     { name: 'sold in Manage Listings', title: 'Mark this listing as sold?', confirm: 'Mark as Sold', cancel: 'Keep Listing',
         endpoint: 'update_listing.php', body: { action: 'update_status', listing_id: 81, status: 'sold', request_id: 71 } },
     { name: 'delete', title: 'Delete this listing?', confirm: 'Delete Listing', cancel: 'Keep Listing',
         endpoint: 'update_listing.php', body: { action: 'delete', listing_id: 81 } },
+    { name: 'deny', homeTrigger: 'Deny', title: 'Deny this meeting request?', confirm: 'Deny Request', cancel: 'Keep Request',
+        endpoint: 'respond_meeting_request.php', body: { request_id: 71, action: 'deny' } },
 ];
+const SUCCESS_MESSAGES = /Listing deleted\.|Listing marked as sold\.|Your meeting request was canceled\.|You denied the meeting request\./;
 let fetchMock, mutation, listings, purchases, incoming, assign;
 beforeEach(() => {
     vi.useFakeTimers();
@@ -72,9 +75,10 @@ async function openFlow(flow) {
         trigger = screen.getByRole('button', { name: 'Confirm Meeting Request' });
         const { pathname, search, hash } = window.location;
         vi.stubGlobal('location', { pathname, search, hash, assign });
-    } else if (flow.name === 'cancel' || flow.name === 'sold on Home') {
+    } else if (flow.homeTrigger) {
+        if (flow.name === 'deny') incoming = [{ ...PENDING, buyer: READY.buyer }];
         await act(async () => { view = render(<Home />); });
-        trigger = screen.getByRole('button', { name: flow.name === 'cancel' ? 'Cancel Request' : 'Mark as sold', exact: true });
+        trigger = screen.getByRole('button', { name: flow.homeTrigger, exact: true });
     } else {
         window.history.replaceState({}, '', 'manage-listings.html');
         await act(async () => { view = render(<ManageListings />); });
@@ -88,6 +92,7 @@ for (const flow of FLOWS) {
     it.each(['cancel', 'close', 'Escape'])(`does not submit ${flow.name} when dismissed with %s`, async (how) => {
         const { dialog, trigger, container } = await openFlow(flow);
         expect(within(dialog).getByText(ITEM.name)).toBeVisible();
+        if (flow.name === 'deny') expect(within(dialog).getByText(`Requested by ${READY.buyer}`)).toBeVisible();
         expect(within(dialog).getByRole('button', { name: flow.cancel })).toHaveFocus();
         expect(writes()).toHaveLength(0);
         if (how === 'Escape') fireEvent(dialog, new Event('cancel', { cancelable: true }));
@@ -127,6 +132,7 @@ for (const flow of FLOWS) {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         expect(writes()).toHaveLength(1);
         if (flow.name === 'send') expect(assign).toHaveBeenCalledWith(expect.stringContaining('home.html?request_sent=1'));
+        if (flow.name === 'deny') expect(screen.getByText('You denied the meeting request.')).toBeVisible();
     });
 
     it(`reports a server refusal of ${flow.name} without success or losing inputs`, async () => {
@@ -140,7 +146,7 @@ for (const flow of FLOWS) {
             expect(container.querySelector('[type="date"]')).toHaveValue('2026-12-19');
             expect(screen.getByLabelText('Your offer ($)')).toHaveValue('15.00');
         }
-        expect(screen.queryByText(/Listing deleted\.|Listing marked as sold\.|Your meeting request was canceled\./)).not.toBeInTheDocument();
+        expect(screen.queryByText(SUCCESS_MESSAGES)).not.toBeInTheDocument();
     });
 
     it(`does not claim ${flow.name} succeeded when the connection fails`, async () => {
@@ -150,7 +156,7 @@ for (const flow of FLOWS) {
         expect(screen.getByRole('alert')).toHaveTextContent('Could not connect to the server.');
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         expect(assign).not.toHaveBeenCalled();
-        expect(screen.queryByText(/Listing deleted\.|Listing marked as sold\.|Your meeting request was canceled\./)).not.toBeInTheDocument();
+        expect(screen.queryByText(SUCCESS_MESSAGES)).not.toBeInTheDocument();
     });
 }
 
@@ -169,6 +175,15 @@ it('rechecks a Pending request after approval arrives while its cancel dialog is
     purchases = [{ ...PENDING, status: 'approved' }];
     await act(async () => { vi.advanceTimersByTime(15000); });
     await settle(() => fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel Request', exact: true })));
+    expect(writes()).toHaveLength(0);
+    expect(screen.getByRole('alert')).toHaveTextContent('This request is no longer pending.');
+});
+
+it('does not deny a request another tab approved while the dialog was open', async () => {
+    const { dialog } = await openFlow(FLOWS.find((flow) => flow.name === 'deny'));
+    incoming = [{ ...READY }];
+    await act(async () => { vi.advanceTimersByTime(15000); });
+    await settle(() => fireEvent.click(within(dialog).getByRole('button', { name: 'Deny Request' })));
     expect(writes()).toHaveLength(0);
     expect(screen.getByRole('alert')).toHaveTextContent('This request is no longer pending.');
 });

@@ -1,6 +1,6 @@
 # #224 / #225 — Confirm critical actions
 
-The four confirmed actions are sending a meeting request, canceling a Pending
+Confirmed actions include sending a meeting request, canceling or denying a Pending
 request, marking a listing Sold, and deleting a listing. Both Sold entry points
 (Home's incoming requests and Manage Listings) use the same confirmation design.
 
@@ -8,6 +8,7 @@ request, marking a listing Sold, and deleting a listing. Both Sold entry points
 | --- | --- | --- | --- |
 | Send meeting | Send this meeting request? | Send Request | Back to Edit |
 | Cancel Pending | Cancel this meeting request? | Cancel Request | Keep Request |
+| Deny Pending (seller) | Deny this meeting request? | Deny Request | Keep Request |
 | Mark Sold | Mark this listing as sold? | Mark as Sold | Keep Listing |
 | Delete listing | Delete this listing? | Delete Listing | Keep Listing |
 
@@ -72,7 +73,7 @@ From frontend:
 npm test -- src/__tests__/CriticalActions.test.jsx src/__tests__/ManageListings.test.jsx src/__tests__/MeetingRequests.test.jsx src/__tests__/MeetingProgress.test.jsx src/__tests__/ListingFreeze.test.jsx
 ```
 
-The focused critical-action tests cover all four operations, both Sold entry
+The focused critical-action tests cover all five operations, both Sold entry
 points, every dismissal, default focus/focus cycling, no early POST, duplicate
 clicks, loading locks, server refusal, connection failure, preserved form values,
 and eligibility changing during an open dialog. Existing regressions now perform
