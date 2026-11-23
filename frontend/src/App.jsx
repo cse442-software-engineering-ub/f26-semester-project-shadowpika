@@ -3,11 +3,19 @@ import './index.css'
 import './styles/karavan.css'
 import KaravanHeader from './components/KaravanHeader.jsx';
 import { KaravanHero } from './components/KaravanBrand.jsx';
-import { pathFor } from './routes.js';
+import { appBase, pathFor } from './routes.js';
+import { clearReturnPath, takeReturnPath } from './returnTo.js';
 import { markNewAccount, recordLogin } from './community.js';
 import { fetchSession, isLocalMockBackend, isLoggedIn } from './api.js';
+import { SECURITY_QUESTIONS } from './securityQuestions.js';
 
 const HOME_PAGE = './home.html';
+
+// A person who opened a shared listing link while logged out goes to that listing instead of Home.
+const userLandingPage = () => {
+    const next = takeReturnPath();
+    return next ? appBase() + next : HOME_PAGE;
+};
 
 // Moderators work from the moderator dashboard rather than the marketplace home page.
 const landingPageFor = (role) => (role === 'moderator' ? pathFor('moderator') : HOME_PAGE);
@@ -19,6 +27,8 @@ function App() {
     const [confirmPassword, setConfirmPassword] = useState(''); // NEW
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [securityQuestion, setSecurityQuestion] = useState('');
+    const [securityAnswer, setSecurityAnswer] = useState('');
 
     // ROUTING CONFIGURATION: Detects if this is the separate register page view
     const isRegisterPage = window.location.pathname.includes('register') || window.location.hash === '#register';
@@ -33,7 +43,10 @@ function App() {
         fetchSession()
             .then((session) => {
                 if (cancelled) return;
-                if (isLoggedIn(session)) window.location.replace(landingPageFor(session.role));
+                if (isLoggedIn(session)) {
+                    if (session.role === 'moderator') clearReturnPath();
+                    window.location.replace(session.role === 'moderator' ? landingPageFor(session.role) : userLandingPage());
+                }
                 else setIsLoading(false);
             })
             .catch(() => {
@@ -51,11 +64,16 @@ function App() {
 
     const loginSuccess = () => {
         setMessage('Login successful!');
-        window.location.href = HOME_PAGE;
+        window.location.href = userLandingPage();
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (isRegisterPage && (securityQuestion === '' || !securityAnswer.trim())) {
+            setMessage('Please select a security question and enter your answer.');
+            return;
+        }
 
         // Validate that passwords match during registration
         if (isRegisterPage && password !== confirmPassword) {
@@ -111,7 +129,7 @@ function App() {
         try {
             // Construct payload dynamically depending on the page mode
             const payload = isRegisterPage
-                ? { username, email, password }
+                ? { username, email, password, security_question: Number(securityQuestion), security_answer: securityAnswer }
                 : { email, password };
 
             const response = await fetch(targetScript, {
@@ -132,10 +150,11 @@ function App() {
                 }
                 recordLogin(email, data);
                 if (data.role === 'moderator') {
+                    clearReturnPath();
                     window.location.assign(pathFor('moderator'));
                 } else {
                     setMessage('Login successful!');
-                    window.location.href = HOME_PAGE;
+                    window.location.href = userLandingPage();
                 }
             } else {
                 setMessage(data.error || 'An error occurred.');
@@ -287,6 +306,17 @@ function App() {
                             </div>
                             : <></>}
 
+                        {isRegisterPage && <div className="auth-security-fields">
+                            <label htmlFor="security-question">Security question</label>
+                            <select id="security-question" required value={securityQuestion} onChange={e => setSecurityQuestion(e.target.value)}>
+                                <option value="">Select a security question</option>
+                                {SECURITY_QUESTIONS.map((question, id) => <option key={id} value={id}>{question}</option>)}
+                            </select>
+                            <label htmlFor="security-answer">Security answer</label>
+                            <input id="security-answer" required autoComplete="off" maxLength={100} value={securityAnswer} onChange={e => setSecurityAnswer(e.target.value)} aria-describedby="security-answer-help" />
+                            <p id="security-answer-help">Keep this answer for password resets. Answers are not case-sensitive.</p>
+                        </div>}
+                        {!isRegisterPage && <a className="auth-recovery-link" href="./reset-password.html">Forgot Password</a>}
                         {/* LOGIN/SIGNUP BUTTON */}
                         <div style={{ alignSelf: 'stretch', justifyContent: 'flex-end', alignItems: 'flex-start', display: 'inline-flex' }}>
                             <div style={{ alignSelf: 'stretch', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start', display: 'inline-flex' }}>

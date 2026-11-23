@@ -148,6 +148,8 @@ describe('Sign up page', () => {
         await user.type(screen.getByLabelText('Email'), email);
         await user.type(screen.getByLabelText('Password'), password);
         await user.type(screen.getByLabelText('Confirm Password'), confirm);
+        await user.selectOptions(screen.getByLabelText('Security question'), '0');
+        await user.type(screen.getByLabelText('Security answer'), 'MiLo');
         await user.click(screen.getByRole('button', { name: 'Sign Up' }));
     }
 
@@ -162,7 +164,7 @@ describe('Sign up page', () => {
         expect(await screen.findByText('Account successfully saved! Redirecting to login...')).toBeInTheDocument();
         const [[url, options]] = formCalls(fetchMock);
         expect(url).toBe('./register.php');
-        expect(JSON.parse(options.body)).toEqual({ username: 'testuser1', email: 'testuser1@test.com', password: 'TestUser123!' });
+        expect(JSON.parse(options.body)).toEqual({ username: 'testuser1', email: 'testuser1@test.com', password: 'TestUser123!', security_question: 0, security_answer: 'MiLo' });
         expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', './index.html');
     });
 

@@ -60,7 +60,8 @@ vi.mock('../NavBar.jsx', () => ({ default: () => <nav aria-label="Main">Karavan<
 const CAPEN = { location_id: 91001, label: 'Capen Hall Main Entrance', lat: 43.000822, lng: -78.789203 };
 const UNION = { location_id: 91002, label: 'Student Union Main Entrance', lat: 43.001054, lng: -78.786087 };
 const LISTING = {
-    listing_id: 9900091, owner_id: 12, name: 'Meeting Map Test Book', price: '25.00',
+    listing_id: 9900091, seller: { id: 12, username: 'morgan.keller1', average_rating: null, rating_count: 0 },
+    name: 'Meeting Map Test Book', price: '25.00',
     condition: 'Good', category: 'Textbooks', community: 'Karavan',
     description: 'Meeting location map frontend test item.', image_url: null,
     meeting_location: CAPEN.label, meeting_location_details: CAPEN,
@@ -188,7 +189,7 @@ describe('Frontend #202: seller meeting-location map', () => {
         expect(mapMocks.leaflet.map).not.toHaveBeenCalled();
     });
 
-    it('preserves the existing Message Seller action from the old compiled page', async () => {
+    it('opens the conversation with the listing seller from Message Seller', async () => {
         mockBackend();
         const assign = vi.fn();
         vi.stubGlobal('location', { ...window.location, assign });

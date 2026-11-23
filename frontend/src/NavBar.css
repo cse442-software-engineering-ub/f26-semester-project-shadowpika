@@ -80,11 +80,6 @@
   list-style: none;
 }
 
-/* The Message page is hidden from the navbar until Messages works; the links stay in NavBar.jsx. */
-.nav .nav-message-item {
-  display: none;
-}
-
 .nav .nav-link {
   position: relative;
   display: block;

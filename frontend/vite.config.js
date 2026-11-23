@@ -23,6 +23,7 @@ export default defineConfig({
             input: {
                 main: 'index.html',
                 register: 'register.html',
+                resetPassword: 'reset-password.html',
                 productSearch: 'product-search.html',
                 item: 'item.html',
                 favorites: 'favorites.html',
@@ -35,6 +36,8 @@ export default defineConfig({
                 changePassword: 'settings/change-password.html',
                 notFound: '404.html',
                 manageListings: 'manage-listings.html',
+                message: 'message.html',
+                seller: 'seller.html',
             }
         }
     },

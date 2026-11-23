@@ -103,14 +103,14 @@ describe('Pages that need a login', () => {
 
 // Every page except login, sign up, the Community Partner form and 404 needs a login.
 const entries = import.meta.glob('../*-main.jsx', { query: '?raw', import: 'default', eager: true });
-const PUBLIC_ENTRIES = ['not-found-main.jsx', 'navbar-main.jsx'];
+const PUBLIC_ENTRIES = ['not-found-main.jsx', 'navbar-main.jsx', 'reset-password-main.jsx'];
 
 describe('Page entry points', () => {
     const protectedEntries = Object.entries(entries).filter(([path]) => !PUBLIC_ENTRIES.some((name) => path.endsWith(name)));
 
     it('covers every page that needs a login', () => {
         expect(protectedEntries.map(([path]) => path.split('/').pop()).sort()).toEqual([
-            'check-in-main.jsx', 'favorites-main.jsx', 'home-main.jsx', 'item-main.jsx', 'listings-main.jsx', 'meet-main.jsx', 'product-search-main.jsx', 'sell-main.jsx', 'settings-main.jsx',
+            'check-in-main.jsx', 'favorites-main.jsx', 'home-main.jsx', 'item-main.jsx', 'listings-main.jsx', 'meet-main.jsx', 'message-main.jsx', 'product-search-main.jsx', 'sell-main.jsx', 'seller-main.jsx', 'settings-main.jsx',
         ]);
     });
 

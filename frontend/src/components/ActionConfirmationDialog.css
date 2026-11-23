@@ -1,0 +1,15 @@
+@import '../styles/action-buttons.css';
+
+.action-confirmation { box-sizing: border-box; width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; margin: auto; padding: 32px; border: 1px solid #d1d6db; border-radius: 18px; background: #fff; color: #1f2f46; box-shadow: 0 16px 60px #13233b33; text-align: left; font: 400 16px/1.5 'DM Sans', sans-serif; }
+.action-confirmation::backdrop { background: #13233b80; }
+.action-confirmation h2 { margin: 0 28px 20px 0; font: 700 24px/1.25 'DM Sans', sans-serif; }
+.action-confirmation p { margin: 0 0 12px; overflow-wrap: anywhere; }
+.action-confirmation .action-confirmation-close { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: inherit; font-size: 26px; cursor: pointer; }
+.action-confirmation-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.action-confirmation button:disabled { opacity: .6; cursor: wait; }
+.action-confirmation button:focus-visible { outline: 3px solid #b58a26; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .action-confirmation { padding: 24px; }
+  .action-confirmation-actions { flex-direction: column-reverse; }
+  .action-confirmation-actions button { width: 100%; }
+}

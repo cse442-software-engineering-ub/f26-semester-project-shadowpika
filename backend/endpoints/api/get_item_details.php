@@ -2,9 +2,9 @@
 // GET /api/get_item_details.php?listing_id=<id>
 // Returns the details shown on item.html for one ACTIVE listing: name, price, condition,
 // image, category, community, description, and the selected approved meeting spot.
-// Sold, inactive, and missing listings are all
-// "Listing not found." Requires a login; only the owner and members of the listing's
-// community can view it.
+// Inactive and missing listings are "Listing not found."; a sold listing is 410 "This item has been sold."
+// (after the membership check, so non-members never learn it sold). Requires a login; only the owner
+// and members of the listing's community can view it.
 header("Content-Type: application/json");
 
 // Suppress all warnings/notices so nothing (SQL errors, stack traces) leaks into the JSON payload
@@ -30,7 +30,9 @@ function respond(int $status, array $payload) {
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/http.php';
 require_once __DIR__ . '/../includes/communities.php';
+require_once __DIR__ . '/../includes/ratings.php';
 require_once __DIR__ . '/../listing/lib/listing_locations.php';
+require_once __DIR__ . '/../listing/lib/listing_images.php';
 
 // KARAVAN_DB_DSN lets the test suite point this endpoint at SQLite, like includes/config.php.
 function item_details_pdo(): PDO {
@@ -58,9 +60,9 @@ try {
     $pdo = item_details_pdo();
     $stmt = $pdo->prepare(
         "SELECT listing_id, owner_id, name, price, `condition`, image_url, category, community, description,
-                meeting_location, meeting_location_id
+                meeting_location, meeting_location_id, allow_offers, status
            FROM listings
-          WHERE listing_id = ? AND status = 'active'"
+          WHERE listing_id = ? AND status IN ('active', 'sold')"
     );
     $stmt->execute([$listingId]);
     $row = $stmt->fetch();
@@ -71,11 +73,25 @@ try {
     if (!karavan_can_shop_listing($pdo, $userId, $row)) {
         respond(403, ["success" => false, "error" => KARAVAN_NOT_A_MEMBER_ERROR]);
     }
+    if ($row['status'] === 'sold') {
+        respond(410, ["success" => false, "error" => "This item has been sold."]);
+    }
 
     $description = $row['description'] ?? null;
     $imageUrl = $row['image_url'] ?? null;
     $locationId = $row['meeting_location_id'] === null ? null : (int) $row['meeting_location_id'];
     $locationDetails = listing_meeting_location_details($row, listing_location_by_id($pdo, $locationId));
+
+    $seller = null;
+    if ($row['owner_id'] !== null) {
+        $stmt = $pdo->prepare('SELECT id, username FROM users WHERE id = ?');
+        $stmt->execute([(int) $row['owner_id']]);
+        $owner = $stmt->fetch();
+        if ($owner) {
+            $seller = array_merge(['id' => (int) $owner['id'], 'username' => $owner['username']],
+                karavan_seller_rating_summary($pdo, (int) $owner['id']));
+        }
+    }
 
     respond(200, [
         "success" => true,
@@ -85,12 +101,15 @@ try {
             "price"       => number_format((float) $row['price'], 2, '.', ''),
             "condition"   => $row['condition'],
             "image_url"   => ($imageUrl === null || trim($imageUrl) === '') ? null : $imageUrl,
+            "image_urls"  => listing_images_pdo($pdo, (int)$listingId, $imageUrl),
             "category"    => LEGACY_CATEGORY_LABELS[$row['category']] ?? $row['category'],
             "community"   => $row['community'],
             "description" => ($description === null || trim($description) === '') ? null : $description,
             "meeting_location" => $row['meeting_location'],
             "meeting_location_id" => $locationId,
             "meeting_location_details" => $locationDetails,
+            "seller"      => $seller,
+            "allow_offers" => (bool) $row['allow_offers'],
         ],
     ]);
 } catch (Throwable $e) {

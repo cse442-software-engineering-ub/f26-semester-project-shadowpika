@@ -1,0 +1,247 @@
+/* Messages page: inbox on the left, the open conversation on the right. Uses the search page's colors. */
+
+.ps-frame.msg-frame {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 24px;
+  min-height: calc(100vh - 80px);
+  padding: 32px 40px 48px;
+}
+
+.msg-title {
+  margin: 0 0 16px;
+  font-family: 'League Spartan', 'DM Sans', sans-serif;
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 700;
+  color: var(--ps-navy);
+}
+
+.msg-note {
+  margin: 0;
+  color: var(--ps-muted);
+}
+
+.msg-error {
+  margin: 8px 0 0;
+  color: #b42318;
+  font-weight: 600;
+}
+
+.msg-conversations {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ps-page .msg-conversation {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #ebe6dc;
+  border-radius: 10px;
+  background: var(--ps-white);
+  color: var(--ps-navy);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ps-page .msg-conversation:hover,
+.ps-page .msg-conversation:focus-visible,
+.ps-page .msg-conversation.is-selected {
+  border-color: var(--ps-gold);
+  background: #fffaf2;
+}
+
+.msg-conversation-name {
+  font-weight: 700;
+}
+
+.msg-conversation-listing {
+  font-size: 13px;
+  color: var(--ps-gold);
+  font-weight: 600;
+}
+
+.msg-conversation-last {
+  overflow: hidden;
+  font-size: 14px;
+  color: var(--ps-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.msg-thread {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #ebe6dc;
+  border-radius: 14px;
+  background: var(--ps-white);
+}
+
+.msg-thread-empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.ps-page .msg-back {
+  display: none;
+  align-self: flex-start;
+  margin-bottom: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ps-navy);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.msg-thread-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ebe6dc;
+}
+
+.msg-thread-name {
+  margin: 0;
+  font-size: 22px;
+}
+
+.msg-thread-name a,
+.msg-thread-listing {
+  color: var(--ps-navy);
+}
+
+.msg-thread-listing {
+  font-size: 14px;
+}
+
+.msg-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 60vh;
+  margin: 0;
+  padding: 16px 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.msg-bubble {
+  align-self: flex-start;
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 14px 14px 14px 4px;
+  background: #f1ece2;
+  color: var(--ps-navy);
+}
+
+.msg-bubble.is-mine {
+  align-self: flex-end;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--ps-navy);
+  color: var(--ps-white);
+}
+
+.msg-sender {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.msg-text {
+  margin: 2px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.msg-time {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.msg-end {
+  height: 0;
+}
+
+.msg-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  padding-top: 12px;
+  border-top: 1px solid #ebe6dc;
+}
+
+.msg-label {
+  grid-column: 1 / -1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ps-navy);
+}
+
+.msg-input {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #d8d2c6;
+  border-radius: 10px;
+  font: inherit;
+  resize: vertical;
+}
+
+.ps-page .msg-send {
+  align-self: end;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  background: var(--ps-navy);
+  color: var(--ps-white);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ps-page .msg-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.msg-count {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+  color: var(--ps-muted);
+}
+
+/* Phones show the inbox or the open conversation, not both. */
+@media (max-width: 768px) {
+  .ps-frame.msg-frame {
+    grid-template-columns: 1fr;
+    padding: 20px 15px 40px;
+  }
+
+  .msg-frame.has-thread .msg-inbox,
+  .msg-frame:not(.has-thread) .msg-thread {
+    display: none;
+  }
+
+  .ps-page .msg-back {
+    display: inline-flex;
+    gap: 6px;
+  }
+
+  .msg-bubble {
+    max-width: 88%;
+  }
+
+  .msg-form {
+    grid-template-columns: 1fr;
+  }
+
+  .ps-page .msg-send {
+    width: 100%;
+  }
+}

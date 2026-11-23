@@ -1,0 +1,14 @@
+.kv-stars {
+  display: inline-flex;
+  gap: 1px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.kv-star {
+  color: #d8d2c6;
+}
+
+.kv-star.is-filled {
+  color: #c9a15e;
+}

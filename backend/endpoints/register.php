@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 // 2. DATABASE CONNECTION (credentials live in config.local.php, see includes/config.php)
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/password_reset.php';
 
 try {
      $pdo = karavan_pdo();
@@ -22,6 +23,16 @@ try {
 // 3. Read incoming React Payload
 $raw_input = file_get_contents("php://input");
 $data = json_decode($raw_input, true);
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !is_array($data) || array_is_list($data)) {
+    http_response_code($_SERVER['REQUEST_METHOD'] !== 'POST' ? 405 : 400);
+    echo json_encode(['success' => false, 'error' => 'A JSON POST request is required.']); exit;
+}
+foreach (['username', 'email', 'password'] as $field) {
+    if (isset($data[$field]) && !is_string($data[$field])) {
+        http_response_code(400); echo json_encode(['success' => false, 'error' => 'Invalid field type.']); exit;
+    }
+}
 
 $usernameInput = isset($data['username']) ? trim($data['username']) : '';
 $passwordInput = isset($data['password']) ? trim($data['password']) : '';
@@ -40,6 +51,13 @@ if (strlen($usernameInput) > 50 || strlen($passwordInput) > 50 || strlen($emailI
 }
 
 // C: The live users table has no UNIQUE index on email, so duplicates must be caught here.
+// New student registrations require one recoverable question; legacy rows remain untouched.
+$question = $data['security_question'] ?? null;
+$answer = normalized_security_answer($data['security_answer'] ?? null);
+if (!is_int($question) || !isset(KARAVAN_SECURITY_QUESTIONS[$question]) || $answer === null || str_contains($passwordInput, "\0") || !filter_var($emailInput, FILTER_VALIDATE_EMAIL)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Enter a valid email, security question and answer.']); exit;
+}
 // Accounts created before the email column existed only have their email in username.
 try {
     $existing = $pdo->prepare('SELECT 1 FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?) LIMIT 1');
@@ -59,8 +77,8 @@ $autoSaltedHash = password_hash($passwordInput, PASSWORD_BCRYPT);
 // 5. Save the new user record safely into the database
 try {
     // UPDATED: Added 'email' column and an extra '?' placeholder to match your database layout
-    $stmt = $pdo->prepare('INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)');
-    $stmt->execute([$usernameInput, $autoSaltedHash, $emailInput]);
+    $stmt = $pdo->prepare('INSERT INTO users (username, password_hash, email, security_q1_index, security_a1_hash) VALUES (?, ?, ?, ?, ?)');
+    $stmt->execute([$usernameInput, $autoSaltedHash, $emailInput, $question, security_answer_hash($answer)]);
     
     echo json_encode(["success" => true, "message" => "Account successfully created!"]);
 } catch (\PDOException $e) {

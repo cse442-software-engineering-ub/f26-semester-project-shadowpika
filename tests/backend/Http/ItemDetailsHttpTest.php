@@ -109,12 +109,15 @@ final class ItemDetailsHttpTest extends TestCase
             'price'       => '35.00',
             'condition'   => 'Good',
             'image_url'   => 'uploads/calculus-textbook.jpg',
+            'image_urls'  => ['uploads/calculus-textbook.jpg'],
             'category'    => 'Textbooks',
             'community'   => 'All of UB',
             'description' => 'Used for one semester. No writing or highlighting.',
             'meeting_location' => null,
             'meeting_location_id' => null,
             'meeting_location_details' => null,
+            'seller' => null,
+            'allow_offers' => false,
         ]], '?listing_id=91001');
     }
 
@@ -126,20 +129,22 @@ final class ItemDetailsHttpTest extends TestCase
             'price'       => '20.00',
             'condition'   => 'Like New',
             'image_url'   => 'uploads/calculus-workbook.jpg',
+            'image_urls'  => ['uploads/calculus-workbook.jpg'],
             'category'    => 'Textbooks',
             'community'   => 'All of UB',
             'description' => null,
             'meeting_location' => null,
             'meeting_location_id' => null,
             'meeting_location_details' => null,
+            'seller' => null,
+            'allow_offers' => false,
         ]], '?listing_id=91002');
     }
 
-    public function testReportsMissingAndSoldListingsAsNotFound(): void
+    public function testReportsMissingListingsAsNotFoundAndSoldListingsAsSold(): void
     {
-        $notFound = ['success' => false, 'error' => 'Listing not found.'];
-        $this->assertResponse(404, $notFound, '?listing_id=99999');
-        $this->assertResponse(404, $notFound, '?listing_id=91004');
+        $this->assertResponse(404, ['success' => false, 'error' => 'Listing not found.'], '?listing_id=99999');
+        $this->assertResponse(410, ['success' => false, 'error' => 'This item has been sold.'], '?listing_id=91004');
     }
 
     public function testRejectsAMissingOrInvalidListingId(): void

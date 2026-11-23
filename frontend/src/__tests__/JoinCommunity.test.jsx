@@ -342,6 +342,8 @@ describe('Sign up and log in remember the account for the community picker', () 
         await user.type(screen.getByLabelText('Email'), 'Riley.Student@test.com');
         await user.type(screen.getByLabelText('Password'), 'Student123!');
         await user.type(screen.getByLabelText('Confirm Password'), 'Student123!');
+        await user.selectOptions(screen.getByLabelText('Security question'), '0');
+        await user.type(screen.getByLabelText('Security answer'), 'MiLo');
         await user.click(screen.getByRole('button', { name: 'Sign Up' }));
         await screen.findByText('Account successfully saved! Redirecting to login...');
         unmount();

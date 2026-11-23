@@ -1,4 +1,5 @@
 /* Settings page. Colors and tab layout follow the Account Settings design (branch 89). */
+@import './action-buttons.css';
 
 /* Same inset as settings/account-settings.css .main so Account → Admin does not jump. */
 .ps-page > .ps-frame {
@@ -183,30 +184,6 @@
   text-decoration: underline;
 }
 
-.ps-page .kv-button-navy,
-.ps-page .kv-button-outline {
-  height: 38px;
-  padding: 0 18px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.ps-page .kv-button-navy {
-  background: #24364f;
-  color: #ffffff;
-}
-
-.ps-page .kv-button-outline {
-  border: 1px solid #24364f;
-  color: #24364f;
-}
-
-.ps-page .kv-button-navy:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 .kv-settings-save {
   display: flex;
   flex-wrap: wrap;
@@ -221,19 +198,6 @@
 
 .kv-admin-gate {
   max-width: 520px;
-}
-
-.kv-admin-gate__button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 42px;
-  padding: 0 18px;
-  border-radius: 8px;
-  background: #24364f;
-  color: #ffffff;
-  font-weight: 600;
-  text-decoration: none;
 }
 
 .kv-admin-gate__pending {
@@ -273,25 +237,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.kv-join-requests__approve,
-.kv-join-requests__deny {
-  min-height: 36px;
-  padding: 0 14px;
-  border-radius: 8px;
-  font-weight: 600;
-}
-
-.kv-join-requests__approve {
-  background: #24364f;
-  color: #ffffff;
-}
-
-.kv-join-requests__deny {
-  border: 1px solid #24364f;
-  background: #ffffff;
-  color: #24364f;
 }
 
 .kv-join-requests__notice,

@@ -5,10 +5,11 @@ import { buildItemDetailsUrl, findLocalListing } from './localListings.js';
 export const meetPageUrl = (listingId, from = '') =>
     `./meet.html?listing_id=${encodeURIComponent(listingId)}${from ? `&from=${from}` : ''}`;
 
-// Only known values ('request', 'favorites') pass, so the raw address value never reaches another URL.
+// Only known values pass, so the raw address value never reaches another URL.
+const ITEM_PAGE_FROM = ['request', 'favorites', 'home', 'messages'];
 export const itemPageFrom = (search) => {
     const from = new URLSearchParams(search).get('from');
-    return from === 'request' || from === 'favorites' ? from : '';
+    return ITEM_PAGE_FROM.includes(from) ? from : '';
 };
 
 export const itemUrlFrom = (listingId, from = '') =>
@@ -50,17 +51,19 @@ export async function fetchIncomingMeetingRequests() {
     return response.json();
 }
 
-export async function createMeetingRequest({ listingId, date, time, locationId }) {
+export async function createMeetingRequest({ listingId, date, time, locationId, offerPrice }) {
+    const body = {
+        listing_id: Number(listingId),
+        meeting_date: date,
+        meeting_time: time,
+        location_id: Number(locationId),
+    };
+    if (offerPrice !== undefined && offerPrice !== null) body.offer_price = String(offerPrice).trim();
     const response = await fetch('./api/create_meeting_request.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({
-            listing_id: Number(listingId),
-            meeting_date: date,
-            meeting_time: time,
-            location_id: Number(locationId),
-        }),
+        body: JSON.stringify(body),
     });
     return response.json();
 }
@@ -88,6 +91,50 @@ export async function respondMeetingRequest(requestId, action, locationId) {
     return response.json();
 }
 
+// Buyer accepts the seller's new location (card #220).
+export async function acceptLocationChange(requestId) {
+    const response = await fetch('./api/accept_location_change.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ request_id: Number(requestId) }),
+    });
+    return response.json();
+}
+
+// Buyer denies the seller's new location; the request goes back to pending (card #220).
+export async function denyLocationChange(requestId) {
+    const response = await fetch('./api/deny_location_change.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ request_id: Number(requestId) }),
+    });
+    return response.json();
+}
+
+// Seller dismisses the "Location change accepted/denied" label (card #220).
+export async function dismissLocationChangeResult(requestId) {
+    const response = await fetch('./api/dismiss_location_change_result.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ request_id: Number(requestId) }),
+    });
+    return response.json();
+}
+
+// Buyer removes a denied request from "My Purchase Requests" (card #237).
+export async function removeDeniedRequest(requestId) {
+    const response = await fetch('./api/remove_denied_request.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ request_id: Number(requestId) }),
+    });
+    return response.json();
+}
+
 // "Today" is the campus date, matching the backend's future-date check.
 export const campusToday = (now = new Date()) =>
     new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(now);
@@ -98,6 +145,32 @@ export function meetingRequestError({ date, time, locationId }, today = campusTo
     if (!date) return 'A date is required.';
     if (!time) return 'A time is required.';
     if (date <= today) return 'The meeting date must be in the future.';
+    return '';
+}
+
+// Price offers (card #115): the same limits as the backend, in whole cents so rounding never differs.
+const priceToCents = (price) => {
+    const [whole, fraction = ''] = String(price).trim().split('.');
+    return Number(whole) * 100 + Number(fraction.padEnd(2, '0').slice(0, 2));
+};
+const centsToText = (cents) => `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
+
+// Lowest and highest allowed offers as "X.XX" text: 60% rounded up, 150% rounded down.
+export function offerLimits(price) {
+    const cents = priceToCents(price);
+    return { min: centsToText(Math.ceil((cents * 60) / 100)), max: centsToText(Math.floor((cents * 150) / 100)) };
+}
+
+// Same checks, order, and messages as the backend. Returns '' when the offer is fine.
+export function offerError(price, value) {
+    const text = String(value ?? '').trim();
+    if (text === '') return 'Enter your offer amount.';
+    if (!/^(?:0|[1-9]\d{0,6})(?:\.\d{1,2})?$/.test(text)) return 'Enter a valid dollar amount with no more than two decimal places.';
+    const offer = priceToCents(text);
+    const { min, max } = offerLimits(price);
+    if (offer < priceToCents(min)) return `Your offer must be at least $${min}.`;
+    if (offer > priceToCents(max)) return `Your offer can be at most $${max}.`;
+    if (offer === priceToCents(price)) return `Your offer must be different from the asking price of $${centsToText(priceToCents(price))}.`;
     return '';
 }
 

@@ -19,6 +19,8 @@ final class TestDatabase
                 username TEXT NOT NULL UNIQUE,
                 email TEXT NULL,
                 password_hash TEXT NOT NULL,
+                security_q1_index INTEGER NULL,
+                security_a1_hash TEXT NULL,
                 role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'moderator')),
                 community_id INTEGER NULL REFERENCES admin_requests (id) ON DELETE SET NULL
             )"
@@ -99,10 +101,15 @@ final class TestDatabase
                 meeting_location TEXT NULL,
                 meeting_location_id INTEGER NULL REFERENCES approved_locations (id) ON DELETE SET NULL,
                 description TEXT NULL,
-                status TEXT NOT NULL DEFAULT 'active'
+                status TEXT NOT NULL DEFAULT 'active',
+                allow_offers INTEGER NOT NULL DEFAULT 0
             )"
         );
 
+        $pdo->exec('CREATE TABLE listing_images (
+            listing_id INTEGER NOT NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
+            position INTEGER NOT NULL, image_url TEXT NOT NULL,
+            PRIMARY KEY(listing_id,position), UNIQUE(listing_id,image_url))');
         $pdo->exec("CREATE TABLE meeting_requests (
             request_id INTEGER PRIMARY KEY AUTOINCREMENT,
             buyer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -111,7 +118,25 @@ final class TestDatabase
             location_id INTEGER NULL REFERENCES approved_locations(id) ON DELETE SET NULL,
             location_label TEXT NOT NULL, status TEXT NOT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            checked_in_at TEXT NULL, seller_checked_in_at TEXT NULL)");
+            checked_in_at TEXT NULL, seller_checked_in_at TEXT NULL,
+            original_location_id INTEGER NULL, original_location_label TEXT NULL, location_change_result TEXT NULL, offer_price NUMERIC NULL)");
+
+        // Mirrors database/migrations/015_messages.sql.
+        $pdo->exec("CREATE TABLE messages (
+            message_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            receiver_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            listing_id INTEGER NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
+            message TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 1,
+            `timestamp` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+        // Mirrors database/migrations/016_ratings.sql.
+        $pdo->exec("CREATE TABLE ratings (
+            rating_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reviewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            seller_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            stars INTEGER NOT NULL, review TEXT NULL,
+            `time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (reviewer_id, seller_id))");
 
         return $pdo;
     }
@@ -196,16 +221,17 @@ final class TestDatabase
             'meeting_location_id' => null,
             'description'      => 'Used for one semester.',
             'status'           => 'active',
+            'allow_offers'     => 0,
         ], $overrides);
         $stmt = $pdo->prepare(
             'INSERT INTO listings
-                (owner_id, name, price, `condition`, image_url, category, related_course, community, meeting_location, meeting_location_id, description, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                (owner_id, name, price, `condition`, image_url, category, related_course, community, meeting_location, meeting_location_id, description, status, allow_offers)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $ownerId, $row['name'], $row['price'], $row['condition'], $row['image_url'],
             $row['category'], $row['related_course'], $row['community'], $row['meeting_location'],
-            $row['meeting_location_id'], $row['description'], $row['status'],
+            $row['meeting_location_id'], $row['description'], $row['status'], $row['allow_offers'],
         ]);
         return (int) $pdo->lastInsertId();
     }

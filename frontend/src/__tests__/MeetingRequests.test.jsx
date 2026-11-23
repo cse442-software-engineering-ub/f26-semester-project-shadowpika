@@ -4,13 +4,13 @@
  */
 // Mirrors frontend task card #168 (Buyer Meeting Request Frontend), using the same payloads.
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ItemDetails from '../ItemDetails.jsx';
 import OrganizeMeet from '../OrganizeMeet.jsx';
 import Home from '../Home.jsx';
-import { formatMeetingDate, formatMeetingTime, meetingRequestError } from '../meetingRequests.js';
+import { formatMeetingDate, formatMeetingTime, meetingRequestError, offerError, offerLimits } from '../meetingRequests.js';
 
 vi.mock('../NavBar.jsx', () => ({
     default: () => <nav aria-label="Main">Karavan navigation</nav>,
@@ -35,6 +35,7 @@ function serve(routes) {
 const noIncoming = {
     'get_incoming_meeting_requests.php': () => json(200, { success: true, requests: [] }),
     'get_recommended_items.php': () => json(200, { success: true, items: [] }),
+    'get_previously_viewed_items.php': () => json(200, { success: true, items: [] }),
 };
 
 const callsTo = (fetchMock, file) => fetchMock.mock.calls.filter(([url]) => String(url).includes(file));
@@ -84,7 +85,21 @@ const fill = (container, { date, time }) => {
     if (time !== undefined) fireEvent.change(container.querySelector('input[type="time"]'), { target: { value: time } });
 };
 
-const confirm = () => fireEvent.click(screen.getByRole('button', { name: 'Confirm Meeting Request' }));
+const confirm = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Meeting Request' }));
+    const send = screen.queryByRole('button', { name: 'Send Request' });
+    if (send) fireEvent.click(send);
+};
+
+// A sent request takes the buyer to Home with a notice; location is replaced so the test page does not really navigate.
+const stubAssign = () => {
+    const assign = vi.fn();
+    const { pathname, search, hash } = window.location;
+    vi.stubGlobal('location', { pathname, search, hash, assign });
+    return assign;
+};
+afterEach(() => vi.unstubAllGlobals());
+const expectSentToHome = (assign) => waitFor(() => expect(assign).toHaveBeenCalledWith(expect.stringMatching(/home\.html\?request_sent=1$/)));
 
 describe('Frontend: Buyer Meeting Request (#168)', () => {
     beforeEach(() => open('item.html?listing_id=91002'));
@@ -114,6 +129,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(screen.getByLabelText('Preferred Time')).toBeInTheDocument();
         expect(screen.getByRole('textbox', { name: 'Meeting Location' })).toHaveValue('Capen Hall Main Entrance');
         expect(screen.getByRole('textbox', { name: 'Meeting Location' })).toHaveAttribute('readonly');
+        expect(screen.getByRole('textbox', { name: 'Meeting Location' })).toBeDisabled();
         expect(screen.queryByRole('combobox', { name: 'Meeting Location' })).not.toBeInTheDocument();
         expect(screen.getByText('Set by the seller. This meeting location cannot be changed.')).toBeVisible();
         expect(callsTo(fetchMock, 'get_meeting_locations.php')).toHaveLength(0);
@@ -126,9 +142,10 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
             'create_meeting_request.php': () => json(201, { success: true, request: {} }),
         });
         expect(screen.getByLabelText('Meeting Location')).toHaveValue('Lockwood Memorial Library Main Entrance');
+        const assign = stubAssign();
         fill(container, { date: '2026-12-12', time: '16:00' });
         confirm();
-        await screen.findByText('Your meeting request was sent.');
+        await expectSentToHome(assign);
         expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[0][1].body).location_id).toBe(91003);
         expect(callsTo(fetchMock, 'get_meeting_locations.php')).toHaveLength(0);
     });
@@ -139,9 +156,16 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         });
         await userEvent.type(screen.getByLabelText('Meeting Location'), 'Student Union Main Entrance');
         expect(screen.getByLabelText('Meeting Location')).toHaveValue(workbook.meeting_location);
+        expect(screen.getByLabelText('Meeting Location')).toBeDisabled();
+        await userEvent.click(screen.getByLabelText('Date'));
+        await userEvent.tab();
+        expect(screen.getByLabelText('Preferred Time')).toHaveFocus();
+        await userEvent.tab();
+        expect(screen.getByRole('button', { name: 'Confirm Meeting Request' })).toHaveFocus();
+        const assign = stubAssign();
         fill(container, { date: '2026-12-12', time: '16:00' });
         confirm();
-        await screen.findByText('Your meeting request was sent.');
+        await expectSentToHome(assign);
         expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[0][1].body).location_id).toBe(workbook.meeting_location_id);
     });
 
@@ -175,14 +199,15 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(screen.queryByRole('button', { name: 'Buy Now' })).not.toBeInTheDocument();
     });
 
-    it('Test 3: sends the seller location ID with the buyers entered date/time and confirms success', async () => {
+    it('Test 3: sends the seller location ID with the buyers entered date/time and goes to Home with the sent notice', async () => {
         const { fetchMock, container } = await openMeetPage({
             'create_meeting_request.php': () => json(201, { success: true, request: {} }),
         });
+        const assign = stubAssign();
         fill(container, { date: '2026-12-12', time: '16:00' });
         confirm();
 
-        expect(await screen.findByText('Your meeting request was sent.')).toBeInTheDocument();
+        await expectSentToHome(assign);
         const [[, options]] = callsTo(fetchMock, 'create_meeting_request.php');
         expect(options.method).toBe('POST');
         expect(options.body).toBe('{"listing_id":91002,"meeting_date":"2026-12-12","meeting_time":"16:00","location_id":91001}');
@@ -250,8 +275,8 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(cards).toEqual([
             'Physics Lab Manual$7.50Jan 3, 9:05 AMCapen Hall Main EntrancePendingCancel Request',
             'Graphing Calculator$60.00Jan 4, 12:00 PMStudent Union Main EntranceApprovedMeeting location locked after approval.Check-in status unavailable.Seller check-in status unavailable.',
-            'Desk Chair$25.00Jan 5, 6:45 PMLockwood Memorial Library Main EntranceDenied',
-            'Mini Fridge$50.00Jan 6, 12:30 AMStudent Union Main EntranceLocation Change Requested',
+            'Desk Chair$25.00Jan 5, 6:45 PMLockwood Memorial Library Main EntranceDeniedRemove',
+            'Mini Fridge$50.00Jan 6, 12:30 AMStudent Union Main EntranceLocation Change RequestedAccept New LocationDeny New Location',
         ]);
 
         expect(screen.getByRole('img', { name: 'Physics Lab Manual listing' })).toHaveAttribute('src', './favicon.svg');
@@ -295,6 +320,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         render(<Home />);
 
         fireEvent.click(await screen.findByRole('button', { name: 'Cancel Request' }));
+        fireEvent.click(screen.getAllByRole('button', { name: 'Cancel Request' }).find((button) => button.closest('dialog')));
 
         expect(await screen.findByText('Your meeting request was canceled.')).toBeInTheDocument();
         const [[url, options]] = callsTo(fetchMock, 'cancel_meeting_request.php');
@@ -327,6 +353,7 @@ describe('Frontend: Buyer Meeting Request (#168)', () => {
         expect(container.querySelector('.mr-request').contains(buttons[0])).toBe(true);
 
         fireEvent.click(buttons[0]);
+        fireEvent.click(screen.getAllByRole('button', { name: 'Cancel Request' }).find((button) => button.closest('dialog')));
 
         const alert = await screen.findByRole('alert');
         expect(alert).toHaveTextContent('You have no pending meeting request for this item.');
@@ -352,6 +379,7 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
         const fetchMock = serve({
             'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }),
             'get_recommended_items.php': () => json(200, { success: true, items: [] }),
+            'get_previously_viewed_items.php': () => json(200, { success: true, items: [] }),
             'get_incoming_meeting_requests.php': () => json(200, { success: true, requests }),
             ...extraRoutes,
         });
@@ -361,7 +389,6 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
     }
 
     const bodyOf = (fetchMock) => callsTo(fetchMock, 'respond_meeting_request.php')[0][1].body;
-    const lastCard = (container) => container.querySelectorAll('.mr-request')[1];
 
     it('lists the requests in server order with buttons only on pending ones', async () => {
         const { container } = await openHome([
@@ -393,6 +420,7 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
         serve({
             'get_my_meeting_requests.php': () => json(200, { success: true, requests: [] }),
             'get_recommended_items.php': () => json(200, { success: true, items: [] }),
+            'get_previously_viewed_items.php': () => json(200, { success: true, items: [] }),
             'get_incoming_meeting_requests.php': () => json(200, { success: false }),
         });
         render(<Home />);
@@ -416,17 +444,21 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
         expect(screen.getAllByRole('button', { name: 'Approve' })).toHaveLength(1);
     });
 
-    it('denies a request, sending exactly its id, and removes its buttons', async () => {
+    it('denies a request, sending exactly its id, and removes it from the list', async () => {
         const { fetchMock, container } = await openHome([pendingOne, pendingTwo], {
             'respond_meeting_request.php': () => json(200, { success: true, request: { ...pendingTwo, status: 'denied' } }),
         });
         await screen.findByRole('heading', { name: 'Desk Lamp' });
         fireEvent.click(screen.getAllByRole('button', { name: 'Deny' })[1]);
+        expect(callsTo(fetchMock, 'respond_meeting_request.php')).toHaveLength(0);
+        fireEvent.click(screen.getByRole('button', { name: 'Deny Request', exact: true }));
 
         expect(await screen.findByText('You denied the meeting request.')).toBeInTheDocument();
         expect(bodyOf(fetchMock)).toBe('{"request_id":91062,"action":"deny"}');
-        expect(lastCard(container)).toHaveTextContent('Denied');
-        expect(lastCard(container).querySelector('button')).toBeNull();
+        expect(container.querySelectorAll('.mr-request')).toHaveLength(1);
+        expect(screen.queryByRole('heading', { name: 'Desk Lamp' })).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Calculus Textbook' })).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: 'Deny' })).toHaveLength(1);
     });
 
     it("shows the server's error in orange-red and leaves the request pending with its buttons", async () => {
@@ -496,6 +528,86 @@ describe('Frontend: Seller Meeting Request Response (#178)', () => {
         const alert = await screen.findByRole('alert');
         expect(alert).toHaveTextContent('The meeting locations could not be loaded.');
         expect(alert).toHaveClass('id-error');
+    });
+});
+
+describe('Frontend: Make Offer (#115)', () => {
+    beforeEach(() => vi.unstubAllGlobals());
+
+    it('computes limits and messages in whole cents', () => {
+        expect(offerLimits('20.00')).toEqual({ min: '12.00', max: '30.00' });
+        expect(offerLimits('0.99')).toEqual({ min: '0.60', max: '1.48' });
+        expect(offerError('20.00', '')).toBe('Enter your offer amount.');
+        expect(offerError('20.00', '-5')).toBe('Enter a valid dollar amount with no more than two decimal places.');
+        expect(offerError('20.00', '15.555')).toBe('Enter a valid dollar amount with no more than two decimal places.');
+        expect(offerError('20.00', '11.99')).toBe('Your offer must be at least $12.00.');
+        expect(offerError('20.00', '30.01')).toBe('Your offer can be at most $30.00.');
+        expect(offerError('20.00', '20')).toBe('Your offer must be different from the asking price of $20.00.');
+        expect(offerError('20.00', '12')).toBe('');
+        expect(offerError('20.00', '30.00')).toBe('');
+    });
+
+    it('hides the offer controls and says offers are not accepted when the listing disallows or lacks allow_offers', async () => {
+        const { container } = await openMeetPage();
+        expect(screen.getByText('The seller does not accept offers on this item.')).toBeVisible();
+        expect(screen.queryByLabelText('Make an offer')).not.toBeInTheDocument();
+        fill(container, { date: '2026-12-12', time: '16:00' });
+    });
+
+    it('validates the offer, then sends offer_price only when "Make an offer" is ticked', async () => {
+        open('meet.html?listing_id=91002');
+        const fetchMock = serve({
+            'get_item_details.php': () => json(200, { success: true, listing: { ...workbook, community: 'All of UB', allow_offers: true } }),
+            'create_meeting_request.php': () => json(201, { success: true, request: {} }),
+        });
+        const { container } = render(<OrganizeMeet />);
+        await screen.findByRole('textbox', { name: 'Meeting Location' });
+        const assign = stubAssign();
+        fill(container, { date: '2026-12-12', time: '16:00' });
+
+        fireEvent.click(screen.getByLabelText('Make an offer'));
+        expect(screen.getByText('Offers from $12.00 to $30.00.')).toBeVisible();
+        confirm();
+        expect(await screen.findByText('Enter your offer amount.')).toBeVisible();
+        fireEvent.change(screen.getByLabelText('Your offer ($)'), { target: { value: '31' } });
+        confirm();
+        expect(await screen.findByText('Your offer can be at most $30.00.')).toBeVisible();
+        expect(callsTo(fetchMock, 'create_meeting_request.php')).toHaveLength(0);
+
+        fireEvent.change(screen.getByLabelText('Your offer ($)'), { target: { value: ' 15.5 ' } });
+        confirm();
+        await expectSentToHome(assign);
+        expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[0][1].body).offer_price).toBe('15.5');
+
+        // After a successful send the page leaves for Home, so the second send starts on a fresh page.
+        cleanup();
+        const again = render(<OrganizeMeet />);
+        await screen.findByRole('textbox', { name: 'Meeting Location' });
+        fill(again.container, { date: '2026-12-12', time: '16:00' });
+        expect(screen.getByLabelText('Make an offer')).not.toBeChecked();
+        confirm();
+        await waitFor(() => expect(callsTo(fetchMock, 'create_meeting_request.php')).toHaveLength(2));
+        expect(JSON.parse(callsTo(fetchMock, 'create_meeting_request.php')[1][1].body)).not.toHaveProperty('offer_price');
+    });
+
+    it('shows the offer price and the listed price on a request card, and nothing extra without an offer', async () => {
+        open('home.html');
+        serve({
+            ...noIncoming, 'get_my_meeting_requests.php': () => json(200, {
+                success: true,
+                requests: [
+                    { listing_id: 1, name: 'With Offer', price: '20.00', offer_price: '15.50', meeting_date: '2027-01-03', meeting_time: '09:05', location: 'Capen', status: 'pending' },
+                    { listing_id: 2, name: 'No Offer', price: '10.00', offer_price: null, meeting_date: '2027-01-03', meeting_time: '09:05', location: 'Capen', status: 'pending' },
+                    { listing_id: 3, name: 'Old Data', price: '11.00', meeting_date: '2027-01-03', meeting_time: '09:05', location: 'Capen', status: 'pending' },
+                ],
+            }),
+        });
+        const { container } = render(<Home />);
+        await screen.findByRole('link', { name: 'With Offer' });
+        const bodies = [...container.querySelectorAll('.mr-request-body')].map((body) => body.textContent);
+        expect(bodies[0]).toContain('$15.50Price changed through an offer (listed at $20.00)');
+        expect(bodies[1]).toContain('$10.00Jan 3');
+        expect(bodies[2]).toContain('$11.00Jan 3');
     });
 });
 

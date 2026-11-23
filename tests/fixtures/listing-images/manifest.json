@@ -1,0 +1,42 @@
+[
+  {
+    "file": "desklamp-front.jpg",
+    "bytes": 46162,
+    "sha256": "bcaf73fc9d69be25d90c1313543fda75fe084bb9f17f8c2294767e2002898b2a"
+  },
+  {
+    "file": "desklamp-side.webp",
+    "bytes": 94986,
+    "sha256": "cc6d6ca9faa48c4ccfe63699f6dbfbc0f8ed1c2ad0eb1fbf7ce27e90ee6d7151"
+  },
+  {
+    "file": "desklamp-back.png",
+    "bytes": 195897,
+    "sha256": "18ea365a38cccfe4773ae97fc225e9096c0910a8e7778e01c8c53f679ffb176d"
+  },
+  {
+    "file": "desklamp-angled.jpg",
+    "bytes": 52329,
+    "sha256": "62f0f63fa7e27d4ae796cda505fc6890b409123a1df196a290e2af0b2bda8377"
+  },
+  {
+    "file": "desklamp-bottom.png",
+    "bytes": 173257,
+    "sha256": "a96243efb668499ee7dae390c25e8b10790f65b3f96778cc27f6431d8f61c611"
+  },
+  {
+    "file": "desklamp-top.webp",
+    "bytes": 68204,
+    "sha256": "97bb764cf3194ecc35b1947c42261cf46fc3b1e1c0c6bbd49496b8773e07404c"
+  },
+  {
+    "file": "invalid-file.txt",
+    "bytes": 53,
+    "sha256": "17f6de1e15e755f763a2dce175cc32b173022c700e416eb0fb9eaa7f3c37d3d6"
+  },
+  {
+    "file": "STK_Shot16_00000.png",
+    "bytes": 11285981,
+    "sha256": "2b56093859776f07bbc752e1567c3c0c13afeba8169a509edb2b1b409dbcb8bf"
+  }
+]

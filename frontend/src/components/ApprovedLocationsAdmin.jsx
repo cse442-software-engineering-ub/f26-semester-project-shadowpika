@@ -155,11 +155,11 @@ export default function ApprovedLocationsAdmin({ initialLocations }) {
                             )}
                             <div className="kv-map-card__actions">
                                 {removingSelected ? (
-                                    <button type="button" className="kv-button-outline" onClick={() => toggleRemoval(selected.location_id)}>
+                                    <button type="button" className="kv-action-button" onClick={() => toggleRemoval(selected.location_id)}>
                                         Keep location
                                     </button>
                                 ) : (
-                                    <button type="button" className="kv-button-navy" onClick={() => toggleRemoval(selected.location_id)}>
+                                    <button type="button" className="kv-action-button kv-action-button--primary" onClick={() => toggleRemoval(selected.location_id)}>
                                         Remove location
                                     </button>
                                 )}
@@ -191,7 +191,7 @@ export default function ApprovedLocationsAdmin({ initialLocations }) {
             ) : null}
 
             <div className="kv-settings-save">
-                <button type="button" className="kv-button-navy" onClick={handleSave} disabled={!hasChanges || saving}>
+                <button type="button" className="kv-action-button kv-action-button--primary" onClick={handleSave} disabled={!hasChanges || saving}>
                     {saving ? 'Saving…' : 'Save changes'}
                 </button>
                 <span className="kv-settings-save__hint">Pins are only saved when you click Save changes.</span>

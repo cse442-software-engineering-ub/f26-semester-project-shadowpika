@@ -1,10 +1,8 @@
 <?php
 
-session_start();
-
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+error_reporting(0);
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
@@ -47,27 +45,52 @@ $curr_pass = isset($data["password"])
 
 
 // -----------------------------
-// GET CURRENT USER FROM COOKIE
+// DATABASE CONNECTION
 // -----------------------------
 
-// Change "username" to the actual name of your cookie.
-$cookie_user = $cookie_user = isset($_COOKIE["karavan_auth_cookie"])
-    ? urldecode(trim($_COOKIE["karavan_auth_cookie"]))
-    : "";
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/auth.php';
+
+try {
+    $pdo = karavan_pdo();
+} catch (\Throwable $e) {
+    echo json_encode([
+        "success" => false,
+        "error" => "Database connection failed."
+    ]);
+    http_response_code(500);
+    exit;
+}
+
+
+// -----------------------------
+// FIND CURRENT USER FROM LOGIN SESSION
+// -----------------------------
+
+try {
+    $user = karavan_current_user($pdo);
+} catch (\Throwable $e) {
+    echo json_encode([
+        "success" => false,
+        "error" => "Failed to find current user."
+    ]);
+    http_response_code(500);
+    exit;
+}
+
+if ($user === null) {
+    echo json_encode([
+        "success" => false,
+        "error" => "You are not logged in."
+    ]);
+    http_response_code(401);
+    exit;
+}
 
 
 // -----------------------------
 // VALIDATE INPUT
 // -----------------------------
-
-if (empty($cookie_user)) {
-    echo json_encode([
-        "success" => false,
-        "error" => "User cookie not found."
-    ]);
-    http_response_code(401);
-    exit;
-}
 
 if (empty($new_username) || empty($new_email)) {
     echo json_encode([
@@ -98,55 +121,21 @@ if (empty($curr_pass)) {
 
 
 // -----------------------------
-// DATABASE CONNECTION
-// -----------------------------
-
-require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/auth.php';
-
-try {
-    $pdo = karavan_pdo();
-} catch (\Throwable $e) {
-    echo json_encode([
-        "success" => false,
-        "error" => "Database connection failed."
-    ]);
-    http_response_code(500);
-    exit;
-}
-
-
-// -----------------------------
-// FIND CURRENT USER
+// GET CURRENT PASSWORD HASH
 // -----------------------------
 
 try {
-
-    /*
-     * Compare the cookie against BOTH:
-     *
-     *     users.username
-     *
-     * OR
-     *
-     *     users.email
-     *
-     * This means the cookie can contain either
-     * the user's username OR their email.
-     */
-
     $stmt = $pdo->prepare(
-        "SELECT id, username, email, password_hash
+        "SELECT password_hash
          FROM users
-         WHERE username = ? OR email = ?"
+         WHERE id = ?"
     );
 
     $stmt->execute([
-        $cookie_user,
-        $cookie_user
+        $user["id"]
     ]);
 
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $password_hash = $stmt->fetchColumn();
 
 } catch (\PDOException $e) {
 
@@ -161,25 +150,10 @@ try {
 
 
 // -----------------------------
-// MAKE SURE USER EXISTS
-// -----------------------------
-
-if (!$user) {
-    echo json_encode([
-        "success" => false,
-        "error" => "User associated with cookie was not found."
-    ]);
-
-    http_response_code(404);
-    exit;
-}
-
-
-// -----------------------------
 // VERIFY PASSWORD
 // -----------------------------
 
-if (!password_verify($curr_pass, $user["password_hash"])) {
+if (!is_string($password_hash) || !password_verify($curr_pass, $password_hash)) {
     echo json_encode([
         "success" => false,
         "error" => "Password is incorrect."
@@ -225,6 +199,48 @@ try {
     echo json_encode([
         "success" => false,
         "error" => "Failed to check email."
+    ]);
+
+    http_response_code(500);
+    exit;
+}
+
+
+// -----------------------------
+// CHECK IF USERNAME IS ALREADY USED
+// -----------------------------
+
+try {
+
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*)
+         FROM users
+         WHERE username = ?
+         AND id != ?"
+    );
+
+    $stmt->execute([
+        $new_username,
+        $user["id"]
+    ]);
+
+    $username_count = $stmt->fetchColumn();
+
+    if ($username_count > 0) {
+        echo json_encode([
+            "success" => false,
+            "error" => "Username already in use."
+        ]);
+
+        http_response_code(409);
+        exit;
+    }
+
+} catch (\PDOException $e) {
+
+    echo json_encode([
+        "success" => false,
+        "error" => "Failed to check username."
     ]);
 
     http_response_code(500);

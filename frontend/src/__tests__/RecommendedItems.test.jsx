@@ -21,6 +21,7 @@ const json = (status, body) => Promise.resolve(new Response(JSON.stringify(body)
 function serve(recommended) {
     const routes = {
         'get_recommended_items.php': recommended,
+        'get_previously_viewed_items.php': () => json(200, { success: true, items: [] }),
         'get_incoming_meeting_requests.php': () => json(200, { success: true, requests: [] }),
         'get_my_meeting_requests.php': () => json(200, {
             success: true,
@@ -90,7 +91,7 @@ describe('Recommended Items on Home (card #200)', () => {
         render(<Home />);
 
         const link = (await screen.findByText('Physical Chemistry')).closest('a');
-        expect(link).toHaveAttribute('href', './item.html?listing_id=91005');
+        expect(link).toHaveAttribute('href', './item.html?listing_id=91005&from=home');
     });
 
     it('Test 4: shows the empty message and no items', async () => {

@@ -11,6 +11,7 @@ import {
 import CommunityPicker from './components/CommunityPicker.jsx';
 import { CaravanLogo, KaravanBrand } from './components/KaravanBrand.jsx';
 import { appBase, pathFor } from './routes.js';
+import { clearReturnPath } from './returnTo.js';
 
 const JOIN_LABEL = 'Join a Community';
 
@@ -257,6 +258,7 @@ function NavBar() {
         setMenuOpen(false);
         await logout();
         saveJoinedCommunities([]);
+        clearReturnPath();
         window.location.assign(pathFor('login'));
     };
 

@@ -4,7 +4,8 @@ import MeetingProgress from './MeetingProgress.jsx';
 import useMeetingList from './useMeetingList.js';
 import { canCheckIn, canMarkSold, updateListing } from './listingSales.js';
 import { fetchMeetingLocations } from './api.js';
-import { STATUS_LABELS, fetchIncomingMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl, respondMeetingRequest } from './meetingRequests.js';
+import ActionConfirmationDialog from './components/ActionConfirmationDialog.jsx';
+import { STATUS_LABELS, dismissLocationChangeResult, fetchIncomingMeetingRequests, formatMeetingDate, formatMeetingTime, requestItemUrl, respondMeetingRequest } from './meetingRequests.js';
 
 const SUCCESS_TEXT = {
     approve: 'You approved the meeting request.',
@@ -18,6 +19,9 @@ function IncomingRequests() {
         useMeetingList(fetchIncomingMeetingRequests, 'Unable to load requests for your items.');
     const [message, setMessage] = useState(null); // result of the last action: { kind, text }
     const [busy, setBusy] = useState(false);
+    const [saleConfirmation, setSaleConfirmation] = useState(null);
+    const [denyConfirmation, setDenyConfirmation] = useState(null);
+    const headingRef = React.useRef(null);
     const [picker, setPicker] = useState(null); // { requestId, locations, choice } while a Change Location picker is open
 
     // Only a pending request can be answered; the server refuses anything else and its error is shown.
@@ -29,7 +33,10 @@ function IncomingRequests() {
         try {
             const data = await respondMeetingRequest(request.request_id, action, locationId);
             if (data.success) {
-                setRequests((current) => current.map((item) => (item.request_id === request.request_id ? data.request : item)));
+                // A denied request leaves the list; the server no longer lists denied requests.
+                setRequests((current) => (action === 'deny'
+                    ? current.filter((item) => item.request_id !== request.request_id)
+                    : current.map((item) => (item.request_id === request.request_id ? data.request : item))));
                 setPicker(null);
                 setMessage({ kind: 'success', text: SUCCESS_TEXT[action] });
             } else {
@@ -44,6 +51,26 @@ function IncomingRequests() {
         } finally {
             finishMutation();
             if (reload) refresh();
+            setBusy(false);
+        }
+    }
+
+    // Removes the seller's "Location change ..." label; the server's answer (result null) replaces the row.
+    async function dismissResult(request) {
+        if (!startMutation()) return;
+        setMessage(null);
+        setBusy(true);
+        try {
+            const data = await dismissLocationChangeResult(request.request_id);
+            if (data.success) {
+                setRequests((current) => current.map((item) => (item.request_id === request.request_id ? data.request : item)));
+            } else {
+                setMessage({ kind: 'error', text: data.error || 'Unable to dismiss the location change label.' });
+            }
+        } catch {
+            setMessage({ kind: 'error', text: 'Could not connect to the server.' });
+        } finally {
+            finishMutation();
             setBusy(false);
         }
     }
@@ -107,7 +134,7 @@ function IncomingRequests() {
 
     return (
         <section className="mr-requests" aria-labelledby="mr-incoming-title">
-            <h2 id="mr-incoming-title" className="mr-section-title">Requests for My Items</h2>
+            <h2 ref={headingRef} tabIndex={-1} id="mr-incoming-title" className="mr-section-title">Requests for My Items</h2>
 
             {status === 'loading' && <p className="id-message">Loading requests for your items...</p>}
             {error && <p className="id-message id-error" role="alert">{error} <button type="button" className="mr-cancel" onClick={refresh}>Reload incoming requests</button></p>}
@@ -136,7 +163,10 @@ function IncomingRequests() {
                                 </div>
                                 <div className="mr-request-body">
                                     <h3 className="mr-request-name"><a className="mr-request-link" href={requestItemUrl(request.listing_id)}>{request.name}</a></h3>
-                                    <p className="mr-request-price">${request.price}</p>
+                                    <p className="mr-request-price">${request.offer_price ?? request.price}</p>
+                                    {request.offer_price != null && (
+                                        <p className="mr-request-offer">Price changed through an offer (listed at ${request.price})</p>
+                                    )}
                                     <p className="mr-request-buyer">Requested by {request.buyer}</p>
                                     <p className="mr-request-when">
                                         {formatMeetingDate(request.meeting_date)}, {formatMeetingTime(request.meeting_time)}
@@ -145,19 +175,27 @@ function IncomingRequests() {
                                     <span className={`mr-status mr-status-${request.status}`}>
                                         {STATUS_LABELS[request.status] ?? request.status}
                                     </span>
+                                    {(request.location_change_result === 'accepted' || request.location_change_result === 'denied') && (
+                                        <p className="mr-location-result">
+                                            <span>Location change {request.location_change_result}</span>
+                                            <button type="button" className="mr-location-result-dismiss" aria-label="Dismiss"
+                                                disabled={busy} onClick={() => dismissResult(request)}>×</button>
+                                        </p>
+                                    )}
                                     <MeetingProgress request={request} seller />
                                     {request.status === 'approved' && (
                                         <div className="mr-actions">
                                             {canCheckIn(request, true) && <a className="mr-cancel"
                                                 href={`./check-in.html?request_id=${encodeURIComponent(request.request_id)}`}>Check In</a>}
                                             {canMarkSold(request) && <button type="button" className="mr-cancel"
-                                                disabled={busy} onClick={() => markSold(request)}>Mark as sold</button>}
+                                                disabled={busy} onClick={(event) => setSaleConfirmation({ request, trigger: event.currentTarget })}>Mark as sold</button>}
                                         </div>
                                     )}
                                     {request.status === 'pending' && !pickerOpen && (
                                         <div className="mr-actions">
                                             <button type="button" className="mr-cancel" disabled={busy} onClick={() => respond(request, 'approve')}>Approve</button>
-                                            <button type="button" className="mr-cancel" disabled={busy} onClick={() => respond(request, 'deny')}>Deny</button>
+                                            <button type="button" className="mr-cancel" disabled={busy}
+                                                onClick={(event) => setDenyConfirmation({ request, trigger: event.currentTarget })}>Deny</button>
                                             <button type="button" className="mr-cancel" disabled={busy} onClick={() => openPicker(request)}>Change Location</button>
                                         </div>
                                     )}
@@ -184,6 +222,37 @@ function IncomingRequests() {
                     })}
                 </ul>
             )}
+            {denyConfirmation && <ActionConfirmationDialog title="Deny this meeting request?"
+                confirmLabel="Deny Request" cancelLabel="Keep Request" busy={busy}
+                trigger={denyConfirmation.trigger} fallbackRef={headingRef}
+                onDismiss={() => { if (!busy) setDenyConfirmation(null); }}
+                onConfirm={async () => {
+                    const current = requests.find((request) => request.request_id === denyConfirmation.request.request_id);
+                    if (current?.status === 'pending') {
+                        await respond(current, 'deny');
+                    } else {
+                        setMessage({ kind: 'error', text: 'This request is no longer pending. Reload to check its status.' });
+                    }
+                    setDenyConfirmation(null);
+                }}>
+                <p><strong>{denyConfirmation.request.name}</strong></p>
+                <p>Requested by {denyConfirmation.request.buyer}</p>
+                <p>The buyer will see this request as Denied.</p>
+            </ActionConfirmationDialog>}
+            {saleConfirmation && <ActionConfirmationDialog title="Mark this listing as sold?"
+                confirmLabel="Mark as Sold" cancelLabel="Keep Listing" busy={busy}
+                trigger={saleConfirmation.trigger} fallbackRef={headingRef}
+                onDismiss={() => { if (!busy) setSaleConfirmation(null); }}
+                onConfirm={async () => {
+                    const current = requests.find((request) => request.request_id === saleConfirmation.request.request_id);
+                    if (!current || !canMarkSold(current)) {
+                        setMessage({ kind: 'error', text: 'This listing is no longer ready to be marked as sold. Reload to check its status.' });
+                    } else await markSold(current);
+                    setSaleConfirmation(null);
+                }}>
+                <p><strong>{saleConfirmation.request.name}</strong></p>
+                <p>Both participants have checked in. This listing will be marked Sold and removed from marketplace results.</p>
+            </ActionConfirmationDialog>}
         </section>
     );
 }

@@ -3,11 +3,17 @@ import NavBar from './NavBar.jsx';
 import './ProductSearch.css';
 import './ItemDetails.css';
 import './MeetingRequests.css';
-import ItemCover from './ItemCover.jsx';
+import ListingGallery from './ListingGallery.jsx';
 import { fetchListingOwnership, fetchMyMeetingRequests, itemPageFrom, loadListing, meetPageUrl } from './meetingRequests.js';
 import HeartIcon from './HeartIcon.jsx';
 import { fetchFavoriteStatus, removeFavorite, saveFavorite } from './favorites.js';
 import ListingMeetingLocation from './components/ListingMeetingLocation.jsx';
+import { recordViewedItem } from './previouslyViewed.js';
+import Stars from './components/Stars.jsx';
+import { messagePageUrl } from './messages.js';
+import { ratingSummaryText, sellerPageUrl } from './ratings.js';
+import { shareListing } from './shareListing.js';
+import { loadRequestCount } from './requestCount.js';
 
 const SEARCH_HREF = './product-search.html';
 
@@ -44,6 +50,36 @@ function BackToFavorites() {
     );
 }
 
+// Opened from Messages: back goes to Messages.
+function BackToMessages() {
+    return (
+        <a className="id-back" href="./message.html">
+            <span aria-hidden="true">←</span> Back to messages
+        </a>
+    );
+}
+
+function ShareIcon() {
+    return (
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4" />
+        </svg>
+    );
+}
+
+function PeopleIcon() {
+    return (
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+            <circle cx="9" cy="8" r="3.5" />
+            <path d="M2.5 20v-1a5.5 5.5 0 0 1 5.5-5.5h2a5.5 5.5 0 0 1 5.5 5.5v1" />
+            <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14a5.5 5.5 0 0 1 3 5v1" />
+        </svg>
+    );
+}
+
 function ItemDetails() {
     const from = itemPageFrom(window.location.search);
     const [listing, setListing] = useState(null);
@@ -56,6 +92,9 @@ function ItemDetails() {
     const [saved, setSaved] = useState(false);
     const [saveError, setSaveError] = useState('');
     const [heartPending, setHeartPending] = useState(false);
+    const [shareNote, setShareNote] = useState({ ok: false, message: '' });
+    const [sharePending, setSharePending] = useState(false);
+    const [requestCount, setRequestCount] = useState(null);
 
     useEffect(() => {
         const listingId = new URLSearchParams(window.location.search).get('listing_id') ?? '';
@@ -84,6 +123,10 @@ function ItemDetails() {
             })
             .catch(() => {});
 
+        loadRequestCount(listingId).then((count) => {
+            if (!cancelled) setRequestCount(count);
+        });
+
         loadListing(listingId)
             .then((data) => {
                 if (cancelled) return;
@@ -91,6 +134,7 @@ function ItemDetails() {
                     setListing(data.listing);
                     setStatus('done');
                     document.title = `Karavan - ${data.listing.name}`;
+                    recordViewedItem(Number(data.listing.listing_id)).catch(() => {});
                 } else {
                     setError(data.error || 'This item could not be loaded.');
                     setStatus('error');
@@ -129,32 +173,57 @@ function ItemDetails() {
         }
     };
 
+    // One request per click; the earlier message is cleared first and nothing is copied unless it succeeds.
+    const handleShareClick = async () => {
+        if (sharePending) return;
+        setShareNote({ ok: false, message: '' });
+        setSharePending(true);
+        const result = await shareListing(listing.listing_id);
+        setShareNote(result.ok ? { ok: true, message: 'Link copied!' } : { ok: false, message: result.message });
+        setSharePending(false);
+    };
+
     return (
         <div className="ps-page">
             <NavBar />
-            <main className="ps-frame id-frame">
-                {from === 'favorites' ? <BackToFavorites /> : from === 'request' ? <BackToHome /> : <BackToSearch />}
+            <main className="ps-frame id-frame id-page">
+                {from === 'favorites' ? <BackToFavorites /> : from === 'request' || from === 'home' ? <BackToHome /> : from === 'messages' ? <BackToMessages /> : <BackToSearch />}
 
                 {status === 'loading' && <p className="id-message">Loading item details...</p>}
                 {status === 'error' && <p className="id-message id-error" role="alert">{error}</p>}
 
                 {status === 'done' && listing && (
                     <article className="id-item">
-                        {canBuy && (
-                            <button
-                                type="button"
-                                className={`id-heart${saved ? ' is-saved' : ''}`}
-                                aria-label="Save to Favorites"
-                                aria-pressed={saved}
-                                title={saved ? 'Remove from Favorites' : 'Add to Favorites'}
-                                onClick={handleHeartClick}
-                            >
-                                <HeartIcon filled={saved} />
-                            </button>
-                        )}
-                        <div className="id-cover">
-                            <ItemCover name={listing.name} imageUrl={listing.image_url} />
+                        <div className="id-corner">
+                            <div className="id-corner-row">
+                                <button
+                                    type="button"
+                                    className="id-share"
+                                    title="Copy a link to this item"
+                                    onClick={handleShareClick}
+                                    disabled={sharePending}
+                                >
+                                    <ShareIcon />
+                                    <span>Share</span>
+                                </button>
+                                {canBuy && (
+                                    <button
+                                        type="button"
+                                        className={`id-heart${saved ? ' is-saved' : ''}`}
+                                        aria-label="Save to Favorites"
+                                        aria-pressed={saved}
+                                        title={saved ? 'Remove from Favorites' : 'Add to Favorites'}
+                                        onClick={handleHeartClick}
+                                    >
+                                        <HeartIcon filled={saved} />
+                                    </button>
+                                )}
+                            </div>
+                            {shareNote.message && (shareNote.ok
+                                ? <p className="id-share-note" role="status">{shareNote.message}</p>
+                                : <p className="id-share-note id-error" role="alert">{shareNote.message}</p>)}
                         </div>
+                        <ListingGallery name={listing.name} imageUrl={listing.image_url} imageUrls={listing.image_urls} />
 
                         <div className="id-info">
                             {listing.category && <span className="id-category">{listing.category.toUpperCase()}</span>}
@@ -162,34 +231,51 @@ function ItemDetails() {
                             <p className="id-price">${listing.price}</p>
                             {saveError && <p className="id-error id-save-error" role="alert">{saveError}</p>}
 
-                            {canBuy && requestAllowsBuying && (
+                            {listing.seller && (
+                                <p className="id-seller">
+                                    <span>Sold by <a className="id-seller-link" href={sellerPageUrl(listing.seller.id)}>{listing.seller.username}</a></span>
+                                    <span className="id-seller-rating">
+                                        <Stars value={listing.seller.average_rating} />
+                                        {ratingSummaryText(listing.seller.average_rating, listing.seller.rating_count)}
+                                    </span>
+                                </p>
+                            )}
+
+                            {canBuy && (requestAllowsBuying || listing.seller) && (
                                 <div className="id-actions">
-                                    <button
-                                        type="button"
-                                        className="id-buy"
-                                        onClick={() => window.location.assign(meetPageUrl(listing.listing_id, from))}
-                                    >
-                                        Buy Now
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="id-message-seller"
-                                        onClick={() => {
-                                            if (!listing.owner_id) {
-                                                window.alert('Seller information is unavailable.');
-                                                return;
-                                            }
-                                            const parameters = new URLSearchParams({
-                                                with: String(listing.owner_id),
-                                                listing_id: String(listing.listing_id),
-                                                listing_name: listing.name,
-                                            });
-                                            window.location.assign(`./message.html?${parameters}`);
-                                        }}
-                                    >
-                                        Message Seller
-                                    </button>
+                                    {requestAllowsBuying && (
+                                        <button
+                                            type="button"
+                                            className="id-buy"
+                                            onClick={() => window.location.assign(meetPageUrl(listing.listing_id, from))}
+                                        >
+                                            Buy Now
+                                        </button>
+                                    )}
+                                    {listing.seller && (
+                                        <button
+                                            type="button"
+                                            className="id-message-seller"
+                                            onClick={() => window.location.assign(messagePageUrl(listing.seller.id, listing.listing_id))}
+                                        >
+                                            Message Seller
+                                        </button>
+                                    )}
                                 </div>
+                            )}
+
+                            {requestCount !== null && (
+                                <p className="id-request-count">
+                                    <PeopleIcon />
+                                    {requestCount === 0
+                                        ? <span>No purchase requests yet</span>
+                                        : (
+                                            <span>
+                                                <strong>{requestCount === 1 ? '1 person' : `${requestCount} people`}</strong>
+                                                {requestCount === 1 ? ' has requested this item' : ' have requested this item'}
+                                            </span>
+                                        )}
+                                </p>
                             )}
 
                             <dl className="id-facts">

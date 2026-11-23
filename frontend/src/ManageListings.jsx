@@ -6,6 +6,8 @@ import './NavBar.css';
 import { apiUrl } from './routes.js';
 import { updateListing } from './listingSales.js';
 import { MEETING_REFRESH_MS } from './useMeetingList.js';
+import FreezeListingsDialog from './components/FreezeListingsDialog.jsx';
+import ActionConfirmationDialog from './components/ActionConfirmationDialog.jsx';
 
 const BASE_API_PATH = apiUrl('listing/api');
 
@@ -18,6 +20,12 @@ export default function ManageListings() {
     const [loadError, setLoadError] = useState('');
     const [notice, setNotice] = useState(null);
     const [busyId, setBusyId] = useState(null);
+    const [actionConfirmation, setActionConfirmation] = useState(null);
+    const [freezeDialogOpen, setFreezeDialogOpen] = useState(false);
+    const [freezing, setFreezing] = useState(false);
+    const [freezeNeedsRefresh, setFreezeNeedsRefresh] = useState(false);
+    const freezeButtonRef = React.useRef(null);
+    const pausedTabRef = React.useRef(null);
     const loadSequence = React.useRef({ value: 0 });
     const loadPending = React.useRef(false);
     const mutating = React.useRef(false);
@@ -42,6 +50,7 @@ export default function ManageListings() {
                 throw new Error(data.error || 'Unable to load your listings.');
             }
             setListings(data.results);
+            setFreezeNeedsRefresh(false);
             setSelectedListing((current) => data.results.find((item) => item.listing_id === current?.listing_id) ?? data.results[0] ?? null);
             setLoadError('');
         } catch (err) {
@@ -98,14 +107,14 @@ export default function ManageListings() {
 
             /* Stacking rules to keep cards clean below the navigation header */
             @media screen and (max-width: 820px) {
-                main > div:last-child > div {
+                .ml-listing-card {
                     flex-direction: column !important; 
                     gap: 24px !important;
                     padding: 20px !important;
                     max-width: 100% !important;
                     box-sizing: border-box !important;
                 }
-                main > div:last-child > div > div:first-child {
+                .ml-listing-image {
                     width: 100% !important;
                     height: auto !important;
                     aspect-ratio: 330 / 400 !important;
@@ -166,13 +175,17 @@ export default function ManageListings() {
         if (mutating.current) return;
         const item = listings.find((listing) => listing.listing_id === id);
         if (!item || (actionType === 'mark_sold' && item.can_mark_sold !== true)) return;
-        const nextStatus = actionType === 'mark_sold' ? 'sold' : actionType === 'mark_active' ? 'active' : 'deleted';
+        if (actionType === 'resume' && item.status !== 'inactive') return;
+        const nextStatus = actionType === 'mark_sold' ? 'sold'
+            : (actionType === 'mark_active' || actionType === 'resume') ? 'active' : 'deleted';
         mutating.current = true;
         ++loadSequence.current.value;
         loadPending.current = false;
         setBusyId(id);
+        setFreezeNeedsRefresh(true);
         setNotice(null);
-        const body = nextStatus === 'deleted' ? { action: 'delete', listing_id: id }
+        const body = actionType === 'resume' ? { action: 'resume', listing_id: id }
+            : nextStatus === 'deleted' ? { action: 'delete', listing_id: id }
             : { action: 'update_status', listing_id: id, status: nextStatus };
         if (nextStatus === 'sold' && Number.isInteger(item.sale_request_id)) body.request_id = item.sale_request_id;
         try {
@@ -180,7 +193,8 @@ export default function ManageListings() {
             if (!mounted.current) return;
             if (nextStatus === 'deleted') setListings((current) => current.filter((listing) => listing.listing_id !== id));
             else setListings((current) => current.map((listing) => listing.listing_id === id
-                ? { ...listing, status: nextStatus, can_mark_sold: false } : listing));
+                ? { ...listing, status: nextStatus, can_mark_sold: false, can_freeze: undefined } : listing));
+            if (actionType === 'resume') setCurrentTab('active');
             setNotice({ kind: 'success', text: nextStatus === 'sold' ? 'Listing marked as sold.'
                 : nextStatus === 'active' ? 'Listing marked as available.' : 'Listing deleted.' });
         } catch (err) {
@@ -198,7 +212,48 @@ export default function ManageListings() {
 
     const activeItems = listings.filter(i => (i.status || '').trim().toLowerCase() === 'active');
     const soldItems = listings.filter(i => (i.status || '').trim().toLowerCase() === 'sold');
-    const displayedItems = currentTab === 'active' ? activeItems : soldItems;
+    const pausedItems = listings.filter(i => (i.status || '').trim().toLowerCase() === 'inactive');
+    const freezeAvailabilityKnown = !loading && !loadError && !freezeNeedsRefresh
+        && activeItems.every((item) => (item.can_freeze === true && item.freeze_block_reason === null)
+            || (item.can_freeze === false && ['approved_meeting', 'completed_meeting'].includes(item.freeze_block_reason)));
+    const eligibleCount = activeItems.filter((item) => item.can_freeze === true).length;
+    const busy = freezing || busyId !== null;
+    const canFreeze = freezeAvailabilityKnown && eligibleCount > 0;
+    const displayedItems = currentTab === 'active' ? activeItems : currentTab === 'sold' ? soldItems : pausedItems;
+
+    const handleFreeze = async () => {
+        if (mutating.current || !canFreeze) return;
+        mutating.current = true;
+        ++loadSequence.current.value;
+        loadPending.current = false;
+        setFreezing(true);
+        setFreezeNeedsRefresh(true);
+        setNotice(null);
+        try {
+            const result = await updateListing({ action: 'freeze_all' });
+            if (!mounted.current) return;
+            const { frozen_count: frozen, skipped_count: skipped, cancelled_request_count: cancelled } = result;
+            if (![frozen, skipped, cancelled].every((count) => Number.isInteger(count) && count >= 0)) {
+                throw new Error('Pause result unavailable. Reload listings to check the current state before trying again.');
+            }
+            const plural = (count, noun) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+            setNotice({ kind: 'success', text: `Paused ${plural(frozen, 'listing')}. Skipped ${plural(skipped, 'listing')} with protected meetings. Canceled ${plural(cancelled, 'unapproved request')}.` });
+            if (frozen > 0) setCurrentTab('paused');
+        } catch (err) {
+            if (mounted.current) setNotice({ kind: 'error', text: err instanceof TypeError
+                ? 'Could not connect to the server. Reload listings to check the current state before trying again.'
+                : err.message || 'Unable to pause your listings. Reload listings to check the current state.' });
+        } finally {
+            mutating.current = false;
+            if (mounted.current) {
+                await loadDatabaseListings();
+                if (mounted.current) {
+                    setFreezing(false);
+                    setFreezeDialogOpen(false);
+                }
+            }
+        }
+    };
     if (currentView === 'edit' && selectedListing) {
         return (
             <div style={{ width: '100%', minHeight: '100vh', paddingBottom: 40, background: '#F7F3EA', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
@@ -255,6 +310,7 @@ export default function ManageListings() {
                                         related_course: selectedListing.related_course || '',
                                         meeting_location: selectedListing.meeting_location,
                                         description: selectedListing.description,
+                                        allow_offers: selectedListing.allow_offers === true,
                                         image_url: finalImageUrl // Sends the fresh server link pointer to database arrays
                                     })
                                 });
@@ -276,6 +332,7 @@ export default function ManageListings() {
                             {/* Hidden file selector node bound to the element reference hook */}
                             <input 
                                 type="file" 
+                                disabled={selectedListing.image_urls?.length > 1}
                                 ref={fileInputRef} 
                                 accept="image/jpeg,image/png,image/webp" 
                                 style={{ display: 'none' }} 
@@ -290,13 +347,13 @@ export default function ManageListings() {
 
                             {/* Clicking anywhere inside this container triggers the browser file picker layout window */}
                             <div 
-                                onClick={() => fileInputRef.current?.click()}
+                                onClick={() => { if (!(selectedListing.image_urls?.length > 1)) fileInputRef.current?.click(); }}
                                 style={{ width: '330px', height: '460px', background: '#F0ECE4', borderRadius: 14, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', border: '2px dashed #D1D9E0', position: 'relative' }}
                             >
                                 {previewUrl || selectedListing.image_url ? (
                                     <>
                                         <img src={previewUrl || selectedListing.image_url} alt={selectedListing.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                        <span style={{ color: '#FFF', background: '#1f2f46eb', borderRadius: 8, padding: '9px 12px', fontSize: 13, fontWeight: '700', position: 'absolute', bottom: 12, right: 12 }}>Change item image</span>
+                                        <span style={{ color: '#FFF', background: '#1f2f46eb', borderRadius: 8, padding: '9px 12px', fontSize: 13, fontWeight: '700', position: 'absolute', bottom: 12, right: 12 }}>{selectedListing.image_urls?.length > 1 ? `${selectedListing.image_urls.length} photos · preserved when saving` : 'Change item image'}</span>
                                     </>
                                 ) : (
                                     <span style={{ color: '#6E87A0', fontFamily: 'DM Sans' }}>＋ Upload item image</span>
@@ -360,11 +417,20 @@ export default function ManageListings() {
                                     <option value="Center for the Arts · Main entrance">Center for the Arts · Main entrance</option>
                                     <option value="Abbott Library · Main entrance">Abbott Library · Main entrance</option>
                                 </select>
+                                <span style={{ fontSize: '13px', color: '#6E87A0', fontFamily: 'DM Sans' }}>Changing the meeting location does not change the location of purchase requests you have already received.</span>
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <span style={{ fontSize: '11px', fontWeight: '700', color: '#1F2F46', fontFamily: 'DM Sans', textTransform: 'uppercase' }}>Description *</span>
                                 <textarea rows="4" value={selectedListing.description || ''} onChange={(e) => updateField('description', e.target.value)} style={{ width: '100%', padding: '12px 16px', border: '1px solid #D1D9E0', borderRadius: '8px', fontSize: '15px', color: '#1F2F46', backgroundColor: '#ffffff', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}></textarea>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '15px', color: '#1F2F46', fontFamily: 'DM Sans' }}>
+                                    <input type="checkbox" checked={selectedListing.allow_offers === true} onChange={(e) => updateField('allow_offers', e.target.checked)} />
+                                    <span>Allow buyers to make offers</span>
+                                </label>
+                                <span style={{ fontSize: '13px', color: '#6E87A0', fontFamily: 'DM Sans' }}>Turning offers off does not change offers already sent in purchase requests.</span>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
@@ -383,19 +449,36 @@ export default function ManageListings() {
             <main style={{ width: '100%', maxWidth: '1240px', margin: '0 auto', padding: '40px 20px', display: 'flex', flexDirection: 'column', gap: 8, boxSizing: 'border-box', textAlign: 'left' }}>
                 <div style={{ color: '#1F2F46', fontSize: 30, fontFamily: 'DM Sans', fontWeight: '700', lineHeight: '42px', marginTop: 20 }}>My listings</div>
                 <div style={{ color: '#6E87A0', fontSize: 15, fontFamily: 'DM Sans', fontWeight: '400', lineHeight: '21px' }}>
-                    {currentTab === 'active' ? 'Only items published by you appear here. Manage their details and availability.' : 'Sold items remain visible to you but are hidden from marketplace search.'}
+                    {currentTab === 'active' ? 'Only items published by you appear here. Manage their details and availability.'
+                        : currentTab === 'sold' ? 'Sold items remain visible to you but are hidden from marketplace search.'
+                        : 'Paused items are hidden from the marketplace. Mark an item as available to list it again; canceled requests will not return.'}
                 </div>
                 {loading && <p role="status">Loading listings...</p>}
                 {loadError && <p role="alert">{loadError} <button type="button" onClick={() => loadDatabaseListings()}>Reload listings</button></p>}
                 {notice && <p role={notice.kind === 'error' ? 'alert' : 'status'}>{notice.text}</p>}
                 
-                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                    <button type="button" onClick={() => setCurrentTab('active')} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #1F2F46', cursor: 'pointer', background: currentTab === 'active' ? '#1F2F46' : '#FFF', color: currentTab === 'active' ? '#FFF' : '#1F2F46', fontWeight: '700', fontSize: '14px', fontFamily: 'DM Sans' }}>View Active ({activeItems.length})</button>
-                    <button type="button" onClick={() => setCurrentTab('sold')} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #1F2F46', cursor: 'pointer', background: currentTab === 'sold' ? '#1F2F46' : '#FFF', color: currentTab === 'sold' ? '#FFF' : '#1F2F46', fontWeight: '700', fontSize: '14px', fontFamily: 'DM Sans' }}>View Sold ({soldItems.length})</button>
+                <div className="ml-toolbar">
+                    <div className="ml-view-controls" role="group" aria-label="Listing views">
+                        <button type="button" className="ml-view-button" aria-pressed={currentTab === 'active'}
+                            disabled={freezing} onClick={() => setCurrentTab('active')}>View Active ({activeItems.length})</button>
+                        <button type="button" className="ml-view-button" aria-pressed={currentTab === 'sold'}
+                            disabled={freezing} onClick={() => setCurrentTab('sold')}>View Sold ({soldItems.length})</button>
+                        <button ref={pausedTabRef} type="button" className="ml-view-button" aria-pressed={currentTab === 'paused'}
+                            disabled={freezing} onClick={() => setCurrentTab('paused')}>View Paused ({pausedItems.length})</button>
+                    </div>
+                    <button ref={freezeButtonRef} type="button" className="ml-status-action ml-freeze-button ml-freeze-trigger"
+                        disabled={busy || !canFreeze} aria-describedby="ml-freeze-note"
+                        onClick={() => { if (!mutating.current && canFreeze) setFreezeDialogOpen(true); }}>Pause All Listings</button>
                 </div>
+                <p id="ml-freeze-note" className="ml-freeze-note">
+                    {loading ? 'Loading pause availability…' : loadError ? 'Pause availability is unavailable. Reload listings above to check the current state.' : !freezeAvailabilityKnown
+                        ? <>Pause availability is unavailable. <button type="button" disabled={busy} onClick={() => loadDatabaseListings()}>Reload listings</button> to check the current state.</>
+                        : eligibleCount === 0 ? 'No eligible active listings to pause.'
+                        : 'Listings with protected meetings stay active. Unapproved requests for paused listings will be canceled.'}
+                </p>
 
                 <div style={{ color: '#1F2F46', fontSize: 13, fontFamily: 'DM Sans', fontWeight: '700', lineHeight: '18px', marginTop: 12, textTransform: 'uppercase' }}>
-                    {currentTab === 'active' ? `${activeItems.length} Active` : `${soldItems.length} Sold`} Listing
+                    {displayedItems.length} {currentTab === 'active' ? 'Active' : currentTab === 'sold' ? 'Sold' : 'Paused'} Listing{displayedItems.length === 1 ? '' : 's'}
                 </div>
 
                 {!loading && !loadError && listings.length === 0 ? (
@@ -411,15 +494,16 @@ export default function ManageListings() {
                         </div>
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
+                    <div className="ml-listing-grid" style={{ display: 'flex', flexDirection: 'column', gap: '30px', width: '100%' }}>
+                        {!loading && !loadError && displayedItems.length === 0 && <p className="ml-empty-view">No {currentTab} listings.</p>}
                         {displayedItems.map(item => {
                             const itemStatus = (item.status || '').trim().toLowerCase();
-                            const badgeBg = itemStatus === 'active' ? '#E3F5E8' : '#FAEDC7';
-                            const badgeText = itemStatus === 'active' ? '#1F7340' : '#8C5C14';
+                            const badgeBg = itemStatus === 'active' ? '#E3F5E8' : itemStatus === 'inactive' ? '#ECEFF2' : '#FAEDC7';
+                            const badgeText = itemStatus === 'active' ? '#1F7340' : itemStatus === 'inactive' ? '#42536A' : '#8C5C14';
                             
                             return (
-                                <div key={item.listing_id} style={{ width: '100%', background: 'white', borderRadius: 18, border: '1px solid #D1D6DB', padding: 32, display: 'flex', flexDirection: 'row', gap: 40, boxSizing: 'border-box', textAlign: 'left' }}>
-                                    <div style={{ width: 330, height: 460, backgroundColor: '#F0ECE4', borderRadius: 14, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                <div className="ml-listing-card" key={item.listing_id} style={{ width: '100%', background: 'white', borderRadius: 18, border: '1px solid #D1D6DB', padding: 32, display: 'flex', flexDirection: 'row', gap: 40, boxSizing: 'border-box', textAlign: 'left' }}>
+                                    <div className="ml-listing-image" style={{ width: 330, height: 460, backgroundColor: '#F0ECE4', borderRadius: 14, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                                         {item.image_url ? (
                                             <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                         ) : (
@@ -428,7 +512,7 @@ export default function ManageListings() {
                                     </div>
                                     <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', gap: 14 }}>
                                         <div style={{ width: 84, height: 30, background: badgeBg, borderRadius: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <div style={{ color: badgeText, fontSize: 13, fontFamily: 'DM Sans', fontWeight: '700', textTransform: 'capitalize' }}>{itemStatus}</div>
+                                            <div style={{ color: badgeText, fontSize: 13, fontFamily: 'DM Sans', fontWeight: '700', textTransform: 'capitalize' }}>{itemStatus === 'inactive' ? 'Paused' : itemStatus}</div>
                                         </div>
                                         <div style={{ color: '#1F2F46', fontSize: 28, fontFamily: 'DM Sans', fontWeight: '700' }}>{item.name}</div>
                                         <div style={{ color: '#1F2F46', fontSize: 17, fontFamily: 'DM Sans', fontWeight: '400' }}>${item.price}  &bull;  {item.condition}  &bull;  {item.category}</div>
@@ -441,21 +525,28 @@ export default function ManageListings() {
                                         <div style={{ color: '#6E87A0', fontSize: 16, fontFamily: 'DM Sans', fontWeight: '400' }}>{item.meeting_location}</div>
                                         
                                         <div style={{ color: '#1F2F46', fontSize: 13, fontFamily: 'DM Sans', fontWeight: '700' }}>LISTING ACTIONS</div>
+                                        {itemStatus === 'active' && item.freeze_block_reason && <p className="ml-sale-hint">
+                                            {item.freeze_block_reason === 'completed_meeting'
+                                                ? 'Both participants have checked in. Mark this listing as sold before pausing.'
+                                                : 'An approved meeting is still within its check-in window. This listing cannot be paused.'}
+                                        </p>}
                                         {itemStatus === 'active' && item.can_mark_sold !== true && <p className="ml-sale-hint">
                                             {item.can_mark_sold === false
                                                 ? 'Both buyer and seller must check in to the same approved meeting before you can mark this listing as sold.'
                                                 : 'Check-in status unavailable. Reload listings.'}
                                         </p>}
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 4 }}>
-                                            <button type="button" className="ml-status-action ml-edit" disabled={busyId !== null}
+                                            <button type="button" className="ml-status-action ml-edit" disabled={busy}
                                                 onClick={() => { setSelectedListing(item); window.location.hash = `edit=${item.listing_id}`; }}>Edit listing</button>
                                             <button type="button" className="ml-status-action"
-                                                disabled={busyId !== null || (itemStatus === 'active' && item.can_mark_sold !== true)}
-                                                onClick={() => handleAction(item.listing_id, itemStatus === 'active' ? 'mark_sold' : 'mark_active')}>
+                                                disabled={busy || (itemStatus === 'active' && item.can_mark_sold !== true)}
+                                                onClick={(event) => itemStatus === 'active'
+                                                    ? setActionConfirmation({ item, action: 'mark_sold', trigger: event.currentTarget })
+                                                    : handleAction(item.listing_id, itemStatus === 'inactive' ? 'resume' : 'mark_active')}>
                                                 {itemStatus === 'active' ? 'Mark as sold' : 'Mark as available'}
                                             </button>
-                                            <button type="button" className="ml-status-action ml-delete" disabled={busyId !== null}
-                                                onClick={() => handleAction(item.listing_id, 'delete')}>Delete</button>
+                                            <button type="button" className="ml-status-action ml-delete" disabled={busy}
+                                                onClick={(event) => setActionConfirmation({ item, action: 'delete', trigger: event.currentTarget })}>Delete</button>
                                         </div>
                                     </div>
                                 </div>
@@ -464,6 +555,28 @@ export default function ManageListings() {
                     </div>
                 )}
             </main>
+            {freezeDialogOpen && <FreezeListingsDialog busy={freezing} canConfirm={canFreeze}
+                onConfirm={handleFreeze} onDismiss={() => { if (!mutating.current) setFreezeDialogOpen(false); }}
+                triggerRef={freezeButtonRef} fallbackRef={pausedTabRef} />}
+            {actionConfirmation && <ActionConfirmationDialog
+                title={actionConfirmation.action === 'delete' ? 'Delete this listing?' : 'Mark this listing as sold?'}
+                confirmLabel={actionConfirmation.action === 'delete' ? 'Delete Listing' : 'Mark as Sold'}
+                cancelLabel="Keep Listing" busy={busyId !== null}
+                trigger={actionConfirmation.trigger} fallbackRef={pausedTabRef}
+                onDismiss={() => { if (!mutating.current) setActionConfirmation(null); }}
+                onConfirm={async () => {
+                    if (mutating.current) return;
+                    const item = listings.find((listing) => listing.listing_id === actionConfirmation.item.listing_id);
+                    if (!item || (actionConfirmation.action === 'mark_sold' && item.can_mark_sold !== true)) {
+                        setNotice({ kind: 'error', text: 'This listing is no longer available for this action. Reload to check its status.' });
+                    } else await handleAction(item.listing_id, actionConfirmation.action);
+                    if (mounted.current) setActionConfirmation(null);
+                }}>
+                <p><strong>{actionConfirmation.item.name}</strong></p>
+                <p>{actionConfirmation.action === 'delete'
+                    ? 'This will permanently delete this listing and its meeting requests. This cannot be undone.'
+                    : 'Both participants have checked in. This listing will be marked Sold and removed from marketplace results.'}</p>
+            </ActionConfirmationDialog>}
         </div>
     );
 }

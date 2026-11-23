@@ -39,6 +39,36 @@ const mount = async () => { let view; await act(async () => { view = render(<Man
 const tick = async () => act(async () => vi.advanceTimersByTime(MEETING_REFRESH_MS));
 const calls = (endpoint) => fetchMock.mock.calls.filter(([url]) => url.endsWith(endpoint));
 
+it('preserves a multi-image gallery when editing ordinary fields', async () => {
+    items = [{ ...ITEM, image_url:'front.jpg', image_urls:['front.jpg','back.png'] }];
+    await mount();
+    fireEvent.click(screen.getByRole('button',{name:'Edit listing'}));
+    // Hash routing updates the edit view independently of backend availability.
+    await act(async () => window.dispatchEvent(new HashChangeEvent('hashchange')));
+    expect(document.querySelector('input[type="file"]')).toBeDisabled();
+    expect(screen.getByText('2 photos · preserved when saving')).toBeInTheDocument();
+    fireEvent.submit(document.querySelector('form'));
+    await act(async () => {});
+    const request = calls('update_listing.php')[0];
+    expect(JSON.parse(request[1].body).image_url).toBe('front.jpg');
+    expect(JSON.parse(request[1].body).image_urls).toBeUndefined();
+});
+
+it('shows the offers checkbox and notes, and saves allow_offers (missing counts as off)', async () => {
+    items = [{ ...ITEM, allow_offers: true }, { ...ITEM, listing_id: 82 }];
+    await mount();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit listing' })[0]);
+    await act(async () => window.dispatchEvent(new HashChangeEvent('hashchange')));
+    const box = screen.getByLabelText('Allow buyers to make offers');
+    expect(box).toBeChecked();
+    expect(screen.getByText('Turning offers off does not change offers already sent in purchase requests.')).toBeVisible();
+    expect(screen.getByText('Changing the meeting location does not change the location of purchase requests you have already received.')).toBeVisible();
+    fireEvent.click(box);
+    fireEvent.submit(document.querySelector('form'));
+    await act(async () => {});
+    expect(JSON.parse(calls('update_listing.php')[0][1].body).allow_offers).toBe(false);
+});
+
 it('disables Sold before both arrivals and does not submit when clicked', async () => {
     await mount();
     expect(screen.getByRole('button', { name: 'Mark as sold' })).toBeDisabled();
@@ -62,7 +92,9 @@ it('waits for server confirmation, sends the qualifying request and blocks dupli
     const pending = deferred(); post = () => pending.promise;
     await mount();
     const button = screen.getByRole('button', { name: 'Mark as sold' });
-    fireEvent.click(button); fireEvent.click(button);
+    fireEvent.click(button);
+    const saleConfirm = screen.getByRole('button', { name: 'Mark as Sold', exact: true });
+    fireEvent.click(saleConfirm); fireEvent.click(saleConfirm);
     expect(calls('update_listing.php')).toHaveLength(1);
     expect(button).toBeDisabled();
     expect(screen.getByRole('button', { name: 'View Active (1)' })).toBeVisible();
@@ -87,7 +119,8 @@ it.each([409, 200])('keeps Active on a rejected response with HTTP %s and shows 
         return json({ success: false, error: 'Both parties must check in first.' }, status);
     };
     await mount();
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as sold' })));
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as sold' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as Sold', exact: true })));
     expect(screen.getByRole('alert')).toHaveTextContent('Both parties must check in first.');
     expect(screen.getByRole('button', { name: 'View Active (1)' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'View Sold (0)' })).toBeVisible();
@@ -99,7 +132,8 @@ it('reloads authoritative Sold state after a successful write loses its response
     items = [{ ...ITEM, can_mark_sold: true }];
     post = () => { items = [{ ...ITEM, status: 'sold' }]; throw new TypeError('Failed to fetch'); };
     await mount();
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as sold' })));
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as sold' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as Sold', exact: true })));
     expect(screen.getByRole('alert')).toHaveTextContent('Reload to check the listing status.');
     expect(screen.getByRole('button', { name: 'View Sold (1)' })).toBeVisible();
     expect(screen.queryByText('Listing marked as sold.')).not.toBeInTheDocument();
@@ -111,7 +145,8 @@ it('does not let a pre-sale poll restore an active listing after a successful sa
     const old = deferred(); read = () => old.promise;
     await tick();
     read = () => json({ success: true, results: items });
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as sold' })));
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as sold' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Mark as Sold', exact: true })));
     await act(async () => old.resolve(json({ success: true, results: [ITEM] })));
     expect(screen.getByRole('button', { name: 'View Active (0)' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'View Sold (1)' })).toBeVisible();
@@ -157,7 +192,8 @@ it('does not replace an unsaved edit with a poll or focus refresh', async () => 
 it('waits for delete confirmation and keeps the listing if deletion fails', async () => {
     post = () => json({ success: false, error: 'Delete failed.' }, 409);
     await mount();
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Delete' })));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Delete Listing' })));
     expect(screen.getByRole('alert')).toHaveTextContent('Delete failed.');
     expect(screen.getByText(ITEM.name)).toBeVisible();
 });

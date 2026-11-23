@@ -1,4 +1,6 @@
 /* Responsive create-listing screen shared by the Karavan web entry point. */
+@import '../../styles/action-buttons.css';
+
 .create-listing-page {
   --listing-navy: #1f2f46;
   --listing-cream: #f7f3ea;
@@ -48,30 +50,6 @@ body:has(.create-listing-page) {
   line-height: 21px;
 }
 
-.listing-secondary-button,
-.listing-primary-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font: 700 16px/normal 'DM Sans', system-ui, sans-serif;
-  text-align: center;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.listing-secondary-button {
-  border: 1px solid var(--listing-navy);
-  background: var(--listing-white);
-  color: var(--listing-navy);
-}
-
-.listing-secondary-button:hover:not(:disabled) {
-  background: #f0ece4;
-}
-
 .manage-listings-button {
   width: 180px;
   min-height: 44px;
@@ -85,13 +63,6 @@ body:has(.create-listing-page) {
 
 .listing-primary-button {
   width: 210px;
-  border: 1px solid var(--listing-navy);
-  background: var(--listing-navy);
-  color: var(--listing-cream);
-}
-
-.listing-primary-button:hover:not(:disabled) {
-  background: #2b3d59;
 }
 
 .listing-primary-button:disabled {
@@ -350,6 +321,13 @@ textarea.listing-control {
   padding: 13px;
 }
 
+.listing-offers-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
 .listing-actions {
   display: flex;
   justify-content: flex-end;
@@ -446,3 +424,8 @@ textarea.listing-control {
     padding-inline: 12px;
   }
 }
+.listing-selected-photos { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 10px; }
+.listing-selected-photos li { display: grid; grid-template-columns: 56px minmax(0,1fr) auto; align-items: center; gap: 8px; }
+.listing-selected-photos img { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; }
+.listing-selected-photos span { overflow-wrap: anywhere; font-size: 13px; }
+.listing-selected-photos button { padding: 8px; border: 1px solid #738095; border-radius: 6px; background: white; color: #152a47; cursor: pointer; }

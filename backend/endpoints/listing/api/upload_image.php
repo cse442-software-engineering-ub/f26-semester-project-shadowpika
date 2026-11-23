@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 // Listing-specific upload endpoint kept separate from the shared project API.
 require_once __DIR__ . '/../lib/image_storage.php';
+require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../includes/auth.php';
 
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type');
@@ -34,6 +36,15 @@ if ($method !== 'POST') {
         'success' => false,
         'error' => 'Method not allowed.',
     ]);
+}
+
+try {
+    $user = karavan_current_user(karavan_pdo());
+} catch (Throwable $exception) {
+    respond_with_json(500, ['success' => false, 'error' => 'The server could not check your login.']);
+}
+if ($user === null) {
+    respond_with_json(401, ['success' => false, 'error' => 'You are not logged in.']);
 }
 
 if (!isset($_FILES['image']) || !is_array($_FILES['image'])) {

@@ -1,0 +1,58 @@
+.listing-secondary-button,
+.listing-primary-button,
+.kv-action-button {
+  appearance: none;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  max-width: 100%;
+  padding: 10px 16px;
+  border: 1px solid #1f2f46;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2f46;
+  font: 700 16px/normal 'DM Sans', system-ui, sans-serif;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.listing-secondary-button:hover:not(:disabled),
+.kv-action-button:hover:not(:disabled) {
+  background: #f0ece4;
+}
+
+.listing-primary-button,
+.kv-action-button--primary {
+  background: #1f2f46;
+  color: #f7f3ea;
+}
+
+.listing-primary-button:hover:not(:disabled),
+.kv-action-button--primary:hover:not(:disabled) {
+  border-color: #2b3d59;
+  background: #2b3d59;
+}
+
+.kv-action-button--danger {
+  border-color: #b62929;
+  background: #b62929;
+  color: #fff;
+}
+
+.kv-action-button--danger:hover:not(:disabled) {
+  border-color: #992222;
+  background: #992222;
+}
+
+.kv-action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.kv-action-button:focus-visible {
+  outline: 2px solid #b58a26;
+  outline-offset: 3px;
+}

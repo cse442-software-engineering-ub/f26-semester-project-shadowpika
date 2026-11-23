@@ -1,5 +1,6 @@
 import { apiUrl } from './routes.js';
 import { saveJoinedCommunities } from './community.js';
+import { clearReturnPath } from './returnTo.js';
 
 // Isolated so task tests can verify the request without navigating the test runner.
 export const navigateTo = (url) => window.location.replace(url);
@@ -12,6 +13,7 @@ export async function signOut(navigate = navigateTo) {
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error('Logout failed.');
     saveJoinedCommunities([]);
+    clearReturnPath();
     navigate(apiUrl('index.html'));
 }
 

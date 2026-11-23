@@ -27,7 +27,7 @@ body:has(.ps-page) {
   box-sizing: border-box;
 }
 
-.ps-page button {
+.ps-page button:where(:not(.kv-action-button)) {
   font: inherit;
   color: inherit;
   background: none;
@@ -620,7 +620,17 @@ body:has(.ps-page) {
   font-size: 12px;
   line-height: 16px;
   font-weight: 700;
-  cursor: not-allowed;
+  text-align: center;
+  text-decoration: none;
+}
+
+.ps-manage-button:hover {
+  background: #d6b477;
+}
+
+.ps-manage-button:focus-visible {
+  outline: 2px solid var(--ps-navy);
+  outline-offset: 2px;
 }
 
 .ps-published-section {

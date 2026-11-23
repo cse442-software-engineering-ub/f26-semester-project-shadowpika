@@ -20,7 +20,7 @@ const LISTING_ALLOWED_CONDITIONS = [
 /**
  * Validates and normalizes fields used to create a listing.
  *
- * @return array{data: array<string, string|int|null>, errors: array<string, string>}
+ * @return array{data: array<string, mixed>, errors: array<string, string>}
  */
 function validate_create_listing(array $input): array
 {
@@ -33,6 +33,8 @@ function validate_create_listing(array $input): array
     $meetingLocationId = normalize_listing_positive_id($input['meeting_location_id'] ?? null);
     $description = listing_text($input['description'] ?? '');
     $imageUrl = listing_text($input['image_url'] ?? '');
+    $allowOffers = parse_listing_allow_offers($input);
+    $imageUrls = array_key_exists('image_urls', $input) ? $input['image_urls'] : ($imageUrl === '' ? [] : [$imageUrl]);
 
     $errors = [];
 
@@ -81,7 +83,26 @@ function validate_create_listing(array $input): array
         $errors['description'] = 'Description must be 1,000 characters or fewer.';
     }
 
-    if ($imageUrl === '') {
+    if ($allowOffers === null) {
+        $errors['allow_offers'] = 'Allow offers must be true or false.';
+    }
+
+    if (array_key_exists('image_urls', $input)) {
+        if (!is_array($imageUrls) || !array_is_list($imageUrls) || count($imageUrls) < 1 || count($imageUrls) > 5) {
+            $errors['image_urls'] = 'Upload 1 to 5 item photos.';
+        } else {
+            $filenames = [];
+            foreach ($imageUrls as $url) {
+                if (!is_string($url) || !is_valid_listing_image_url($url)) { $errors['image_urls'] = 'Upload valid local item photos.'; break; }
+                parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+                $filenames[] = $query['file'];
+            }
+            if (!isset($errors['image_urls']) && count(array_unique($filenames)) !== count($filenames)) $errors['image_urls'] = 'Each item photo must be unique.';
+            if (array_key_exists('image_url', $input) && $imageUrl !== $imageUrls[0]) $errors['image_urls'] = 'The cover must be the first item photo.';
+        }
+        if (!isset($errors['image_urls'])) $imageUrl = $imageUrls[0];
+    }
+    if ($imageUrl === '' && !isset($errors['image_urls'])) {
         $errors['image_url'] = 'Item photo is required.';
     } elseif (!is_valid_listing_image_url($imageUrl)) {
         $errors['image_url'] = 'Upload a valid item photo.';
@@ -98,9 +119,27 @@ function validate_create_listing(array $input): array
             'meeting_location_id' => $meetingLocationId,
             'description' => $description,
             'image_url' => $imageUrl,
+            'image_urls' => is_array($imageUrls) ? $imageUrls : [],
+            'allow_offers' => $allowOffers ?? false,
         ],
         'errors' => $errors,
     ];
+}
+
+/** Missing = false; true/false/1/0/"1"/"0" = that value; anything else = null (invalid). */
+function parse_listing_allow_offers(array $input): ?bool
+{
+    if (!array_key_exists('allow_offers', $input)) {
+        return false;
+    }
+    $value = $input['allow_offers'];
+    if ($value === true || $value === 1 || $value === '1') {
+        return true;
+    }
+    if ($value === false || $value === 0 || $value === '0') {
+        return false;
+    }
+    return null;
 }
 
 function normalize_listing_positive_id($value): ?int

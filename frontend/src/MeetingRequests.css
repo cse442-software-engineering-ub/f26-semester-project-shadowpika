@@ -95,6 +95,15 @@
   border-color: var(--ps-gold);
 }
 
+.mr-field input.mr-locked-location:disabled {
+  background: #eceef0;
+  color: #26374e;
+  -webkit-text-fill-color: #26374e;
+  border-color: #c8ced5;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
 .mr-message {
   margin: 0;
   font-size: 14px;
@@ -103,6 +112,25 @@
 .mr-success {
   color: #2f7a4b;
   font-weight: 700;
+}
+
+.mr-location-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  color: #c62828;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.mr-location-result-dismiss {
+  border: none;
+  background: none;
+  color: #c62828;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .mr-requests {
@@ -202,6 +230,27 @@ h3 > .mr-request-link:hover {
   color: var(--ps-muted);
 }
 
+.mr-request-offer {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ps-muted);
+}
+
+.mr-offer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mr-offer-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ps-muted);
+}
+
 .mr-status {
   margin-top: 6px;
   padding: 3px 10px;
@@ -246,6 +295,23 @@ h3 > .mr-request-link:hover {
 .ps-page .mr-cancel:hover,
 .ps-page .mr-cancel:focus-visible {
   background: rgba(180, 83, 42, 0.1);
+}
+
+.mr-rate-seller {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #1f2d44;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.mr-rate-seller:hover,
+.mr-rate-seller:focus-visible {
+  background: #2c3d5a;
 }
 
 .ps-page .mr-cancel:disabled {

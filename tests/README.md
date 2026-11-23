@@ -21,6 +21,28 @@ User-story acceptance tests exercise the integrated UI on Cattle from an ordinar
 user's perspective. Frontend/backend task tests use Aptitude and must not rely on the
 other layer being correct. This migration does not rewrite the outstanding task cards.
 
+## #231 listing freeze frontend
+
+In `frontend/`, run `npm test -- src/__tests__/ListingFreeze.test.jsx
+src/__tests__/ManageListings.test.jsx src/__tests__/MeetingRequests.test.jsx`.
+These use API mocks and cover confirmation/dismissal, metadata compatibility,
+duplicate clicks, stale polling, failure recovery, individual resume and the
+disabled meeting location's keyboard behavior/saved JSON ID. See
+`docs/listing-freeze.md` for the frontend/backend contract. Native dialog focus
+and responsive layout also require browser inspection; jsdom supplies only a
+minimal dialog API for the unit tests.
+
+## #232 listing freeze regression
+
+`php tests/mysql/listing_freeze_test.php` uses a disposable loopback MySQL server
+selected by `KARAVAN_FREEZE_TEST_DSN=mysql:host=127.0.0.1;port=YOUR_LOCAL_TEST_PORT`
+(no database in the DSN). It creates/cleans a random database and user, tests real
+HTTP/PDO/mysqli reads and writes, forces both orders of approval/location-accept/
+creation versus freezing, and verifies transaction rollback. PHP needs PDO MySQL,
+mysqli and curl. Never target Aptitude/Cattle. See `docs/listing-freeze.md` for the
+API, local-build override and read-only live fixture check. `ListingFreezeTest`
+provides deterministic SQLite business-rule tests, not proof of InnoDB locking.
+
 ## #175 listing access regression
 
 Build `deploy/`, then run `php tests/mysql/listing_access_test.php` with

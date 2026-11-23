@@ -108,3 +108,37 @@ describe('Frontend: View Item Details (#151)', () => {
         expect(screen.getByText('TEXTBOOKS')).toBeInTheDocument();
     });
 });
+
+describe('Item page seller and rating (#132)', () => {
+    beforeEach(() => openItem(95023));
+
+    it('names the seller, shows their rating, and links to their seller page', async () => {
+        override(200, {
+            success: true,
+            listing: {
+                listing_id: 95023, name: 'Messaging Test Desk Lamp', price: '15.00', condition: 'Good', category: 'Dorm Living',
+                seller: { id: 217, username: 'morgan.keller1', average_rating: 4.5, rating_count: 2 },
+            },
+        });
+        render(<ItemDetails />);
+
+        const link = await screen.findByRole('link', { name: 'morgan.keller1' });
+        expect(link).toHaveAttribute('href', './seller.html?seller_id=217');
+        expect(screen.getByText('4.5 (2 ratings)')).toBeInTheDocument();
+        expect(screen.getByRole('img', { name: '4.5 out of 5 stars' })).toBeInTheDocument();
+    });
+
+    it('says when the seller has no ratings yet', async () => {
+        override(200, {
+            success: true,
+            listing: {
+                listing_id: 95023, name: 'Messaging Test Desk Lamp', price: '15.00', condition: 'Good',
+                seller: { id: 217, username: 'morgan.keller1', average_rating: null, rating_count: 0 },
+            },
+        });
+        render(<ItemDetails />);
+
+        expect(await screen.findByRole('link', { name: 'morgan.keller1' })).toBeInTheDocument();
+        expect(screen.getByText('No ratings yet')).toBeInTheDocument();
+    });
+});
